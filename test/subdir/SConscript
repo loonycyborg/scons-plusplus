@@ -1,0 +1,5 @@
+print "SConscript is run"
+env = Environment()
+env.Command("../s.blah", "blah", "blah")
+Import("exported")
+print exported

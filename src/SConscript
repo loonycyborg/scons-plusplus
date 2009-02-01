@@ -1,0 +1,4 @@
+Import("env")
+
+env.Default(
+	env.Program("#/scons++", Glob("*.cpp") + Glob("python_interface/*.cpp")))

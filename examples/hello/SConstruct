@@ -1,0 +1,4 @@
+env = Environment()
+obj = env.Object("hello.o", "hello.c")
+prog = env.Program("hello", obj)
+env.Default(prog)
