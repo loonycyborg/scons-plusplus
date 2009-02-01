@@ -104,6 +104,14 @@ inline object deepcopy(object obj)
 	return deepcopy_func(obj);
 }
 
+inline object call_extended(object obj, tuple args, dict kw)
+{
+	PyObject* result = PyObject_Call(obj.ptr(), args.ptr(), kw.ptr());
+	if(result == NULL)
+		throw_error_already_set();
+	return object(handle<PyObject>(borrowed(result)));
+}
+
 }
 
 #endif

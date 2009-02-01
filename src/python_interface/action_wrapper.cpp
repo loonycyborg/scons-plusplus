@@ -54,8 +54,7 @@ void ActionCaller::execute(const environment::Environment& env) const
 	foreach(const object& arg, make_object_iterator_range(args_))
 		args.append(convert_(object(env.subst(extract<string>(str(arg))))));
 
-	static object apply = eval("apply", main_namespace, main_namespace);
-	apply(actfunc_, args, kw_);
+	call_extended(actfunc_, tuple(args), kw_);
 }
 
 std::string ActionCaller::to_string(const environment::Environment& env) const
@@ -64,8 +63,7 @@ std::string ActionCaller::to_string(const environment::Environment& env) const
 	foreach(const object& arg, make_object_iterator_range(args_))
 		args.append(convert_(object(env.subst(extract<string>(str(arg))))));
 
-	static object apply = eval("apply", main_namespace, main_namespace);
-	return extract<std::string>(apply(strfunc_, args, kw_));
+	return extract<std::string>(call_extended(strfunc_, tuple(args), kw_));
 }
 
 }
