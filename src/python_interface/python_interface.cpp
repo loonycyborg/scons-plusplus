@@ -56,13 +56,12 @@ object flatten(object obj)
 
 	list result;
 
-	if(call<bool>(isinstance.ptr(), obj, none_type))
+	if(isinstance(obj, none_type))
 		return result;
 
-	if(call<bool>(isinstance.ptr(), obj, sequence_types)) {
-		stl_input_iterator<object> i(obj), i_end;
-		for(; i != i_end; i++)
-			result.extend(flatten(*i));
+	if(isinstance(obj, sequence_types)) {
+		foreach(const object& item, make_object_iterator_range(obj))
+			result.extend(flatten(item));
 		return result;
 	}
 
