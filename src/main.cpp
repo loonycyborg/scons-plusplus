@@ -63,6 +63,11 @@ int main(int argc, char** argv)
 		Node default_target = dependency_graph::add_dummy_node("The end goal");
 		foreach(Node node, dependency_graph::default_targets)
 			add_edge(default_target, node, dependency_graph::graph);
-		taskmaster::build(default_target);
+		try {
+			taskmaster::build(default_target);
+		} catch(const std::exception& e) {
+			std::cerr << "scons++: *** " << e.what() << std::endl;
+			return 1;
+		}
 	}
 }
