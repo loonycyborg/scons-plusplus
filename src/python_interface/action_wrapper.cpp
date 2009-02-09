@@ -34,7 +34,13 @@ namespace python_interface
 
 void PythonAction::execute(const environment::Environment& env) const
 {
-	action_obj(env["TARGETS"], env["SOURCES"], env);
+	try {
+		action_obj(env["TARGETS"], env["SOURCES"], env);
+	} catch(const error_already_set&) {
+		PyErr_Print();
+		PyErr_Clear();
+		throw std::runtime_error("A python exception was raised when executing action.");
+	}
 }
 
 std::string PythonAction::to_string(const environment::Environment& env) const
@@ -50,11 +56,18 @@ object call_action_factory(tuple args, dict kw)
 
 void ActionCaller::execute(const environment::Environment& env) const
 {
-	list args;
-	foreach(const object& arg, make_object_iterator_range(args_))
-		args.append(convert_(object(env.subst(extract<string>(str(arg))))));
+	object format_exc = import("traceback").attr("format_exc");
+	try {
+		list args;
+		foreach(const object& arg, make_object_iterator_range(args_))
+			args.append(convert_(object(env.subst(extract<string>(str(arg))))));
 
-	call_extended(actfunc_, tuple(args), kw_);
+		call_extended(actfunc_, tuple(args), kw_);
+	} catch(const error_already_set&) {
+		PyErr_Print();
+		PyErr_Clear();
+		throw std::runtime_error("A python exception was raised when executing action.");
+	}
 }
 
 std::string ActionCaller::to_string(const environment::Environment& env) const
