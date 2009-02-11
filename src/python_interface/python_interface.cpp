@@ -121,7 +121,7 @@ BOOST_PYTHON_MODULE(SCons)
 	NESTED_MODULE("SCons", "Builder")
 		def("Builder", raw_function(&make_builder));
 		class_<builder::Builder, builder::Builder::pointer, boost::noncopyable>("BuilderWrapper", no_init)
-			.def("__call__", &call_builder)
+			.def("__call__", raw_function(&call_builder_interface, 2))
 			.def("add_action", &add_action)
 			.def("add_emitter", &add_emitter)
 			.def("get_suffix", &get_builder_suffix)

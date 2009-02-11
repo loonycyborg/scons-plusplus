@@ -33,6 +33,37 @@ using boost::polymorphic_cast;
 namespace python_interface
 {
 
+NodeList call_builder_interface(tuple args, dict kw)
+{
+	const builder::Builder& builder = extract<const builder::Builder&>(args[0]);
+	const environment::Environment& env = extract<const environment::Environment&>(args[1]);
+	object target, source;
+	if(len(args) >= 3) {
+		if(kw.has_key("target")) {
+			PyErr_SetString(PyExc_ValueError, "target specified as both keyword and positional argument");
+			throw_error_already_set();
+		} else {
+			target = args[2];
+		}
+	} else {
+		target = kw.get("target");
+	}
+	if(len(args) >= 4) {
+		if(kw.has_key("source")) {
+			PyErr_SetString(PyExc_ValueError, "source specified as both keyword and positional argument");
+			throw_error_already_set();
+		} else {
+			source = args[3];
+		}
+	} else {
+		source = kw.get("source");
+	}
+	if(!source) {
+		source = target;
+	}
+	return call_builder(builder, env, target, source);
+}
+
 class factory_wrapper
 {
 	object factory_;

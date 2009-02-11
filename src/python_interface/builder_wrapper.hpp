@@ -43,6 +43,8 @@ inline NodeList call_builder(const builder::Builder& builder, const environment:
 	return builder(env, targets, sources);
 }
 
+NodeList call_builder_interface(tuple args, dict kw);
+
 object make_builder(const tuple&, const dict&);
 
 object add_action(builder::Builder* builder, object, object);
