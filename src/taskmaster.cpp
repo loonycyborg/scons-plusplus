@@ -38,7 +38,9 @@ class BuildVisitor : public boost::default_dfs_visitor
 	public:
 	BuildVisitor(std::vector<Node>& node_list) : node_list_(node_list) {}
 
-	void discover_vertex(Node node, const dependency_graph::Graph& graph) const
+	template <typename Edge>
+	void back_edge(const Edge&, const dependency_graph::Graph& graph) const { throw boost::not_a_dag(); }
+	void finish_vertex(Node node, const dependency_graph::Graph& graph) const
 	{
 		node_list_.push_back(node);
 	}
@@ -72,7 +74,7 @@ namespace taskmaster
 
 		std::vector<boost::shared_ptr<taskmaster::Task> > tasks;
 		std::set<boost::shared_ptr<taskmaster::Task> > added_tasks;
-		for(vector<dependency_graph::Node>::const_reverse_iterator iter = nodes.rbegin(); iter != nodes.rend(); iter++)
+		for(vector<dependency_graph::Node>::const_iterator iter = nodes.begin(); iter != nodes.end(); iter++)
 		{
 			boost::shared_ptr<taskmaster::Task> task = dependency_graph::graph[*iter]->task();
 			if(task && !added_tasks.count(task)) {
