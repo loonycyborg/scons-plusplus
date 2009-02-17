@@ -37,8 +37,10 @@ namespace python_interface
 
 inline bool is_instance(object obj, object type)
 {
-	static object isinstance = eval("isinstance", main_namespace, main_namespace);
-	return extract<bool>(isinstance(obj, type));
+	int result = PyObject_IsInstance(obj.ptr(), type.ptr());
+	if(result == -1)
+		throw_error_already_set();
+	return result;
 }
 
 inline bool is_string(object obj)

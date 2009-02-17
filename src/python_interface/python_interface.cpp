@@ -52,14 +52,13 @@ object flatten(object obj)
 	static object types = import("types").attr("__dict__");
 	static object none_type = types["NoneType"];
 	static object sequence_types = eval("(list, tuple)", main_namespace, dict());
-	static object isinstance = main_namespace["__builtins__"].attr("isinstance");
 
 	list result;
 
-	if(isinstance(obj, none_type))
+	if(is_instance(obj, none_type))
 		return result;
 
-	if(isinstance(obj, sequence_types)) {
+	if(is_instance(obj, sequence_types)) {
 		foreach(const object& item, make_object_iterator_range(obj))
 			result.extend(flatten(item));
 		return result;
