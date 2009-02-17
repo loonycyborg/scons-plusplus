@@ -45,20 +45,17 @@ inline bool is_instance(object obj, object type)
 
 inline bool is_string(object obj)
 {
-	static object string_type = eval("(str, unicode)", main_namespace, main_namespace);
-	return is_instance(obj, string_type);
+	return is_instance(obj, make_tuple(handle<>(borrowed(&PyString_Type)), handle<>(borrowed(&PyUnicode_Type))));
 }
 
 inline bool is_list(object obj)
 {
-	static object list_type = eval("list", main_namespace, main_namespace);
-	return is_instance(obj, list_type);
+	return is_instance(obj, object(handle<>(borrowed(&PyList_Type))));
 }
 
 inline bool is_dict(object obj)
 {
-	static object dict_type = eval("dict", main_namespace, main_namespace);
-	return is_instance(obj, dict_type);
+	return is_instance(obj, object(handle<>(borrowed(&PyDict_Type))));
 }
 
 inline bool is_callable(object obj)
