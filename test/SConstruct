@@ -7,6 +7,8 @@ env.Default("foo")
 node = env.Entry("quux")
 print node
 print str(nodes)
+print env.subst("blah")
+print env.subst("${CC}")
 print env.subst("blah $blah blah")
 env["varname"] = [1,2,3]
 env["varname"][1] = 5

@@ -18,8 +18,10 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <boost/spirit/include/classic_core.hpp>
-#include <boost/spirit/include/classic_push_back_actor.hpp>
+#include <boost/spirit/include/qi.hpp>
+#include <boost/spirit/include/phoenix_core.hpp>
+#include <boost/spirit/include/phoenix_operator.hpp>
+#include <boost/spirit/include/phoenix_function.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/foreach.hpp>
 #define foreach BOOST_FOREACH
@@ -33,36 +35,67 @@ using std::vector;
 namespace
 {
 
-class substitute_variable
-{
-	string& result_;
-	const environment::Environment& env_;
-	public:
-	substitute_variable(const environment::Environment& env, string& str) : result_(str), env_(env) {}
+using namespace boost::spirit;
+using namespace boost::spirit::qi;
+using namespace boost::spirit::ascii;
+using namespace boost::spirit::arg_names;
+using namespace boost::phoenix;
 
-	void operator()(const char *begin, const char *end) const
+template <typename Iterator>
+struct variable_ref : grammar<Iterator, std::string()>
+{
+	variable_ref() : variable_ref::base_type(ref)
 	{
-		result_ += env_.subst(python_interface::expand_variable(string(begin, end), env_));
+		variable_name %= raw[((alpha || '_') >> *(alnum || '_'))];
+		ref = '$' >> (variable_name[_val = _1] || ('{' >> variable_name[_val = _1] >> '}'));
+	}
+
+	rule<Iterator, std::string()> variable_name, ref;
+};
+
+template <typename Iterator>
+struct python_code : grammar<Iterator, std::string()>
+{
+	python_code() : python_code::base_type(placeholder)
+	{
+		placeholder = "${" >> code[_val = _1] >> '}';
+		code %= raw[(*(char_ - '}'))];
+	}
+
+	rule<Iterator, std::string()> code, placeholder;
+};
+
+struct expand_impl
+{
+	template<typename Arg1, typename Arg2>
+	struct result
+	{
+		typedef std::string type;
+	};
+
+	std::string operator()(const environment::Environment& env, const std::string& variable) const
+	{
+		return env.subst(python_interface::expand_variable(variable, env));
 	}
 };
 
-class substitute_python
-{
-	string& result_;
-	const environment::Environment& env_;
-	public:
-	substitute_python(const environment::Environment& env, string& str) : result_(str), env_(env) {}
+function<expand_impl> lazy_expand;
 
-	void operator()(const char *begin, const char *end) const
+struct eval_python_impl
+{
+	template<typename Arg1, typename Arg2>
+	struct result
 	{
-		result_ += python_interface::eval_string(string(begin, end), env_);
+		typedef std::string type;
+	};
+
+	std::string operator()(const environment::Environment& env, const std::string& python) const
+	{
+		return env.subst(python_interface::eval_string(python, env));
 	}
 };
 
-using namespace BOOST_SPIRIT_CLASSIC_NS;
-rule<> alpha_or_underscore = alpha_p | '_';
-rule<> alnum_or_underscore = alnum_p | '_';
-rule<> variable_name = alpha_or_underscore >> *alnum_or_underscore;
+function<eval_python_impl> lazy_eval_python;
 
 }
 
@@ -72,12 +105,10 @@ namespace environment
 std::string parse_variable_ref(const std::string& str)
 {
 	string result;
+	std::string::const_iterator iter = str.begin();
+	variable_ref<std::string::const_iterator> vref;
 
-	rule<> variable = ch_p('$') >> variable_name[assign_a(result)];
-	rule<> variable_with_braces = ch_p('$') >> '{' >> variable_name[assign_a(result)] >> '}';
-	rule<> variable_ref = variable | variable_with_braces;
-
-	parse(str.c_str(), variable_ref);
+	parse(iter, str.end(), vref, result);
 	return result;
 }
 
@@ -85,11 +116,17 @@ std::string Environment::subst(const std::string& str) const
 {
 	string result;
 
-	rule<> variable = ch_p('$') >> variable_name[substitute_variable(*this, result)];
-	rule<> python_code = ch_p('$') >> '{' >> (*~ch_p("}"))[substitute_python(*this, result)] >> '}';
-	rule<> r = *(variable | python_code | anychar_p[push_back_a(result)]);
+	rule<std::string::const_iterator, string()> interpolator;
+	variable_ref<std::string::const_iterator> vref;
+	python_code<std::string::const_iterator> python;
+	interpolator = *(
+		vref[_val += lazy_expand(ref(*this), _1)] ||
+		python[_val += lazy_eval_python(ref(*this), _1)] ||
+		char_[_val += _1]
+		);
+	std::string::const_iterator iter = str.begin();
+	parse(iter, str.end(), interpolator, result);
 
-	parse(str.c_str(), r);
 	return result;
 }
 
