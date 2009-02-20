@@ -45,17 +45,17 @@ inline bool is_instance(object obj, object type)
 
 inline bool is_string(object obj)
 {
-	return is_instance(obj, make_tuple(handle<>(borrowed(&PyString_Type)), handle<>(borrowed(&PyUnicode_Type))));
+	return PyString_Check(obj.ptr()) || PyUnicode_Check(obj.ptr());
 }
 
 inline bool is_list(object obj)
 {
-	return is_instance(obj, object(handle<>(borrowed(&PyList_Type))));
+	return PyList_Check(obj.ptr());
 }
 
 inline bool is_dict(object obj)
 {
-	return is_instance(obj, object(handle<>(borrowed(&PyDict_Type))));
+	return PyDict_Check(obj.ptr());
 }
 
 inline bool is_callable(object obj)
