@@ -49,16 +49,12 @@ namespace python_interface
 
 object flatten(object obj)
 {
-	static object types = import("types").attr("__dict__");
-	static object none_type = types["NoneType"];
-	static object sequence_types = eval("(list, tuple)", main_namespace, dict());
-
 	list result;
 
-	if(is_instance(obj, none_type))
+	if(is_none(obj))
 		return result;
 
-	if(is_instance(obj, sequence_types)) {
+	if(is_list(obj) || is_tuple(obj)) {
 		foreach(const object& item, make_object_iterator_range(obj))
 			result.extend(flatten(item));
 		return result;

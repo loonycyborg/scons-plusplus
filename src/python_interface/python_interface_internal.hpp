@@ -43,9 +43,19 @@ inline bool is_instance(object obj, object type)
 	return result;
 }
 
+inline bool is_none(object obj)
+{
+	return obj.ptr() == Py_None;
+}
+
 inline bool is_string(object obj)
 {
 	return PyString_Check(obj.ptr()) || PyUnicode_Check(obj.ptr());
+}
+
+inline bool is_tuple(object obj)
+{
+	return PyTuple_Check(obj.ptr());
 }
 
 inline bool is_list(object obj)
