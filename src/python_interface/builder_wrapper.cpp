@@ -78,20 +78,23 @@ class PythonBuilder : public builder::Builder
 		object factory_;
 		object prefix_;
 		object suffix_;
+		bool ensure_suffix_;
 		public:
-		FactoryWrapper(object factory, object prefix, object suffix) : factory_(factory), prefix_(prefix), suffix_(suffix) {}
+		FactoryWrapper(object factory, object prefix, object suffix, bool ensure_suffix)
+			: factory_(factory), prefix_(prefix), suffix_(suffix), ensure_suffix_(ensure_suffix) {}
 		dependency_graph::Node operator()(const environment::Environment& env, std::string name)
 		{
-			if(prefix_)
-				name = env.subst(extract<std::string>(prefix_)()) + name;
 			if(suffix_) {
 				std::string suffix = extract<std::string>(suffix_);
 				suffix = env.subst(suffix);
 				if(!suffix.empty() && !boost::algorithm::starts_with(suffix, "."))
 					suffix = "." + suffix;
 				if(!boost::algorithm::ends_with(name, suffix))
-					name += suffix;
+					if(ensure_suffix_ || !boost::algorithm::contains(name, string(".")))
+						name += suffix;
 			}
+			if(prefix_)
+				name = env.subst(extract<std::string>(prefix_)()) + name;
 
 			if(factory_)
 				return extract<python_interface::NodeWrapper>(factory_(name))().node;
@@ -111,10 +114,13 @@ class PythonBuilder : public builder::Builder
 	object emitter_;
 
 	public:
-	PythonBuilder(object actions, object target_factory, object source_factory, object prefix, object suffix, object src_suffix, object emitter) :
+	PythonBuilder(
+			object actions,
+			object target_factory, object source_factory, object prefix, object suffix, bool ensure_suffix, object src_suffix,
+			object emitter) :
 		actions_(actions),
-		target_factory_(target_factory, prefix, suffix),
-		source_factory_(source_factory, object(), src_suffix),
+		target_factory_(target_factory, prefix, suffix, ensure_suffix),
+		source_factory_(source_factory, object(), src_suffix, false),
 		emitter_(emitter)
 	{}
 
@@ -191,6 +197,7 @@ object make_builder(const tuple&, const dict& kw)
 					kw.get("source_factory"),
 					kw.get("prefix"),
 					kw.get("suffix"),
+					kw.get("ensure_suffix"),
 					kw.get("src_suffix"),
 					kw.get("emitter")
 	)));

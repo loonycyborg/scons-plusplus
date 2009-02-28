@@ -14,12 +14,13 @@ builder = Builder(
     prefix = "blah_",
     suffix = "blah",
     src_suffix = "blah",
-    emitter = e)
+    emitter = e,
+    ensure_suffix = True)
 
 env.Append(BUILDERS = { "Blah" : builder })
 
 env.Command("qux.blah", "SConstruct", "echo targets: $TARGETS  sources: $SOURCES")
-blah = env.Blah("foo", "qux")
+blah = env.Blah("foo.bar", "qux")
 env.Command("SConstruct.blah", "SConstruct", "echo targets: $TARGETS sources: $SOURCES")
 print env.Blah("SConstruct")
 env.Command("baz", [blah, "blah_SConstruct.blah"], "echo targets: $TARGETS sources: $SOURCES")
