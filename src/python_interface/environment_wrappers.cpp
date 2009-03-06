@@ -50,7 +50,7 @@ void Default(const environment::Environment::pointer& env, object obj)
 {
 	obj = flatten(obj);
 	NodeList nodes;
-	transform(stl_input_iterator<object>(obj), stl_input_iterator<object>(), back_inserter(nodes), boost::bind(extract_node, _1, builder::default_factory, *env));
+	extract_nodes(obj, back_inserter(nodes), builder::default_factory, *env);
 	foreach(Node node, nodes)
 		dependency_graph::default_targets.insert(node);
 }

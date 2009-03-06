@@ -53,6 +53,8 @@ class Builder
 	typedef boost::function<dependency_graph::Node (const environment::Environment&, const std::string&)> NodeFactory;
 	virtual NodeFactory target_factory() const;
 	virtual NodeFactory source_factory() const;
+	virtual std::string adjust_target_name(const environment::Environment&, const std::string& name) const { return name; }
+	virtual std::string adjust_source_name(const environment::Environment&, const std::string& name) const { return name; }
 };
 
 dependency_graph::Node default_factory(const environment::Environment&, const std::string& name);

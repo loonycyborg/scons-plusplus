@@ -52,24 +52,61 @@ inline Node extract_node(object obj)
 	return extract<NodeWrapper>(obj)().node;
 }
 
-inline Node extract_node(object obj, builder::Builder::NodeFactory node_factory, const environment::Environment& env)
+inline Node string2node(const std::string& name, const builder::Builder::NodeFactory node_factory, const environment::Environment& env)
+{
+	return node_factory(env, transform_node_name(name));
+}
+
+inline Node target_string2node(const std::string& name, const builder::Builder* builder, const environment::Environment& env)
+{
+	return builder->target_factory()(env, transform_node_name(builder->adjust_target_name(env, name)));
+}
+
+inline Node source_string2node(const std::string& name, const builder::Builder* builder, const environment::Environment& env)
+{
+	return builder->source_factory()(env, transform_node_name(builder->adjust_source_name(env, name)));
+}
+
+template<class OutputIterator, typename String2Node>
+inline void extract_node(object obj, OutputIterator iter, String2Node string2node)
 {
 	try {
-		return extract_node(obj);
+		*iter++ = extract_node(obj);
 	} catch(const error_already_set&) {
 		PyErr_Clear();
-		return node_factory(env, transform_node_name(extract<std::string>(obj)));
+		*iter++ = string2node(extract<std::string>(obj)());
 	}
 }
 
 template<class OutputIterator> inline void extract_nodes(object obj, OutputIterator iter)
 {
-	transform(stl_input_iterator<object>(obj), stl_input_iterator<object>(), iter, boost::bind(extract_node, _1));
+	foreach(object node, make_object_iterator_range(obj)) {
+		*iter++ = extract_node(node);
+	}
 }
 
-template<class OutputIterator> inline void extract_nodes(object obj, OutputIterator iter, builder::Builder::NodeFactory node_factory, const environment::Environment& env)
+template<class OutputIterator, typename String2Node>
+inline void extract_nodes(object obj, OutputIterator iter, String2Node string2node)
 {
-	transform(stl_input_iterator<object>(obj), stl_input_iterator<object>(), iter, boost::bind(extract_node, _1, node_factory, env));
+	foreach(object node, make_object_iterator_range(obj)) {
+		extract_node(node, iter, string2node);
+	}
+}
+
+template<class OutputIterator>
+inline void extract_nodes(object obj, OutputIterator iter, builder::Builder::NodeFactory node_factory, const environment::Environment& env)
+{
+	extract_nodes(obj, iter, boost::bind(string2node, _1, node_factory, env));
+}
+
+template<class OutputIterator> inline void extract_target_nodes(object obj, OutputIterator iter, const builder::Builder& builder, const environment::Environment& env)
+{
+	extract_nodes(obj, iter, boost::bind(target_string2node, _1, &builder, env));
+}
+
+template<class OutputIterator> inline void extract_source_nodes(object obj, OutputIterator iter, const builder::Builder& builder, const environment::Environment& env)
+{
+	extract_nodes(obj, iter, boost::bind(source_string2node, _1, &builder, env));
 }
 
 template<class NodeClass> inline NodeClass* get_properties(Node node)

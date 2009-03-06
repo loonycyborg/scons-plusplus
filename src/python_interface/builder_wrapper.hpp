@@ -35,14 +35,7 @@ using dependency_graph::NodeList;
 namespace python_interface
 {
 
-inline NodeList call_builder(const builder::Builder& builder, const environment::Environment& env, object target, object source)
-{
-	dependency_graph::NodeList targets, sources;
-	extract_nodes(flatten(target), back_inserter(targets), builder.target_factory(), env);
-	extract_nodes(flatten(source), back_inserter(sources), builder.source_factory(), env);
-	return builder(env, targets, sources);
-}
-
+NodeList call_builder(const builder::Builder&, const environment::Environment&, object, object);
 NodeList call_builder_interface(tuple args, dict kw);
 
 object make_builder(const tuple&, const dict&);

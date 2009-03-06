@@ -33,6 +33,18 @@ using boost::polymorphic_cast;
 namespace python_interface
 {
 
+NodeList call_builder(const builder::Builder& builder, const environment::Environment& env, object target, object source)
+{
+	dependency_graph::NodeList targets, sources;
+	extract_target_nodes(
+		flatten(target), back_inserter(targets), builder, env
+		);
+	extract_source_nodes(
+		flatten(source), back_inserter(sources), builder, env
+		);
+	return builder(env, targets, sources);
+}
+
 NodeList call_builder_interface(tuple args, dict kw)
 {
 	const builder::Builder& builder = extract<const builder::Builder&>(args[0]);
@@ -76,40 +88,27 @@ class PythonBuilder : public builder::Builder
 	class FactoryWrapper
 	{
 		object factory_;
-		object prefix_;
-		object suffix_;
-		bool ensure_suffix_;
 		public:
-		FactoryWrapper(object factory, object prefix, object suffix, bool ensure_suffix)
-			: factory_(factory), prefix_(prefix), suffix_(suffix), ensure_suffix_(ensure_suffix) {}
+		FactoryWrapper(object factory)
+			: factory_(factory) {}
 		dependency_graph::Node operator()(const environment::Environment& env, std::string name)
 		{
-			if(suffix_) {
-				std::string suffix = extract<std::string>(suffix_);
-				suffix = env.subst(suffix);
-				if(!suffix.empty() && !boost::algorithm::starts_with(suffix, "."))
-					suffix = "." + suffix;
-				if(!boost::algorithm::ends_with(name, suffix))
-					if(ensure_suffix_ || !boost::algorithm::contains(name, string(".")))
-						name += suffix;
-			}
-			if(prefix_)
-				name = env.subst(extract<std::string>(prefix_)()) + name;
-
 			if(factory_)
 				return extract<python_interface::NodeWrapper>(factory_(name))().node;
 			else
 				return dependency_graph::add_entry_indeterminate(name);
 		}
-
-		object suffix() const { return suffix_; }
-		object prefix() const { return prefix_; }
 	};
 
 	object actions_;
 
 	FactoryWrapper target_factory_;
 	FactoryWrapper source_factory_;
+
+	object prefix_;
+	object suffix_;
+	bool ensure_suffix_;
+	object src_suffix_;
 
 	object emitter_;
 
@@ -119,8 +118,12 @@ class PythonBuilder : public builder::Builder
 			object target_factory, object source_factory, object prefix, object suffix, bool ensure_suffix, object src_suffix,
 			object emitter) :
 		actions_(actions),
-		target_factory_(target_factory, prefix, suffix, ensure_suffix),
-		source_factory_(source_factory, object(), src_suffix, false),
+		target_factory_(target_factory),
+		source_factory_(source_factory),
+		prefix_(prefix),
+		suffix_(suffix),
+		ensure_suffix_(ensure_suffix),
+		src_suffix_(src_suffix),
 		emitter_(emitter)
 	{}
 
@@ -178,13 +181,43 @@ class PythonBuilder : public builder::Builder
 
 	NodeFactory target_factory() const { return target_factory_; }
 	NodeFactory source_factory() const { return source_factory_; }
+	std::string adjust_target_name(const environment::Environment& env, const std::string& name) const
+	{
+		std::string result,
+			prefix = prefix_ ? env.subst(extract<std::string>(prefix_)()) : std::string(),
+			suffix = suffix_ ? env.subst(extract<std::string>(suffix_)()) : std::string();
+		result = adjust_affixes(env.subst(name), prefix, suffix, ensure_suffix_);
+		return result;
+	}
+
+	std::string adjust_source_name(const environment::Environment& env, const std::string& name) const
+	{
+		std::string result,
+			suffix = src_suffix_ ? env.subst(extract<std::string>(src_suffix_)()) : std::string();
+		result = adjust_affixes(env.subst(name), std::string(), suffix);
+		return result;
+	}
+	std::string adjust_affixes(const std::string& name, const std::string& prefix, const std::string& suffix, bool ensure_suffix = false) const
+	{
+		std::string full_suffix, result = name;
+		if(!suffix.empty() && !boost::algorithm::starts_with(suffix, "."))
+			full_suffix = "." + suffix;
+		else
+			full_suffix = suffix;
+		if(!full_suffix.empty() && !boost::algorithm::ends_with(name, full_suffix))
+			if(ensure_suffix || !boost::algorithm::contains(name, string(".")))
+				result += full_suffix;
+
+		result = prefix + result;
+		return result;
+	}
 
 	friend object add_action(builder::Builder* builder, object, object);
 	friend object add_emitter(builder::Builder* builder, object, object);
 
-	object suffix() const { return target_factory_.suffix(); }
-	object prefix() const { return target_factory_.prefix(); }
-	object src_suffix() const { return source_factory_.suffix(); }
+	object suffix() const { return suffix_; }
+	object prefix() const { return prefix_; }
+	object src_suffix() const { return src_suffix_; }
 
 };
 
