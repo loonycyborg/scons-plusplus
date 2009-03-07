@@ -33,18 +33,6 @@ using boost::polymorphic_cast;
 namespace python_interface
 {
 
-NodeList call_builder(const builder::Builder& builder, const environment::Environment& env, object target, object source)
-{
-	dependency_graph::NodeList targets, sources;
-	extract_target_nodes(
-		flatten(target), back_inserter(targets), builder, env
-		);
-	extract_source_nodes(
-		flatten(source), back_inserter(sources), builder, env
-		);
-	return builder(env, targets, sources);
-}
-
 NodeList call_builder_interface(tuple args, dict kw)
 {
 	const builder::Builder& builder = extract<const builder::Builder&>(args[0]);
@@ -112,11 +100,13 @@ class PythonBuilder : public builder::Builder
 
 	object emitter_;
 
+	object src_builder_;
+
 	public:
 	PythonBuilder(
 			object actions,
 			object target_factory, object source_factory, object prefix, object suffix, bool ensure_suffix, object src_suffix,
-			object emitter) :
+			object emitter, object src_builder) :
 		actions_(actions),
 		target_factory_(target_factory),
 		source_factory_(source_factory),
@@ -124,7 +114,8 @@ class PythonBuilder : public builder::Builder
 		suffix_(suffix),
 		ensure_suffix_(ensure_suffix),
 		src_suffix_(src_suffix),
-		emitter_(emitter)
+		emitter_(emitter),
+		src_builder_(src_builder)
 	{}
 
 	dependency_graph::NodeList operator()(
@@ -192,10 +183,11 @@ class PythonBuilder : public builder::Builder
 
 	std::string adjust_source_name(const environment::Environment& env, const std::string& name) const
 	{
-		std::string result,
-			suffix = src_suffix_ ? env.subst(extract<std::string>(src_suffix_)()) : std::string();
-		result = adjust_affixes(env.subst(name), std::string(), suffix);
-		return result;
+		if(name.find('.') == std::string::npos) {
+			std::string suffix = src_suffix_ ? env.subst(extract<std::string>(flatten(src_suffix_)[0])()) : std::string();
+			return adjust_affixes(env.subst(name), std::string(), suffix);
+		}
+		return name;
 	}
 	std::string adjust_affixes(const std::string& name, const std::string& prefix, const std::string& suffix, bool ensure_suffix = false) const
 	{
@@ -211,6 +203,15 @@ class PythonBuilder : public builder::Builder
 		result = prefix + result;
 		return result;
 	}
+	bool source_ext_match(const environment::Environment& env, const std::string& name) const
+	{
+		std::set<std::string> suffixes;
+		foreach(object suffix, make_object_iterator_range(flatten(src_suffix_))) {
+			suffixes.insert(env.subst(extract<std::string>(suffix)));
+		}
+		std::string suffix = name.substr(name.rfind('.'));
+		return suffixes.find(suffix) != suffixes.end();
+	}
 
 	friend object add_action(builder::Builder* builder, object, object);
 	friend object add_emitter(builder::Builder* builder, object, object);
@@ -218,6 +219,7 @@ class PythonBuilder : public builder::Builder
 	object suffix() const { return suffix_; }
 	object prefix() const { return prefix_; }
 	object src_suffix() const { return src_suffix_; }
+	object src_builder() const { return src_builder_; }
 
 };
 
@@ -232,13 +234,68 @@ object make_builder(const tuple&, const dict& kw)
 					kw.get("suffix"),
 					kw.get("ensure_suffix"),
 					kw.get("src_suffix"),
-					kw.get("emitter")
+					kw.get("emitter"),
+					kw.get("src_builder")
 	)));
+}
+
+template<class OutputIterator>
+inline void target_string2node(const std::string& name, OutputIterator iter, const builder::Builder* builder, const environment::Environment& env)
+{
+	*iter++ = builder->target_factory()(env, transform_node_name(builder->adjust_target_name(env, name)));
+}
+
+template<class OutputIterator>
+inline void source_string2node(const std::string& name, OutputIterator iter, const builder::Builder* builder, const environment::Environment& env)
+{
+	try {
+		const PythonBuilder* python_builder = boost::polymorphic_cast<const PythonBuilder*>(builder);
+		object src_builder = python_builder->src_builder();
+		if(src_builder) {
+			if(!python_builder->source_ext_match(env, name)) {
+				NodeList nodes;
+				if(is_string(src_builder)) {
+					src_builder = object(env).attr(src_builder);
+					extract_nodes(src_builder(str(name.substr(0, name.rfind('.'))), str(name)), back_inserter(nodes));
+				} else {
+					extract_nodes(src_builder(env, str(name.substr(0, name.rfind('.'))), str(name)), back_inserter(nodes));
+				}
+				std::copy(nodes.begin(), nodes.end(), iter);
+				return;
+			}
+		}
+	} catch(const std::bad_cast&) {
+	}
+	*iter++ = builder->source_factory()(env, transform_node_name(builder->adjust_source_name(env, name)));
+}
+
+template<class OutputIterator> inline void extract_target_nodes(object obj, OutputIterator iter, const builder::Builder& builder, const environment::Environment& env)
+{
+	extract_nodes(obj, iter, boost::bind(target_string2node<OutputIterator>, _1, iter, &builder, env));
+}
+
+template<class OutputIterator> inline void extract_source_nodes(object obj, OutputIterator iter, const builder::Builder& builder, const environment::Environment& env)
+{
+	extract_nodes(obj, iter, boost::bind(source_string2node<OutputIterator>, _1, iter, &builder, env));
+}
+
+NodeList call_builder(const builder::Builder& builder, const environment::Environment& env, object target, object source)
+{
+	dependency_graph::NodeList targets, sources;
+	extract_target_nodes(
+		flatten(target), back_inserter(targets), builder, env
+		);
+	extract_source_nodes(
+		flatten(source), back_inserter(sources), builder, env
+		);
+	return builder(env, targets, sources);
 }
 
 object add_action(builder::Builder* builder, object suffix, object action)
 {
-	boost::polymorphic_cast<PythonBuilder*>(builder)->actions_[suffix] = action;
+	PythonBuilder* python_builder = boost::polymorphic_cast<PythonBuilder*>(builder);
+	python_builder->actions_[suffix] = action;
+	python_builder->src_suffix_ = flatten(python_builder->src_suffix_) + flatten(suffix);
 	return object();
 }
 
