@@ -1,3 +1,5 @@
+SetOption("implicit_cache", True)
+
 def OptionalPath(key, val, env):
     if val:
         PathVariable.PathIsDir(key, val, env)
