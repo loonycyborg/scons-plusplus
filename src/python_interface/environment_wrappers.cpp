@@ -49,24 +49,23 @@ NodeList Command(const environment::Environment& env, object target, object sour
 void Default(const environment::Environment::pointer& env, object obj)
 {
 	obj = flatten(obj);
-	NodeList nodes;
-	extract_nodes(obj, back_inserter(nodes), builder::default_factory, *env);
+	NodeList nodes = extract_file_nodes(*env, obj);
 	foreach(Node node, nodes)
 		dependency_graph::default_targets.insert(node);
 }
 NodeWrapper Entry(environment::Environment::pointer, std::string name)
 {
-	return NodeWrapper(add_entry(transform_node_name(name), boost::logic::indeterminate));
+	return NodeWrapper(add_entry(name, boost::logic::indeterminate));
 }
 
 NodeWrapper File(environment::Environment::pointer, std::string name)
 {
-	return NodeWrapper(add_entry(transform_node_name(name), true));
+	return NodeWrapper(add_entry(name, true));
 }
 
 NodeWrapper Dir(environment::Environment::pointer, std::string name)
 {
-	return NodeWrapper(add_entry(transform_node_name(name), false));
+	return NodeWrapper(add_entry(name, false));
 }
 
 void Execute(environment::Environment::pointer env, object obj)

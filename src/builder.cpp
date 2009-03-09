@@ -19,6 +19,9 @@
  ***************************************************************************/
 
 #include <boost/foreach.hpp>
+#include <boost/variant/variant.hpp>
+#include <boost/variant/apply_visitor.hpp>
+#include <boost/variant/static_visitor.hpp>
 
 #include "builder.hpp"
 #include "task.hpp"
@@ -60,41 +63,52 @@ void Builder::create_task(
 			add_edge(target, source, graph);
 }
 
-dependency_graph::Node default_factory(const environment::Environment&, const std::string& name)
+struct make_node : public boost::static_visitor<Node>
 {
-	return dependency_graph::add_entry_indeterminate(name);
-}
+	Node operator()(const Node& node) const
+	{
+		return node;
+	}
+	Node operator()(const std::string& name) const
+	{
+		return dependency_graph::add_entry_indeterminate(name);
+	}
+};
 
-Builder::NodeFactory Builder::target_factory() const
+inline NodeList make_nodes(const builder::Builder::NodeStringList& list)
 {
-	return default_factory;
-}
-
-Builder::NodeFactory Builder::source_factory() const
-{
-	return default_factory;
+	NodeList result;
+	make_node visitor;
+	transform(list.begin(), list.end(), back_inserter(result), boost::apply_visitor(visitor));
+	return result;
 }
 
 NodeList Command::operator()(
 		const environment::Environment& env,
-		const NodeList& targets,
-		const NodeList& sources
+		const NodeStringList& targets,
+		const NodeStringList& sources
 		) const
 {
 	std::deque<action::Action::pointer> action;
 	action.push_back(action::Action::pointer(new action::Command(command_)));
-	create_task(env, targets, sources, action);
-	return targets;
+	NodeList 
+		target_nodes = make_nodes(targets),
+		source_nodes = make_nodes(sources);
+	create_task(env, target_nodes, source_nodes, action);
+	return target_nodes;
 }
 
 NodeList SimpleBuilder::operator()(
 		const environment::Environment& env,
-		const NodeList& targets,
-		const NodeList& sources
+		const NodeStringList& targets,
+		const NodeStringList& sources
 		) const
 {
-	create_task(env, targets, sources, actions_);
-	return targets;
+	NodeList
+		target_nodes = make_nodes(targets),
+		source_nodes = make_nodes(sources);
+	create_task(env, target_nodes, source_nodes, actions_);
+	return target_nodes;
 }
 
 }

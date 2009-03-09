@@ -18,70 +18,40 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef BUILDER_HPP
-#define BUILDER_HPP
+#include "python_interface_internal.hpp"
+#include "node_wrapper.hpp"
+#include "fs_node.hpp"
 
-#include <deque>
-#include <boost/function.hpp>
-#include <boost/variant/variant_fwd.hpp>
+#include <boost/variant/variant.hpp>
 
-#include "dependency_graph.hpp"
-#include "environment.hpp"
-#include "action.hpp"
-
-namespace builder
+namespace python_interface
 {
 
-class Builder
+NodeList extract_file_nodes(const environment::Environment& env, object obj)
 {
-	protected:
-	void create_task(
-		const environment::Environment& env,
-		const dependency_graph::NodeList& targets,
-		const dependency_graph::NodeList& sources,
-		const std::deque<action::Action::pointer>& actions
-		) const;
-	public:
-	typedef boost::shared_ptr<Builder> pointer;
-
-	virtual ~Builder() {}
-
-	typedef std::vector<boost::variant<dependency_graph::Node, std::string> > NodeStringList;
-	virtual dependency_graph::NodeList operator()(
-		const environment::Environment& env,
-		const NodeStringList& targets,
-		const NodeStringList& sources
-		) const = 0;
-};
-
-class Command : public Builder
-{
-	std::string command_;
-
-	public:
-	dependency_graph::NodeList operator()(
-		const environment::Environment& env,
-		const NodeStringList& targets,
-		const NodeStringList& sources
-		) const;
-
-	Command(std::string command) : command_(command) {}
-};
-
-class SimpleBuilder : public Builder
-{
-	std::deque<action::Action::pointer> actions_;
-
-	public:
-	dependency_graph::NodeList operator()(
-		const environment::Environment& env,
-		const NodeStringList& targets,
-		const NodeStringList& sources
-		) const;
-
-	SimpleBuilder(const std::deque<action::Action::pointer>& actions) : actions_(actions) {}
-};
-
+	NodeList result;
+	foreach(object node, make_object_iterator_range(obj))
+		if(is_string(node)) {
+			result.push_back(dependency_graph::add_entry_indeterminate(transform_node_name(extract_string_subst(env, node))));
+		} else {
+			result.push_back(extract_node(node));
+		}
+	return result;
 }
 
-#endif
+builder::Builder::NodeStringList::value_type extract_node(const environment::Environment& env, object obj)
+{
+	if(is_string(obj))
+		return transform_node_name(extract_string_subst(env, obj));
+	return extract_node(obj);
+}
+
+builder::Builder::NodeStringList extract_nodes(const environment::Environment& env, object obj)
+{
+	builder::Builder::NodeStringList result;
+	foreach(object node, make_object_iterator_range(obj))
+		result.push_back(extract_node(env, node));
+	return result;
+}
+
+}

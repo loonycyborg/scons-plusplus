@@ -31,6 +31,7 @@
 #include "sconscript.hpp"
 
 using dependency_graph::Node;
+using dependency_graph::NodeList;
 using dependency_graph::graph;
 
 using namespace boost::python;
@@ -47,48 +48,20 @@ struct NodeWrapper
 	dependency_graph::NodeList sources() const { return graph[node]->task()->sources(); }
 };
 
+inline std::string extract_string_subst(const environment::Environment& env, object obj)
+{
+	return env.subst(extract<std::string>(obj));
+}
+
+NodeList extract_file_nodes(const environment::Environment& env, object obj);
+
 inline Node extract_node(object obj)
 {
 	return extract<NodeWrapper>(obj)().node;
 }
 
-template<class OutputIterator>
-inline void string2node(const std::string& name, OutputIterator iter, const builder::Builder::NodeFactory node_factory, const environment::Environment& env)
-{
-	*iter++ = node_factory(env, transform_node_name(name));
-}
-
-template<class OutputIterator, typename String2Node>
-inline void extract_node(object obj, OutputIterator iter, String2Node string2node)
-{
-	try {
-		*iter++ = extract_node(obj);
-	} catch(const error_already_set&) {
-		PyErr_Clear();
-		string2node(extract<std::string>(obj)(), iter);
-	}
-}
-
-template<class OutputIterator> inline void extract_nodes(object obj, OutputIterator iter)
-{
-	foreach(object node, make_object_iterator_range(obj)) {
-		*iter++ = extract_node(node);
-	}
-}
-
-template<class OutputIterator, typename String2Node>
-inline void extract_nodes(object obj, OutputIterator iter, String2Node string2node)
-{
-	foreach(object node, make_object_iterator_range(obj)) {
-		extract_node(node, iter, string2node);
-	}
-}
-
-template<class OutputIterator>
-inline void extract_nodes(object obj, OutputIterator iter, builder::Builder::NodeFactory node_factory, const environment::Environment& env)
-{
-	extract_nodes(obj, iter, boost::bind(string2node<OutputIterator>, _1, iter, node_factory, env));
-}
+builder::Builder::NodeStringList::value_type extract_node(const environment::Environment& env, object obj);
+builder::Builder::NodeStringList extract_nodes(const environment::Environment& env, object obj);
 
 template<class NodeClass> inline NodeClass* get_properties(Node node)
 {

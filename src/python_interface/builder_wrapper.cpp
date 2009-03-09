@@ -22,6 +22,9 @@
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/cast.hpp>
+#include <boost/variant/variant.hpp>
+#include <boost/variant/apply_visitor.hpp>
+#include <boost/variant/static_visitor.hpp>
 
 #include "builder_wrapper.hpp"
 #include "fs_node.hpp"
@@ -64,34 +67,24 @@ NodeList call_builder_interface(tuple args, dict kw)
 	return call_builder(builder, env, target, source);
 }
 
-class factory_wrapper
+inline NodeList extract_file_nodes(const environment::Environment& env, object obj)
 {
-	object factory_;
-	public:
-	factory_wrapper(object factory) : factory_(factory) {}
-};
+	NodeList result;
+	foreach(object node, make_object_iterator_range(obj))
+		if(is_string(node)) {
+			result.push_back(dependency_graph::add_entry_indeterminate(transform_node_name(extract_string_subst(env, node))));
+		} else {
+			result.push_back(extract_node(node));
+		}
+	return result;
+}
 
 class PythonBuilder : public builder::Builder
 {
-	class FactoryWrapper
-	{
-		object factory_;
-		public:
-		FactoryWrapper(object factory)
-			: factory_(factory) {}
-		dependency_graph::Node operator()(const environment::Environment& env, std::string name)
-		{
-			if(factory_)
-				return extract<python_interface::NodeWrapper>(factory_(name))().node;
-			else
-				return dependency_graph::add_entry_indeterminate(name);
-		}
-	};
-
 	object actions_;
 
-	FactoryWrapper target_factory_;
-	FactoryWrapper source_factory_;
+	object target_factory_;
+	object source_factory_;
 
 	object prefix_;
 	object suffix_;
@@ -120,19 +113,26 @@ class PythonBuilder : public builder::Builder
 
 	dependency_graph::NodeList operator()(
 		const environment::Environment& env,
-		const dependency_graph::NodeList& targets,
-		const dependency_graph::NodeList& sources
+		const NodeStringList& targets,
+		const NodeStringList& sources
 		) const
 	{
 		std::deque<action::Action::pointer> actions;
 		object actions_obj = list();
 
-		dependency_graph::NodeList emitted_targets;
-		dependency_graph::NodeList emitted_sources;
+		dependency_graph::NodeList target_nodes;
+		dependency_graph::NodeList source_nodes;
+
+		make_node_visitor<&PythonBuilder::make_target_node> target_visitor(env, this, target_nodes);
+		make_node_visitor<&PythonBuilder::make_source_node> source_visitor(env, this, source_nodes);
+
+		for_each(targets.begin(), targets.end(), apply_visitor(target_visitor));
+		for_each(sources.begin(), sources.end(), apply_visitor(source_visitor));
+
 		object emitter = emitter_;
 		if(emitter_) {
 			if(is_dict(emitter_)) {
-				emitter = dict(emitter_)[get_properties<dependency_graph::FSEntry>(sources[0])->suffix()];
+				emitter = dict(emitter_)[get_properties<dependency_graph::FSEntry>(source_nodes[0])->suffix()];
 			}
 			if(is_string(emitter)) {
 				string var_ref = extract<string>(emitter);
@@ -148,17 +148,16 @@ class PythonBuilder : public builder::Builder
 			}
 		}
 		if(is_callable(emitter)) {
-			tuple emitter_result = tuple(emitter(object(targets), object(sources), object(env)));
-			extract_nodes(emitter_result[0], back_inserter(emitted_targets));
-			extract_nodes(emitter_result[1], back_inserter(emitted_sources));
-		} else {
-			emitted_targets = targets;
-			emitted_sources = sources;
+			tuple emitter_result = tuple(emitter(object(target_nodes), object(source_nodes), object(env)));
+			NodeList emitted_targets = extract_file_nodes(env, emitter_result[0]);
+			NodeList emitted_sources = extract_file_nodes(env, emitter_result[1]);
+			target_nodes.swap(emitted_targets);
+			source_nodes.swap(emitted_sources);
 		}
 
 		if(is_dict(actions_)) {
 			if(!sources.empty()) {
-				actions_obj = dict(actions_)[get_properties<dependency_graph::FSEntry>(sources[0])->suffix()];
+				actions_obj = dict(actions_)[get_properties<dependency_graph::FSEntry>(source_nodes[0])->suffix()];
 			}
 		} else {
 			actions_obj = actions_;
@@ -166,17 +165,65 @@ class PythonBuilder : public builder::Builder
 		foreach(const object& action, make_object_iterator_range(make_actions(actions_obj)))
 			actions.push_back(extract<action::Action::pointer>(action));
 
-		create_task(env, emitted_targets, emitted_sources, actions);
-		return emitted_targets;
+		create_task(env, target_nodes, source_nodes, actions);
+		return target_nodes;
 	}
 
-	NodeFactory target_factory() const { return target_factory_; }
-	NodeFactory source_factory() const { return source_factory_; }
+	template<void (PythonBuilder::*make_node)(const std::string&, const environment::Environment&, NodeList&) const>
+	struct make_node_visitor : public boost::static_visitor<>
+	{
+		const environment::Environment& env_;
+		const PythonBuilder* builder_;
+		NodeList& result_;
+		make_node_visitor(
+			const environment::Environment& env, const PythonBuilder* builder, NodeList& result
+			) : env_(env), builder_(builder), result_(result) {}
+		void operator()(const dependency_graph::Node& node) const
+		{
+			result_.push_back(node);
+		}
+		void operator()(const std::string& name) const
+		{
+			(builder_->*make_node)(name, env_, result_);
+		}
+	};
+
+	void make_target_node(const std::string& name, const environment::Environment& env, NodeList& result) const
+	{
+		std::string full_name = adjust_target_name(env, name);
+		if(target_factory_)
+			result.push_back(extract_node(target_factory_(full_name)));
+		else
+			result.push_back(dependency_graph::add_entry_indeterminate(full_name));
+	}
+
+	void make_source_node(const std::string& name, const environment::Environment& env, NodeList& result) const
+	{
+		if(src_builder_) {
+			if(!source_ext_match(env, name)) {
+				object sources;
+				if(is_string(src_builder_)) {
+					sources = object(env).attr(src_builder_)(str(name.substr(0, name.rfind('.'))), str(name));
+				} else {
+					sources = src_builder_(env, str(name.substr(0, name.rfind('.'))), str(name));
+				}
+				foreach(object node, make_object_iterator_range(sources))
+					result.push_back(extract_node(node));
+				return;
+			}
+		}
+		std::string full_name = adjust_source_name(env, name);
+		if(source_factory_)
+			result.push_back(extract_node(source_factory_(full_name)));
+		else
+			result.push_back(dependency_graph::add_entry_indeterminate(full_name));
+	}
+
 	std::string adjust_target_name(const environment::Environment& env, const std::string& name) const
 	{
 		std::string result,
-			prefix = prefix_ ? env.subst(extract<std::string>(prefix_)()) : std::string(),
-			suffix = suffix_ ? env.subst(extract<std::string>(suffix_)()) : std::string();
+			prefix = prefix_ ? extract_string_subst(env, prefix_) : std::string(),
+			suffix = suffix_ ? extract_string_subst(env, suffix_) : std::string();
 		result = adjust_affixes(env.subst(name), prefix, suffix, ensure_suffix_);
 		return result;
 	}
@@ -239,56 +286,9 @@ object make_builder(const tuple&, const dict& kw)
 	)));
 }
 
-template<class OutputIterator>
-inline void target_string2node(const std::string& name, OutputIterator iter, const builder::Builder* builder, const environment::Environment& env)
-{
-	*iter++ = builder->target_factory()(env, transform_node_name(builder->adjust_target_name(env, name)));
-}
-
-template<class OutputIterator>
-inline void source_string2node(const std::string& name, OutputIterator iter, const builder::Builder* builder, const environment::Environment& env)
-{
-	try {
-		const PythonBuilder* python_builder = boost::polymorphic_cast<const PythonBuilder*>(builder);
-		object src_builder = python_builder->src_builder();
-		if(src_builder) {
-			if(!python_builder->source_ext_match(env, name)) {
-				NodeList nodes;
-				if(is_string(src_builder)) {
-					src_builder = object(env).attr(src_builder);
-					extract_nodes(src_builder(str(name.substr(0, name.rfind('.'))), str(name)), back_inserter(nodes));
-				} else {
-					extract_nodes(src_builder(env, str(name.substr(0, name.rfind('.'))), str(name)), back_inserter(nodes));
-				}
-				std::copy(nodes.begin(), nodes.end(), iter);
-				return;
-			}
-		}
-	} catch(const std::bad_cast&) {
-	}
-	*iter++ = builder->source_factory()(env, transform_node_name(builder->adjust_source_name(env, name)));
-}
-
-template<class OutputIterator> inline void extract_target_nodes(object obj, OutputIterator iter, const builder::Builder& builder, const environment::Environment& env)
-{
-	extract_nodes(obj, iter, boost::bind(target_string2node<OutputIterator>, _1, iter, &builder, env));
-}
-
-template<class OutputIterator> inline void extract_source_nodes(object obj, OutputIterator iter, const builder::Builder& builder, const environment::Environment& env)
-{
-	extract_nodes(obj, iter, boost::bind(source_string2node<OutputIterator>, _1, iter, &builder, env));
-}
-
 NodeList call_builder(const builder::Builder& builder, const environment::Environment& env, object target, object source)
 {
-	dependency_graph::NodeList targets, sources;
-	extract_target_nodes(
-		flatten(target), back_inserter(targets), builder, env
-		);
-	extract_source_nodes(
-		flatten(source), back_inserter(sources), builder, env
-		);
-	return builder(env, targets, sources);
+	return builder(env, extract_nodes(env, flatten(target)), extract_nodes(env, flatten(source)));
 }
 
 object add_action(builder::Builder* builder, object suffix, object action)
