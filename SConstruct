@@ -31,6 +31,10 @@ env.Append(CPPPATH = ["#/src"])
 
 env.SConscript("src/SConscript", exports = ["env"], variant_dir = "build", duplicate = False)
 
-test       = AlwaysBuild(Alias("test_general", [], "-cd test; ../scons++"))
-test_hello = AlwaysBuild(Alias("test_hello",   [], "cd examples/hello; ../../scons++"))
-Alias("check", [test, test_hello])
+def test(name, dir):
+    test = AlwaysBuild(Alias("test_" + name, [File("scons++"), Dir(dir)], "-cd ${SOURCES[1]}; ${SOURCE.abspath}"))
+    Alias("check", test)
+
+test("general", "test")
+test("hello", "examples/hello")
+test("builders", "test/builders")
