@@ -23,9 +23,8 @@
 
 #include <boost/filesystem/operations.hpp>
 
+#include "fs_node.hpp"
 #include "util.hpp"
-
-#include <iostream>
 
 using std::string;
 
@@ -76,6 +75,7 @@ void SConscript(const std::string& script)
 	if(sconstruct_file.empty()) {
 		sconstruct_file = system_complete(boost::filesystem::path(script));
 		sconstruct_dir = boost::filesystem::current_path();
+		dependency_graph::set_fs_root(sconstruct_dir);
 	}
 	SConscriptFile sconscript_file(system_complete(boost::filesystem::path(script)), ns);
 
@@ -99,11 +99,6 @@ void Import(object obj)
 {
 	string name = extract<string>(obj);
 	SConscriptFile::current().ns()[name] = exports[name];
-}
-
-std::string transform_node_name(const std::string& name)
-{
-	return util::to_relative(util::canonicalize(SConscriptFile::current().dir() / name), sconstruct_dir).string();
 }
 
 }

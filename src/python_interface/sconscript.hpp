@@ -32,8 +32,6 @@ void SConscript(const environment::Environment&, const std::string& script);
 void Export(object);
 void Import(object);
 
-std::string transform_node_name(const std::string&);
-
 }
 
 #endif

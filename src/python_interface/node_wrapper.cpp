@@ -32,7 +32,7 @@ NodeList extract_file_nodes(const environment::Environment& env, object obj)
 	NodeList result;
 	foreach(object node, make_object_iterator_range(obj))
 		if(is_string(node)) {
-			result.push_back(dependency_graph::add_entry_indeterminate(transform_node_name(extract_string_subst(env, node))));
+			result.push_back(dependency_graph::add_entry_indeterminate(extract_string_subst(env, node)));
 		} else {
 			result.push_back(extract_node(node));
 		}
@@ -42,7 +42,7 @@ NodeList extract_file_nodes(const environment::Environment& env, object obj)
 builder::Builder::NodeStringList::value_type extract_node(const environment::Environment& env, object obj)
 {
 	if(is_string(obj))
-		return transform_node_name(extract_string_subst(env, obj));
+		return extract_string_subst(env, obj);
 	return extract_node(obj);
 }
 

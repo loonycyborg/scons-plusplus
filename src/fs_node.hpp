@@ -53,6 +53,8 @@ class FSEntry : public node_properties
 	std::string filebase() const { return file().substr(0, file().length() - suffix().length()); }
 };
 
+void set_fs_root(const path& path);
+
 Node add_entry(const std::string& name, boost::logic::tribool is_file);
 
 inline Node add_entry_indeterminate(const std::string& name)

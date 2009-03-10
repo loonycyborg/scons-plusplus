@@ -19,20 +19,43 @@
  ***************************************************************************/
 
 #include "fs_node.hpp"
+#include "util.hpp"
+
+namespace
+{
+	boost::filesystem::path fs_root;
+}
 
 namespace dependency_graph
 {
 
 FS fs;
 
+void set_fs_root(const path& path)
+{
+	static bool path_is_set = false;
+	if(!path_is_set) {
+		fs_root = path;
+		path_is_set = true;
+	}
+	else
+		throw std::runtime_error("set_fs_root: path can be set only once");
+
+	assert(fs_root.is_complete());
+}
+
 Node add_entry(const std::string& name, boost::logic::tribool is_file)
 {
+	path filename = util::canonicalize(system_complete(path(name)));
+	if(!fs_root.empty())
+		filename = util::to_relative(filename, fs_root);
+
 	Node file;
-	FS::iterator file_iter = fs.find(name);
+	FS::iterator file_iter = fs.find(filename);
 	if(file_iter == fs.end()) {
 		file = add_vertex(graph);
-		graph[file].reset(new FSEntry(name, is_file));
-		fs[name] = file;
+		graph[file].reset(new FSEntry(filename.string(), is_file));
+		fs[filename] = file;
 	} else {
 		file = file_iter->second;
 	}

@@ -72,7 +72,7 @@ inline NodeList extract_file_nodes(const environment::Environment& env, object o
 	NodeList result;
 	foreach(object node, make_object_iterator_range(obj))
 		if(is_string(node)) {
-			result.push_back(dependency_graph::add_entry_indeterminate(transform_node_name(extract_string_subst(env, node))));
+			result.push_back(dependency_graph::add_entry_indeterminate(extract_string_subst(env, node)));
 		} else {
 			result.push_back(extract_node(node));
 		}
