@@ -29,8 +29,8 @@ namespace python_interface
 void SConscript(const std::string& script);
 void SConscript(const environment::Environment&, const std::string& script);
 
-void Export(object);
-void Import(object);
+object Export(tuple args, dict kw);
+object Import(tuple args, dict kw);
 
 }
 

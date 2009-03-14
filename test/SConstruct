@@ -76,5 +76,5 @@ env["replace_var"] = "ccc"
 #print env2.Dump()
 
 exported = "exported"
-Export("exported")
+Export("env", "exported")
 SConscript("subdir/SConscript")

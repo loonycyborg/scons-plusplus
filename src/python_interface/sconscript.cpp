@@ -89,16 +89,22 @@ void SConscript(const environment::Environment&, const std::string& script)
 	SConscript(script);
 }
 
-void Export(object obj)
+object Export(tuple args, dict kw)
 {
-	string name = extract<string>(obj);
-	exports[name] = SConscriptFile::current().ns()[name];
+	foreach(object var, make_object_iterator_range(flatten(args))) {
+		string name = extract<string>(var);
+		exports[name] = SConscriptFile::current().ns()[name];
+	}
+	return object();
 }
 
-void Import(object obj)
+object Import(tuple args, dict kw)
 {
-	string name = extract<string>(obj);
-	SConscriptFile::current().ns()[name] = exports[name];
+	foreach(object var, make_object_iterator_range(flatten(args))) {
+		string name = extract<string>(var);
+		SConscriptFile::current().ns()[name] = exports[name];
+	}
+	return object();
 }
 
 }
