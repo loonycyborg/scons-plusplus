@@ -25,6 +25,7 @@
 #include <boost/variant/variant.hpp>
 #include <boost/variant/apply_visitor.hpp>
 #include <boost/variant/static_visitor.hpp>
+#include <boost/variant/get.hpp>
 
 #include "builder_wrapper.hpp"
 #include "fs_node.hpp"
@@ -61,8 +62,9 @@ NodeList call_builder_interface(tuple args, dict kw)
 	} else {
 		source = kw.get("source");
 	}
-	if(!source) {
+	if(is_none(source)) {
 		source = target;
+		target = object();
 	}
 	return call_builder(builder, env, target, source);
 }
@@ -122,6 +124,15 @@ class PythonBuilder : public builder::Builder
 
 		dependency_graph::NodeList target_nodes;
 		dependency_graph::NodeList source_nodes;
+
+		if(targets.empty() && !sources.empty()) {
+			const std::string* name = boost::get<const std::string>(&sources[0]);
+			if(name) {
+				NodeStringList implicit_target;
+				implicit_target.push_back(split_ext(*name));
+				return (*this)(env, implicit_target, sources);
+			}
+		}
 
 		make_node_visitor<&PythonBuilder::make_target_node> target_visitor(env, this, target_nodes);
 		make_node_visitor<&PythonBuilder::make_source_node> source_visitor(env, this, source_nodes);
@@ -231,7 +242,7 @@ class PythonBuilder : public builder::Builder
 	std::string adjust_source_name(const environment::Environment& env, const std::string& name) const
 	{
 		if(name.find('.') == std::string::npos) {
-			std::string suffix = src_suffix_ ? env.subst(extract<std::string>(flatten(src_suffix_)[0])()) : std::string();
+			std::string suffix = src_suffix_ ? extract_string_subst(env, flatten(src_suffix_)[0]) : std::string();
 			return adjust_affixes(env.subst(name), std::string(), suffix);
 		}
 		return name;
@@ -254,10 +265,14 @@ class PythonBuilder : public builder::Builder
 	{
 		std::set<std::string> suffixes;
 		foreach(object suffix, make_object_iterator_range(flatten(src_suffix_))) {
-			suffixes.insert(env.subst(extract<std::string>(suffix)));
+			suffixes.insert(extract_string_subst(env, suffix));
 		}
-		std::string suffix = name.substr(name.rfind('.'));
+		std::string suffix = boost::filesystem::extension(name);
 		return suffixes.find(suffix) != suffixes.end();
+	}
+	std::string split_ext(const boost::filesystem::path& name) const
+	{
+		return (name.parent_path() / name.stem()).string();
 	}
 
 	friend object add_action(builder::Builder* builder, object, object);
