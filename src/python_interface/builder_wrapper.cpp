@@ -96,12 +96,15 @@ class PythonBuilder : public builder::Builder
 	object emitter_;
 
 	object src_builder_;
+	
+	bool single_source_;
 
 	public:
 	PythonBuilder(
 			object actions,
 			object target_factory, object source_factory, object prefix, object suffix, bool ensure_suffix, object src_suffix,
-			object emitter, object src_builder) :
+			object emitter, object src_builder,
+			bool single_source) :
 		actions_(actions),
 		target_factory_(target_factory),
 		source_factory_(source_factory),
@@ -110,7 +113,8 @@ class PythonBuilder : public builder::Builder
 		ensure_suffix_(ensure_suffix),
 		src_suffix_(src_suffix),
 		emitter_(emitter),
-		src_builder_(src_builder)
+		src_builder_(src_builder),
+		single_source_(single_source)
 	{}
 
 	dependency_graph::NodeList operator()(
@@ -119,6 +123,22 @@ class PythonBuilder : public builder::Builder
 		const NodeStringList& sources
 		) const
 	{
+		if(single_source_ && (sources.size() > 1)) {
+			if(targets.empty()) {
+				NodeList result;
+				foreach(const NodeStringList::value_type& source, sources) {
+					NodeStringList single_source;
+					NodeList target;
+					single_source.push_back(source);
+					target = (*this)(env, targets, single_source);
+					std::copy(target.begin(), target.end(), back_inserter(result));
+				}
+				return result;
+			} else {
+				throw std::runtime_error("More than one source given to single-source builder.");
+			}
+		}
+
 		std::deque<action::Action::pointer> actions;
 		object actions_obj = list();
 
@@ -297,7 +317,8 @@ object make_builder(const tuple&, const dict& kw)
 					kw.get("ensure_suffix"),
 					kw.get("src_suffix"),
 					kw.get("emitter"),
-					kw.get("src_builder")
+					kw.get("src_builder"),
+					kw.get("single_source")
 	)));
 }
 
