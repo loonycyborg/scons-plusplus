@@ -37,8 +37,6 @@ namespace python_interface
 
 NodeList Command(const environment::Environment& env, object target, object source, object action)
 {
-	std::cout << "Command(" << extract<char*>(str(target)) << ", " << extract<char*>(str(source)) << ")\n";
-
 	std::deque<action::Action::pointer> actions;
 	foreach(const object& act, make_object_iterator_range(make_actions(action)))
 		actions.push_back(extract<action::Action::pointer>(act));
