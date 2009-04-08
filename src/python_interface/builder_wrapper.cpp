@@ -30,6 +30,7 @@
 #include "builder_wrapper.hpp"
 #include "fs_node.hpp"
 #include "python_interface/environment_wrappers.hpp"
+#include "python_interface/subst.hpp"
 
 using std::string;
 using boost::polymorphic_cast;
@@ -166,16 +167,7 @@ class PythonBuilder : public builder::Builder
 				emitter = dict(emitter_)[get_properties<dependency_graph::FSEntry>(source_nodes[0])->suffix()];
 			}
 			if(is_string(emitter)) {
-				string var_ref = extract<string>(emitter);
-				string var = environment::parse_variable_ref(var_ref);
-				if(var.empty()) {
-					PyErr_SetString(PyExc_ValueError, string(
-						"Failed to expand emitter passed as string '" + var_ref + "' to a python callable.").c_str());
-					throw_error_already_set();
-				}
-				try {
-					emitter = polymorphic_cast<const PythonVariable*>(env[var].get())->get();
-				} catch(const std::bad_cast&) {}
+				emitter = subst(env, emitter);
 			}
 		}
 		if(is_callable(emitter)) {
