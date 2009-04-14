@@ -126,11 +126,11 @@ inline int throw_if_error(int return_value)
 scoped_chdir::scoped_chdir(const boost::filesystem::path& dir)
 {
 	old_current_dir = boost::filesystem::current_path();
-	throw_if_error(chdir(dir.directory_string().c_str()));
+	boost::filesystem::current_path(dir);
 }
 scoped_chdir::~scoped_chdir()
 {
-	throw_if_error(chdir(old_current_dir.directory_string().c_str()));
+	boost::filesystem::current_path(old_current_dir);
 }
 
 void exec(const std::vector<string>& args)
