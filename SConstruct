@@ -31,6 +31,8 @@ conf.Finish()
 env.Append(CXXFLAGS = Split("-O0 -ggdb -Wall -ansi"))
 env.Append(CPPPATH = ["#/src"])
 
+env.Decider("MD5-timestamp")
+
 env.SConscript("src/SConscript", exports = ["env"], variant_dir = "build", duplicate = False)
 
 def test(name, dir):
