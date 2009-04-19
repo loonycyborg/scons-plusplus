@@ -30,7 +30,7 @@ namespace environment
 namespace python_interface
 {
 void init_python();
-void run_script(const std::string&);
+void run_script(const std::string&, int argc, char** argv);
 std::string eval_string(const std::string&, const environment::Environment&);
 std::string expand_variable(const std::string&, const environment::Environment&);
 std::string subst_to_string(const environment::Environment& env, const std::string& input);

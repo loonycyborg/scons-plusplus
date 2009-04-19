@@ -181,8 +181,10 @@ BOOST_PYTHON_MODULE(SCons)
 		Py_Initialize();
 	}
 
-	void run_script(const std::string& filename)
+	void run_script(const std::string& filename, int argc, char** argv)
 	{
+		argv[0][0] = 0;
+		PySys_SetArgv(argc, argv);
 		try {
 			main_namespace = dict(import("__main__").attr("__dict__"));
 

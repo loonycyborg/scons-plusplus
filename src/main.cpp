@@ -49,7 +49,7 @@ int main(int argc, char** argv)
 	foreach(const char* name, default_script_names) {
 		if(boost::filesystem::exists(name)) {
 			script_found = true;
-			python_interface::run_script(name);
+			python_interface::run_script(name, argc, argv);
 			break;
 		}
 	}
