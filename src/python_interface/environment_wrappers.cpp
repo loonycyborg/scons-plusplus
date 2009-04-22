@@ -24,6 +24,7 @@
 
 #include "builder_wrapper.hpp"
 #include "environment_wrappers.hpp"
+#include "python_interface/directives.hpp"
 #include "fs_node.hpp"
 #include "builder.hpp"
 #include "util.hpp"
@@ -126,21 +127,12 @@ object Replace(const tuple& args, const dict& kw)
 	return object();
 }
 
-object WhereIs(const Environment&, const string& name)
-{
-	string path = util::where_is(name).external_file_string();
-	if(path.empty())
-		return object();
-	else
-		return str(path);
-}
-
 object Detect(const Environment& env, object progs)
 {
 	progs = flatten(progs);
 	foreach(const object& prog, make_object_iterator_range(progs))
 	{
-		object path = WhereIs(env, extract<string>(prog));
+		object path = WhereIs(extract<string>(prog));
 		if(path)
 			return path;
 	}

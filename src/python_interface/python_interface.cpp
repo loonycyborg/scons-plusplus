@@ -27,14 +27,15 @@
 #define foreach BOOST_FOREACH
 
 #include "util.hpp"
-#include "python_interface.hpp"
+#include "python_interface/python_interface.hpp"
 #include "fs_node.hpp"
 #include "builder.hpp"
 
-#include "sconscript.hpp"
-#include "node_wrapper.hpp"
-#include "builder_wrapper.hpp"
-#include "environment_wrappers.hpp"
+#include "python_interface/sconscript.hpp"
+#include "python_interface/node_wrapper.hpp"
+#include "python_interface/builder_wrapper.hpp"
+#include "python_interface/environment_wrappers.hpp"
+#include "python_interface/directives.hpp"
 
 #include "config.hpp"
 
@@ -146,7 +147,6 @@ BOOST_PYTHON_MODULE(SCons)
 			.def("AppendUnique", raw_function(&Update<Append, Unique>))
 			.def("PrependUnique", raw_function(&Update<Prepend, Unique>))
 			.def("Replace", raw_function(&Replace))
-			.def("WhereIs", &WhereIs)
 			.def("Detect", &Detect)
 			.def("has_key", &has_key)
 			.def("__getattr__", &get_env_attr)
@@ -155,6 +155,7 @@ BOOST_PYTHON_MODULE(SCons)
 			.def("Dump", &Dump)
 			.def("Clone", &Environment::clone)
 			.def("SConscript", (void(*)(const environment::Environment&, const std::string&))SConscript)
+			.def("WhereIs", subst_directive_args("WhereIs"))
 		;
 	}
 	to_python_converter<dependency_graph::NodeList, node_list_to_python>();
@@ -172,6 +173,7 @@ BOOST_PYTHON_MODULE(SCons)
 		def("SConscript", (void(*)(const std::string&))SConscript);
 		def("Export", raw_function(&Export));
 		def("Import", raw_function(&Import));
+		def("WhereIs", &WhereIs);
 	}
 }
 

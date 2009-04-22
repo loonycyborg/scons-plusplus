@@ -165,7 +165,6 @@ template<UpdateType update_type, UniqueType unique_type>object Update(const tupl
 }
 
 object Replace(const tuple& args, const dict& kw);
-object WhereIs(const Environment&, const string& name);
 object Detect(const Environment&, object progs);
 bool has_key(const Environment&, const string& key);
 object get_env_attr(object, const string& key);
