@@ -30,17 +30,6 @@
 using dependency_graph::Graph;
 using dependency_graph::Node;
 
-struct name_map
-{
-	const Graph& graph;
-	name_map(const Graph& graph_) : graph(graph_) {}
-};
-
-std::string get(const name_map& map, Node node)
-{
-	return map.graph[node]->name();
-}
-
 int main(int argc, char** argv)
 {
 	python_interface::init_python();
