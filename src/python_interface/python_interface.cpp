@@ -179,7 +179,7 @@ BOOST_PYTHON_MODULE(SCons)
 
 	void init_python()
 	{
-		PyImport_AppendInittab("SCons", initSCons);
+		PyImport_AppendInittab(const_cast<char*>("SCons"), initSCons);
 		Py_Initialize();
 	}
 
