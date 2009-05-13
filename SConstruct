@@ -28,7 +28,7 @@ conf.CheckBoost("filesystem") or Exit(1)
 conf.Define("PYTHON_MODULES_PATH", "\"" + Dir("python_modules").abspath + "\"")
 conf.Finish()
 
-env.Append(CXXFLAGS = Split("-O0 -ggdb -Wall -ansi"))
+env.Append(CXXFLAGS = Split("-O0 -ggdb -Wall -ansi -Wno-deprecated -Wno-parentheses"))
 env.Append(CPPPATH = ["#/src"])
 
 env.Decider("MD5-timestamp")
