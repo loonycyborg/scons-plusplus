@@ -181,6 +181,17 @@ BOOST_PYTHON_MODULE(SCons)
 	{
 		PyImport_AppendInittab(const_cast<char*>("SCons"), initSCons);
 		Py_Initialize();
+
+		main_namespace = dict(import("__main__").attr("__dict__"));
+
+		object sys = import("sys");
+		list path(sys.attr("path"));
+		path.insert(0, PYTHON_MODULES_PATH);
+		path.insert(0, (util::readlink("/proc/self/exe").parent_path() / "python_modules").string());
+		sys.attr("path") = path;
+		exec("import sconspp_import", main_namespace, main_namespace);
+
+		main_namespace.update(import("SCons.Script").attr("__dict__"));
 	}
 
 	void run_script(const std::string& filename, int argc, char** argv)
@@ -188,17 +199,6 @@ BOOST_PYTHON_MODULE(SCons)
 		argv[0][0] = 0;
 		PySys_SetArgv(argc, argv);
 		try {
-			main_namespace = dict(import("__main__").attr("__dict__"));
-
-			object sys = import("sys");
-			list path(sys.attr("path"));
-			path.insert(0, PYTHON_MODULES_PATH);
-			path.insert(0, (util::readlink("/proc/self/exe").parent_path() / "python_modules").string());
-			sys.attr("path") = path;
-			exec("import sconspp_import", main_namespace, main_namespace);
-
-			main_namespace.update(import("SCons.Script").attr("__dict__"));
-
 			SConscript(filename);
 		}
 		catch(error_already_set const &) {

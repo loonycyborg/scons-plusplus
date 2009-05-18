@@ -1,4 +1,9 @@
 Import("env")
 
+sources = Glob("*.cpp") + Glob("python_interface/*.cpp")
+common_objects = env.Object(filter(lambda source: source.name != "main.cpp", sources))
 env.Default(
-	env.Program("#/scons++", Glob("*.cpp") + Glob("python_interface/*.cpp")))
+	env.Program("#/scons++", [common_objects, "main.cpp"]))
+Export("common_objects")
+
+SConscript("python_interface/test/SConscript")

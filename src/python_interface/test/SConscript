@@ -1,0 +1,7 @@
+Import("test_env", "common_objects")
+if not test_env["have_boost_test"]:
+    Return()
+test = test_env.Program("test", ["test_main.cpp", common_objects])
+run_test = Alias("run-test", test, "./$SOURCE")
+AlwaysBuild(run_test)
+Alias("check", run_test)
