@@ -21,6 +21,6 @@ BOOST_AUTO_TEST_CASE(test_variable_access)
 	SCONSPP_EXEC("env = Environment()");
 	SCONSPP_EXEC("env['blah'] = 'x'");
 	SCONSPP_CHECK("env['blah'] == 'x'");
-	BOOST_CHECK_THROW(eval("env['_non_existant']", main_namespace, main_namespace), error_already_set);
+	SCONSPP_CHECK_THROW("env['_non_existant']", PyExc_KeyError);
 }
 BOOST_AUTO_TEST_SUITE_END()
