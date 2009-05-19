@@ -1,5 +1,5 @@
-#define SCONSPP_EXEC(str) exec(str, main_namespace, main_namespace)
-#define SCONSPP_CHECK(cond) BOOST_CHECK_MESSAGE((extract<bool>(eval(cond, main_namespace, main_namespace))), cond)
+#define SCONSPP_EXEC(str) exec(str, ns, ns)
+#define SCONSPP_CHECK(cond) BOOST_CHECK_MESSAGE((extract<bool>(eval(cond, ns, ns))), cond)
 
 struct python_exception_matches
 {
@@ -12,4 +12,4 @@ struct python_exception_matches
 		return result;
 	}
 };
-#define SCONSPP_CHECK_THROW(expr, exeption) BOOST_CHECK_EXCEPTION(eval(expr, main_namespace, main_namespace), error_already_set, python_exception_matches(exeption))
+#define SCONSPP_CHECK_THROW(expr, exeption) BOOST_CHECK_EXCEPTION(eval(expr, ns, ns), error_already_set, python_exception_matches(exeption))

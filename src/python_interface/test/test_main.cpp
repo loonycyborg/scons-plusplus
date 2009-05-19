@@ -15,12 +15,32 @@ struct python_setup
 
 BOOST_GLOBAL_FIXTURE(python_setup);
 
-BOOST_AUTO_TEST_SUITE(Environment)
+struct sconspp_fixture
+{
+	object ns;
+	sconspp_fixture()
+	{
+		ns = python_interface::copy(main_namespace);
+	}
+};
+
+BOOST_FIXTURE_TEST_SUITE(Environment, sconspp_fixture)
 BOOST_AUTO_TEST_CASE(test_variable_access)
 {
 	SCONSPP_EXEC("env = Environment()");
 	SCONSPP_EXEC("env['blah'] = 'x'");
 	SCONSPP_CHECK("env['blah'] == 'x'");
 	SCONSPP_CHECK_THROW("env['_non_existant']", PyExc_KeyError);
+}
+BOOST_AUTO_TEST_CASE(test_substitution)
+{
+	SCONSPP_EXEC("env = Environment()");
+	SCONSPP_CHECK("env.subst('blah') == 'blah'");
+	SCONSPP_CHECK("env.subst('$_nonexistant') == ''");
+	SCONSPP_CHECK("env.subst('blah $_nonexistant blah') == 'blah  blah'");
+	SCONSPP_EXEC("env['varname'] = 'foo'");
+	SCONSPP_CHECK("env.subst('$varname') == 'foo'");
+	SCONSPP_CHECK("env.subst('blah $varname blah') == 'blah foo blah'");
+	SCONSPP_CHECK("env.subst(\"${'blah'}\") == 'blah'");
 }
 BOOST_AUTO_TEST_SUITE_END()
