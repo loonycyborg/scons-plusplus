@@ -31,6 +31,10 @@ BOOST_AUTO_TEST_CASE(test_variable_access)
 	SCONSPP_EXEC("env['blah'] = 'x'");
 	SCONSPP_CHECK("env['blah'] == 'x'");
 	SCONSPP_CHECK_THROW("env['_non_existant']", PyExc_KeyError);
+	SCONSPP_EXEC("env['blah'] = [1,2,3]");
+	SCONSPP_CHECK("env['blah'][1] == 2");
+	SCONSPP_EXEC("env['blah'][1] = 5");
+	SCONSPP_CHECK("env['blah'][1] == 5");
 }
 BOOST_AUTO_TEST_CASE(test_substitution)
 {
@@ -42,5 +46,7 @@ BOOST_AUTO_TEST_CASE(test_substitution)
 	SCONSPP_CHECK("env.subst('$varname') == 'foo'");
 	SCONSPP_CHECK("env.subst('blah $varname blah') == 'blah foo blah'");
 	SCONSPP_CHECK("env.subst(\"${'blah'}\") == 'blah'");
+	SCONSPP_EXEC("env['varname'] = [1,2,3]");
+	SCONSPP_CHECK("env.subst(\"${varname[1]}\") == '2'");
 }
 BOOST_AUTO_TEST_SUITE_END()
