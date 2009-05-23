@@ -139,6 +139,7 @@ BOOST_PYTHON_MODULE(SCons)
 			.def("Dir", &Dir)
 			.def("Execute", &Execute)
 			.def("__getitem__", &get_item_from_env)
+			.def("__delitem__", &del_item_in_env)
 			.def("__setitem__", &set_item_in_env)
 			.def("Tool", &Tool)
 			.def("Platform", &Platform)
@@ -224,7 +225,7 @@ BOOST_PYTHON_MODULE(SCons)
 
 		object obj = variable_to_python(env[var]);
 		if(is_callable(obj))
-			return extract<string>(str(obj(get_item_from_env(env, str("SOURCES")), get_item_from_env(env, str("TARGETS")), env, false)));
+			return extract<string>(str(obj(get_item_from_env(env, "SOURCES"), get_item_from_env(env, "TARGETS"), env, false)));
 
 		if(is_list(obj)) {
 			std::vector<string> result;

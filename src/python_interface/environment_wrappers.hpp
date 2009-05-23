@@ -104,8 +104,9 @@ NodeWrapper Entry(environment::Environment::pointer, std::string name);
 NodeWrapper File(environment::Environment::pointer, std::string name);
 NodeWrapper Dir(environment::Environment::pointer, std::string name);
 void Execute(environment::Environment::pointer, object obj);
-object get_item_from_env(const Environment& env, object obj);
-object set_item_in_env(Environment& env, object key_obj, object val);
+object get_item_from_env(const Environment& env, const std::string& key);
+void del_item_in_env(Environment& env, const std::string& key);
+void set_item_in_env(Environment& env, const std::string& key, object val);
 void Tool(environment::Environment::pointer, object obj);
 void Platform(environment::Environment::pointer, const std::string& name);
 

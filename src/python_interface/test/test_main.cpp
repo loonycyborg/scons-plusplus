@@ -44,6 +44,8 @@ BOOST_AUTO_TEST_CASE(test_variable_access)
 	SCONSPP_CHECK("env['blah'][1] == 2");
 	SCONSPP_EXEC("env['blah'][1] = 5");
 	SCONSPP_CHECK("env['blah'][1] == 5");
+	SCONSPP_EXEC("del env['blah']");
+	SCONSPP_CHECK_THROW("env['blah']", PyExc_KeyError);
 }
 BOOST_AUTO_TEST_CASE(test_substitution)
 {

@@ -172,7 +172,7 @@ std::string expand_python(const environment::Environment& env, object obj)
 	if(is_none(obj))
 		return std::string();
 	if(is_callable(obj))
-		return extract<string>(str(obj(get_item_from_env(env, str("SOURCES")), get_item_from_env(env, str("TARGETS")), env, false)));
+		return extract<string>(str(obj(get_item_from_env(env, "SOURCES"), get_item_from_env(env, "TARGETS"), env, false)));
 	try {
 		std::vector<std::string> words;
 		foreach(object item, make_object_iterator_range(obj))

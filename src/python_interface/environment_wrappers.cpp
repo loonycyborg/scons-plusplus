@@ -74,9 +74,8 @@ void Execute(environment::Environment::pointer env, object obj)
 		action::execute(extract<action::Action::pointer>(action), *env);
 }
 
-object get_item_from_env(const Environment& env, object obj)
+object get_item_from_env(const Environment& env, const std::string& key)
 {
-	string key = extract<string>(str(obj));
 	environment::Variable::const_pointer var = env[key];
 	if(!var) {
 		PyErr_SetString(PyExc_KeyError, (string("No construction variable named '") + key + "'").c_str());
@@ -86,9 +85,13 @@ object get_item_from_env(const Environment& env, object obj)
 	return variable_to_python(var);
 }
 
-object set_item_in_env(Environment& env, object key_obj, object val)
+void del_item_in_env(Environment& env, const std::string& key)
 {
-	string key = extract<string>(str(key_obj));
+	env[key] = environment::Variable::pointer();
+}
+
+void set_item_in_env(Environment& env, const std::string& key, object val)
+{
 	if(env.count(key)) {
 		try {
 			object& obj = polymorphic_cast<PythonVariable*>(env[key].get())->get();
@@ -96,7 +99,6 @@ object set_item_in_env(Environment& env, object key_obj, object val)
 		} catch(const std::bad_cast&) {}
 	}
 	env[key] = extract_variable(val);
-	return object();
 }
 
 void Tool(environment::Environment::pointer env, object obj)
