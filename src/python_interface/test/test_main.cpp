@@ -60,4 +60,19 @@ BOOST_AUTO_TEST_CASE(test_substitution)
 	SCONSPP_EXEC("env['varname'] = [1,2,3]");
 	SCONSPP_CHECK("env.subst(\"${varname[1]}\") == '2'");
 }
+BOOST_AUTO_TEST_CASE(test_clone)
+{
+	SCONSPP_EXEC("env1 = Environment()");
+	SCONSPP_EXEC("env1['foo'] = 'x'");
+	SCONSPP_EXEC("env1['bar'] = [1,2,3]");
+	SCONSPP_EXEC("env2 = env1.Clone()");
+	SCONSPP_CHECK("env2['foo'] == 'x'");
+	SCONSPP_CHECK("env2['bar'] == [1,2,3]");
+	SCONSPP_EXEC("env2['foo'] = 'y'");
+	SCONSPP_EXEC("env2['bar'][1] = 5");
+	SCONSPP_CHECK("env1['foo'] == 'x'");
+	SCONSPP_CHECK("env1['bar'] == [1,2,3]");
+	SCONSPP_CHECK("env2['foo'] == 'y'");
+	SCONSPP_CHECK("env2['bar'] == [1,5,3]");
+}
 BOOST_AUTO_TEST_SUITE_END()
