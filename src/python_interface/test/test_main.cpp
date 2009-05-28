@@ -113,6 +113,11 @@ BOOST_AUTO_TEST_CASE(test_update)
 					SCONSPP_CHECK("env[var] == ['str1', 'str2', 'str2', 'str3']");
 				}
 			}
+			SCONSPP_EXEC("env[var] = {'a' : 'b'}");
+			SCONSPP_EXEC("env." + method + "(" + var + " = {'c' : 'd'})");
+			SCONSPP_CHECK("env[var] == {'a' : 'b', 'c' : 'd' }");
+			SCONSPP_EXEC("env." + method + "(" + var + " = {'c' : 'x'})");
+			SCONSPP_CHECK("env[var] == {'a' : 'b', 'c' : 'x' }");
 		}
 	}
 }
