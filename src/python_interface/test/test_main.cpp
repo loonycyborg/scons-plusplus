@@ -75,4 +75,45 @@ BOOST_AUTO_TEST_CASE(test_clone)
 	SCONSPP_CHECK("env2['foo'] == 'y'");
 	SCONSPP_CHECK("env2['bar'] == [1,5,3]");
 }
+BOOST_AUTO_TEST_CASE(test_update)
+{
+	SCONSPP_EXEC("env = Environment()");
+	SCONSPP_EXEC("env.Replace(var1 = 'foo')");
+	SCONSPP_CHECK("env['var1'] == 'foo'");
+	SCONSPP_EXEC("env.Replace(var2 = 'bar', var3 = 'baz')");
+	SCONSPP_CHECK("env['var2'] == 'bar'");
+	SCONSPP_CHECK("env['var3'] == 'baz'");
+
+	const char* updates[] = { "Prepend", "Append" };
+	const char* uniques[] = { "Unique", "" };
+	BOOST_FOREACH(const char* update, boost::make_iterator_range(updates, updates + 2)) {
+		BOOST_FOREACH(const char* unique, boost::make_iterator_range(uniques, uniques + 2)) {
+			std::string method = std::string(update) + unique;
+			SCONSPP_EXEC("method = '" + method + "'");
+			std::string var = method + "Var";
+			SCONSPP_EXEC("var = '" + var + "'");
+			SCONSPP_EXEC("env[var] = ['str1']");
+			SCONSPP_EXEC("env." + method + "(" + var + " = 'str2')");
+			if(std::string(update) == "Prepend") {
+				SCONSPP_CHECK("env[var] == ['str2', 'str1']");
+			} else {
+				SCONSPP_CHECK("env[var] == ['str1', 'str2']");
+			}
+			SCONSPP_EXEC("env." + method + "(" + var + " = ['str2', 'str3'])");
+			if(std::string(update) == "Prepend") {
+				if(std::string(unique) == "Unique") {
+					SCONSPP_CHECK("env[var] == ['str3', 'str2', 'str1']");
+				} else {
+					SCONSPP_CHECK("env[var] == ['str2', 'str3', 'str2', 'str1']");
+				}
+			} else {
+				if(std::string(unique) == "Unique") {
+					SCONSPP_CHECK("env[var] == ['str1', 'str2', 'str3']");
+				} else {
+					SCONSPP_CHECK("env[var] == ['str1', 'str2', 'str2', 'str3']");
+				}
+			}
+		}
+	}
+}
 BOOST_AUTO_TEST_SUITE_END()

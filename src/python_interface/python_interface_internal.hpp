@@ -121,6 +121,12 @@ inline object call_extended(object obj, tuple args, dict kw)
 	return object(handle<PyObject>(borrowed(result)));
 }
 
+inline object reversed(object iter)
+{
+	static object reversed_func = import("__builtin__").attr("reversed");
+	return reversed_func(iter);
+}
+
 }
 
 #endif

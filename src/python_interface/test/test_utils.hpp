@@ -1,4 +1,4 @@
-#define SCONSPP_EXEC(str) exec(str, ns, ns)
+#define SCONSPP_EXEC(code) exec(str(code), ns, ns)
 #define SCONSPP_CHECK(cond) BOOST_CHECK_MESSAGE((extract<bool>(eval(cond, ns, ns))), cond)
 
 struct python_exception_matches

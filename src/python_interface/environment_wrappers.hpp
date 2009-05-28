@@ -144,7 +144,10 @@ template<> inline void update_item<Prepend, Unique>(list& the_list, const object
 template<UpdateType update, UniqueType unique> object update_list(object old_val, object new_val)
 {
 	list result(flatten(old_val));
-	foreach(const object& item, make_object_iterator_range(flatten(new_val)))
+	new_val = flatten(new_val);
+	if(update == Prepend)
+		new_val = reversed(new_val);
+	foreach(const object& item, make_object_iterator_range(new_val))
 		update_item<update, unique>(result, item);
 	return result;
 }
