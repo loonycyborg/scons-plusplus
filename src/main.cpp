@@ -23,6 +23,8 @@
 #include "write_dot.hpp"
 #include "taskmaster.hpp"
 
+#include <fstream>
+
 #include <boost/filesystem/operations.hpp>
 #include <boost/foreach.hpp>
 #define foreach BOOST_FOREACH
@@ -45,7 +47,10 @@ int main(int argc, char** argv)
 	if(!script_found)
 		std::cerr << "scons++: *** No SConstruct file found." << std::endl;
 	
-	visualization::write_dot("graph.dot", dependency_graph::graph);
+	{
+	std::ofstream dot_file("graph.dot");
+	visualization::write_dot(dot_file, dependency_graph::graph);
+	}
 
 	if(dependency_graph::default_targets.size())
 	{

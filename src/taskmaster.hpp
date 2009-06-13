@@ -25,7 +25,9 @@
 
 namespace taskmaster
 {
-	void build(dependency_graph::Node);
+	void build(dependency_graph::Node end_goal);
+
+	void build_order(dependency_graph::Node end_goal, std::vector<dependency_graph::Node>& output);
 }
 
 #endif

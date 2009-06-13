@@ -65,12 +65,17 @@ namespace
 
 namespace taskmaster
 {
-	void build(dependency_graph::Node node)
+	void build_order(dependency_graph::Node end_goal, std::vector<Node>& output)
 	{
-		vector<dependency_graph::Node> nodes;
 		std::map<Node, boost::default_color_type> colors;
 		associative_property_map<std::map<Node, boost::default_color_type> > color_map(colors);
-		depth_first_visit(dependency_graph::graph, node, BuildVisitor(nodes), color_map);
+		depth_first_visit(dependency_graph::graph, end_goal, BuildVisitor(output), color_map);
+	}
+
+	void build(dependency_graph::Node end_goal)
+	{
+		std::vector<Node> nodes;
+		build_order(end_goal, nodes);
 
 		std::vector<boost::shared_ptr<taskmaster::Task> > tasks;
 		std::set<boost::shared_ptr<taskmaster::Task> > added_tasks;
@@ -90,4 +95,5 @@ namespace taskmaster
 			task->execute();
 		}
 	}
+
 }

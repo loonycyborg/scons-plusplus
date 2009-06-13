@@ -18,7 +18,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <fstream>
 #include <boost/graph/graphviz.hpp>
 
 #include "write_dot.hpp"
@@ -28,7 +27,6 @@ using dependency_graph::Node;
 
 namespace visualization
 {
-
 class DAG_writer
 {
 	const Graph& graph;
@@ -40,10 +38,9 @@ class DAG_writer
 	}
 };
 
-void write_dot(const std::string filename, const dependency_graph::Graph& graph)
+void write_dot(std::ostream& os, const dependency_graph::Graph& graph)
 {
-	std::ofstream ofs(filename.c_str());
-	boost::write_graphviz(ofs, graph, DAG_writer(graph));
+	boost::write_graphviz(os, graph, DAG_writer(graph));
 }
 
 }

@@ -23,9 +23,11 @@
 
 #include "dependency_graph.hpp"
 
+#include <boost/graph/graphviz.hpp>
+
 namespace visualization
 {
-	void write_dot(const std::string filename, const dependency_graph::Graph&);
+	void write_dot(std::ostream& os, const dependency_graph::Graph& graph);
 }
 
 #endif
