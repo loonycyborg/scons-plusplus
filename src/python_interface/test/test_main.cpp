@@ -89,4 +89,13 @@ BOOST_AUTO_TEST_CASE(test_update)
 		}
 	}
 }
+
+BOOST_AUTO_TEST_CASE(test_add_method)
+{
+	SCONSPP_EXEC("env = Environment()");
+	SCONSPP_EXEC("def Custom(env): return 'foo'");
+	SCONSPP_EXEC("env.AddMethod(Custom)");
+	SCONSPP_CHECK("env.Custom() == 'foo'");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
