@@ -51,7 +51,7 @@ struct variable_ref : grammar<Iterator, std::string()>
 	variable_ref() : variable_ref::base_type(ref)
 	{
 		variable_name %= raw[((alpha || '_') >> *(alnum || '_'))];
-		ref = '$' >> (variable_name[_val = args::_1] || ('{' >> variable_name[_val = args::_1] >> '}'));
+		ref %= '$' >> (variable_name | ('{' >> variable_name >> '}'));
 	}
 
 	rule<Iterator, std::string()> variable_name, ref;
@@ -62,7 +62,7 @@ struct python_code : grammar<Iterator, std::string()>
 {
 	python_code() : python_code::base_type(placeholder)
 	{
-		placeholder = "${" >> code[_val = args::_1] >> '}';
+		placeholder %= "${" >> code >> '}';
 		code %= raw[(*(char_ - '}'))];
 	}
 
