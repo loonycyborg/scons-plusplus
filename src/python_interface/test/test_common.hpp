@@ -29,3 +29,5 @@ struct sconspp_fixture
 		ns = python_interface::copy(main_namespace);
 	}
 };
+
+void write_build_graph(std::ostream& os, dependency_graph::Node end_goal);

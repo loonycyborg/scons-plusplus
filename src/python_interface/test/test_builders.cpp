@@ -1,40 +1,9 @@
 #include "test_common.hpp"
 
 #include "python_interface/node_wrapper.hpp"
-#include "taskmaster.hpp"
-
-#include <boost/graph/filtered_graph.hpp>
-#include <boost/graph/copy.hpp>
-#include <boost/graph/graphviz.hpp>
 
 #include <boost/test/output_test_stream.hpp>
 using boost::test_tools::output_test_stream;
-
-struct NodeInSet
-{
-	std::set<dependency_graph::Node> nodes;
-	NodeInSet() {}
-	template<typename Iterator> NodeInSet(Iterator begin, Iterator end) 
-	: nodes(begin, end)
-	{
-	}
-	bool operator()(dependency_graph::Node node) const
-	{
-		return nodes.count(node);
-	}
-};
-
-bool all_edges(const boost::graph_traits<dependency_graph::Graph>::edge_descriptor&) { return true; }
-
-void write_build_graph(std::ostream& os, Node end_goal)
-{
-	std::vector<dependency_graph::Node> nodes;
-	taskmaster::build_order(end_goal, nodes);
-	boost::write_graphviz(
-		os,
-		boost::make_filtered_graph(dependency_graph::graph, all_edges, NodeInSet(nodes.begin(), nodes.end()))
-		);
-}
 
 BOOST_FIXTURE_TEST_SUITE(Builders, sconspp_fixture)
 BOOST_AUTO_TEST_CASE(builders)
