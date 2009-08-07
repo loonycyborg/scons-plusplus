@@ -37,10 +37,12 @@ extern FS fs;
 class FSEntry : public node_properties
 {
 	path path_;
+	path abspath_;
 	boost::logic::tribool is_file_;
 	public:
-	FSEntry(const std::string name, boost::logic::tribool is_file = boost::logic::indeterminate) : path_(name), is_file_(is_file) {}
+	FSEntry(const std::string name, boost::logic::tribool is_file = boost::logic::indeterminate);
 	std::string name() const { return is_file_ ? path_.file_string() : path_.directory_string(); }
+	bool up_to_date(const NodeList&) const;
 
 	boost::logic::tribool is_file() const { return is_file_; }
 	void make_file() { is_file_ = true; }
@@ -51,6 +53,9 @@ class FSEntry : public node_properties
 	std::string suffix() const { return path_.extension(); }
 	std::string base() const { return name().substr(0, name().length() - suffix().length()); }
 	std::string filebase() const { return file().substr(0, file().length() - suffix().length()); }
+
+	bool exists() const { return boost::filesystem::exists(abspath_); }
+	std::time_t timestamp() const { return boost::filesystem::last_write_time(abspath_); }
 };
 
 void set_fs_root(const path& path);

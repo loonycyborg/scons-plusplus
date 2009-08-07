@@ -25,6 +25,7 @@
 #include <boost/graph/graph_utility.hpp>
 #include <boost/property_map.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/cast.hpp>
 
 namespace taskmaster
 {
@@ -46,6 +47,11 @@ using boost::graph_traits;
 using boost::add_vertex;
 using boost::add_edge;
 
+class node_properties;
+typedef boost::adjacency_list<vecS, vecS, directedS, boost::shared_ptr<node_properties> > Graph;
+typedef graph_traits<Graph>::vertex_descriptor Node;
+typedef std::vector<Node> NodeList;
+
 class node_properties
 {
 	boost::shared_ptr<taskmaster::Task> task_;
@@ -55,16 +61,18 @@ class node_properties
 	public:
 	virtual ~node_properties() {}
 	virtual std::string name() const = 0;
+	virtual bool up_to_date(const NodeList& targets) const = 0;
 
 	boost::shared_ptr<taskmaster::Task> task() const { return task_; }
 };
 
-typedef boost::adjacency_list<vecS, vecS, directedS, boost::shared_ptr<node_properties> > Graph;
-typedef graph_traits<Graph>::vertex_descriptor Node;
-typedef std::vector<Node> NodeList;
-
 extern Graph graph;
 extern std::set<Node> default_targets;
+
+template<class NodeClass> inline NodeClass& properties(Node node)
+{
+	return *boost::polymorphic_cast<NodeClass*>(graph[node].get());
+}
 
 class dummy_node : public node_properties
 {
@@ -72,6 +80,7 @@ class dummy_node : public node_properties
 	public:
 	dummy_node(const std::string& name) : name_(name) {}
 	std::string name() const { return name_; }
+	bool up_to_date(const NodeList& targets) const { return true; }
 };
 
 inline Node add_dummy_node(const std::string& name)

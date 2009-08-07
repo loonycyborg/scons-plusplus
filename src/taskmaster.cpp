@@ -137,7 +137,17 @@ namespace taskmaster
 		int current_task = 1;
 		foreach(const TaskListItem& item, tasks.get<sequence_index>()) {
 			std::cout << "[" << current_task++ << "/" << num_tasks << "] " << item.task->targets() << " <- " << item.task->sources() << "\n";
-			item.task->execute();
+
+			bool up_to_date = true;
+			foreach(Node build_target, item.targets) {
+				typedef boost::graph_traits<dependency_graph::Graph>::edge_descriptor Edge;
+				foreach(Edge dependency, out_edges(build_target, dependency_graph::graph)) {
+					Node build_source = target(dependency, dependency_graph::graph);
+					up_to_date = up_to_date && dependency_graph::graph[build_source]->up_to_date(item.targets);
+				}
+			}
+			if(!up_to_date)
+				item.task->execute();
 		}
 	}
 

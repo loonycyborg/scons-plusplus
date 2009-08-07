@@ -21,6 +21,9 @@
 #include "fs_node.hpp"
 #include "util.hpp"
 
+#include <boost/foreach.hpp>
+#define foreach BOOST_FOREACH
+
 namespace
 {
 	boost::filesystem::path fs_root;
@@ -60,6 +63,33 @@ Node add_entry(const std::string& name, boost::logic::tribool is_file)
 		file = file_iter->second;
 	}
 	return file;
+}
+
+FSEntry::FSEntry(const std::string name, boost::logic::tribool is_file) : path_(name), is_file_(is_file)
+{
+	if(!fs_root.empty())
+		abspath_ = fs_root / path_;
+	else
+		abspath_ = path_;
+}
+
+bool FSEntry::up_to_date(const NodeList& targets) const
+{
+	std::time_t source_timestamp = timestamp();
+	bool up_to_date = true;
+	foreach(Node target, targets) {
+		try {
+			if(
+				!properties<FSEntry>(target).exists() ||
+				(source_timestamp > properties<FSEntry>(target).timestamp())
+			  )
+				up_to_date = false;
+		} catch(const std::bad_cast&) {
+		}
+	}
+	if(up_to_date)
+		std::cout << name() << " is up-to-date." << std::endl;
+	return up_to_date;
 }
 
 }
