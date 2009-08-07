@@ -33,6 +33,7 @@
 using dependency_graph::Node;
 using dependency_graph::NodeList;
 using dependency_graph::graph;
+using dependency_graph::properties;
 
 using namespace boost::python;
 
@@ -62,11 +63,6 @@ inline Node extract_node(object obj)
 
 builder::Builder::NodeStringList::value_type extract_node(const environment::Environment& env, object obj);
 builder::Builder::NodeStringList extract_nodes(const environment::Environment& env, object obj);
-
-template<class NodeClass> inline NodeClass* get_properties(Node node)
-{
-	return boost::polymorphic_cast<NodeClass*>(graph[node].get());
-}
 
 }
 

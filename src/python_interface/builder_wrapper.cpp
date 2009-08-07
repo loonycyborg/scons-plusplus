@@ -164,7 +164,7 @@ class PythonBuilder : public builder::Builder
 		object emitter = emitter_;
 		if(emitter_) {
 			if(is_dict(emitter_)) {
-				emitter = dict(emitter_)[get_properties<dependency_graph::FSEntry>(source_nodes[0])->suffix()];
+				emitter = dict(emitter_)[properties<dependency_graph::FSEntry>(source_nodes[0]).suffix()];
 			}
 			if(is_string(emitter)) {
 				emitter = subst(env, emitter);
@@ -180,7 +180,7 @@ class PythonBuilder : public builder::Builder
 
 		if(is_dict(actions_)) {
 			if(!sources.empty()) {
-				actions_obj = dict(actions_)[get_properties<dependency_graph::FSEntry>(source_nodes[0])->suffix()];
+				actions_obj = dict(actions_)[properties<dependency_graph::FSEntry>(source_nodes[0]).suffix()];
 			}
 		} else {
 			actions_obj = actions_;
