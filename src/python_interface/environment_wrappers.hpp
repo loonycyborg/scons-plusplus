@@ -25,6 +25,7 @@
 
 #include "environment.hpp"
 #include "dependency_graph.hpp"
+#include "alias_node.hpp"
 
 #include "node_wrapper.hpp"
 
@@ -100,9 +101,15 @@ inline object variable_to_python(environment::Variable::const_pointer var)
 
 NodeList Command(const environment::Environment& env, object target, object source, object action);
 void Default(const environment::Environment::pointer& env, object obj);
+
 NodeWrapper Entry(environment::Environment::pointer, std::string name);
 NodeWrapper File(environment::Environment::pointer, std::string name);
 NodeWrapper Dir(environment::Environment::pointer, std::string name);
+inline NodeWrapper Alias(const std::string& name)
+{
+	return NodeWrapper(dependency_graph::add_alias(name));
+}
+
 void Execute(environment::Environment::pointer, object obj);
 object get_item_from_env(const Environment& env, const std::string& key);
 void del_item_in_env(Environment& env, const std::string& key);

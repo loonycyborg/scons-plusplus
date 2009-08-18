@@ -175,6 +175,7 @@ BOOST_PYTHON_MODULE(SCons)
 		def("Export", raw_function(&Export));
 		def("Import", raw_function(&Import));
 		def("WhereIs", &WhereIs);
+		def("Alias", &Alias);
 	}
 }
 
