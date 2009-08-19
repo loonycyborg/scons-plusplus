@@ -54,6 +54,7 @@ inline std::string extract_string_subst(const environment::Environment& env, obj
 	return env.subst(extract<std::string>(obj));
 }
 
+NodeList extract_file_nodes(object obj);
 NodeList extract_file_nodes(const environment::Environment& env, object obj);
 
 inline Node extract_node(object obj)
@@ -61,7 +62,7 @@ inline Node extract_node(object obj)
 	return extract<NodeWrapper>(obj)().node;
 }
 
-builder::Builder::NodeStringList::value_type extract_node(const environment::Environment& env, object obj);
+builder::Builder::NodeStringList extract_nodes(object obj);
 builder::Builder::NodeStringList extract_nodes(const environment::Environment& env, object obj);
 
 }

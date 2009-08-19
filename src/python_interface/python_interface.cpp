@@ -137,6 +137,7 @@ BOOST_PYTHON_MODULE(SCons)
 			.def("Entry", &Entry)
 			.def("File", &File)
 			.def("Dir", &Dir)
+			.def("Alias", subst_directive_args("Alias"))
 			.def("Execute", &Execute)
 			.def("__getitem__", &get_item_from_env)
 			.def("__delitem__", &del_item_in_env)
@@ -175,7 +176,7 @@ BOOST_PYTHON_MODULE(SCons)
 		def("Export", raw_function(&Export));
 		def("Import", raw_function(&Import));
 		def("WhereIs", &WhereIs);
-		def("Alias", &Alias);
+		def("Alias", (NodeWrapper (*)(const std::string& name, object sources))0, Alias_overloads((arg("alias"), arg("targets"))));
 	}
 }
 

@@ -109,6 +109,14 @@ inline NodeWrapper Alias(const std::string& name)
 {
 	return NodeWrapper(dependency_graph::add_alias(name));
 }
+inline NodeWrapper Alias(const std::string& name, object sources)
+{
+	Node alias = dependency_graph::add_alias(name);
+	foreach(Node node, extract_file_nodes(flatten(sources)))
+		add_edge(alias, node, dependency_graph::graph);
+	return NodeWrapper(dependency_graph::add_alias(name));
+}
+BOOST_PYTHON_FUNCTION_OVERLOADS(Alias_overloads, Alias, 1, 2)
 
 void Execute(environment::Environment::pointer, object obj);
 object get_item_from_env(const Environment& env, const std::string& key);

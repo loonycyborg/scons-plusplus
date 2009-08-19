@@ -23,6 +23,7 @@
 #include "fs_node.hpp"
 
 #include <boost/variant/variant.hpp>
+#include <boost/variant/apply_visitor.hpp>
 
 namespace python_interface
 {
@@ -39,18 +40,46 @@ NodeList extract_file_nodes(const environment::Environment& env, object obj)
 	return result;
 }
 
-builder::Builder::NodeStringList::value_type extract_node(const environment::Environment& env, object obj)
+builder::Builder::NodeStringList extract_nodes(object obj)
 {
-	if(is_string(obj))
-		return extract_string_subst(env, obj);
-	return extract_node(obj);
+	builder::Builder::NodeStringList result;
+	foreach(object node, make_object_iterator_range(obj)) {
+		if(is_string(node))
+			result.push_back(extract<std::string>(node));
+		else
+			result.push_back(extract_node(node));
+	}
+	return result;
 }
 
 builder::Builder::NodeStringList extract_nodes(const environment::Environment& env, object obj)
 {
 	builder::Builder::NodeStringList result;
-	foreach(object node, make_object_iterator_range(obj))
-		result.push_back(extract_node(env, node));
+	foreach(object node, make_object_iterator_range(obj)) {
+		if(is_string(node))
+			result.push_back(extract_string_subst(env, node));
+		else
+			result.push_back(extract_node(node));
+	}
+	return result;
+}
+
+struct ExtractFileVisitor : public boost::static_visitor<Node>
+{
+	Node operator()(const std::string& name) {
+		return dependency_graph::add_entry_indeterminate(name);
+	}
+	Node operator()(Node node) {
+		return node;
+	}
+};
+
+NodeList extract_file_nodes(object obj)
+{
+	NodeList result;
+	builder::Builder::NodeStringList nodes = extract_nodes(obj);
+	ExtractFileVisitor visitor;
+	std::transform(nodes.begin(), nodes.end(), std::back_inserter(result), boost::apply_visitor(visitor));
 	return result;
 }
 
