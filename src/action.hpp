@@ -22,6 +22,7 @@
 #define ACTION_HPP
 
 #include <string>
+#include <deque>
 
 #include "environment.hpp"
 
@@ -37,6 +38,8 @@ class Action
 	virtual void execute(const environment::Environment&) const = 0;
 	virtual std::string to_string(const environment::Environment&) const = 0;
 };
+
+typedef std::deque<Action::pointer> ActionList;
 
 void execute(const Action::pointer&, const environment::Environment&);
 

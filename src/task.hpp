@@ -21,9 +21,6 @@
 #ifndef TASK_HPP
 #define TASK_HPP
 
-#include <vector>
-#include <deque>
-
 #include "dependency_graph.hpp"
 #include "environment.hpp"
 #include "action.hpp"
@@ -41,7 +38,7 @@ class Task
 	dependency_graph::NodeList targets_;
 	dependency_graph::NodeList sources_;
 
-	std::deque<action::Action::pointer> actions_;
+	action::ActionList actions_;
 
 	environment::Environment::pointer env_;
 
@@ -50,7 +47,7 @@ class Task
 		const environment::Environment::pointer& env,
 		const dependency_graph::NodeList& targets,
 		const dependency_graph::NodeList& sources,
-		const std::deque<action::Action::pointer>& actions) :
+		const action::ActionList& actions) :
 			targets_(targets), sources_(sources),
 			actions_(actions), env_(env)
 		{}

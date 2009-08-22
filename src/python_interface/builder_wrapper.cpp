@@ -140,7 +140,7 @@ class PythonBuilder : public builder::Builder
 			}
 		}
 
-		std::deque<action::Action::pointer> actions;
+		action::ActionList actions;
 		object actions_obj = list();
 
 		dependency_graph::NodeList target_nodes;
@@ -185,8 +185,7 @@ class PythonBuilder : public builder::Builder
 		} else {
 			actions_obj = actions_;
 		}
-		foreach(const object& action, make_object_iterator_range(make_actions(actions_obj)))
-			actions.push_back(extract<action::Action::pointer>(action));
+		actions = make_actions(actions_obj);
 
 		create_task(env, target_nodes, source_nodes, actions);
 		return target_nodes;

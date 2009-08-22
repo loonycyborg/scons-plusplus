@@ -87,6 +87,17 @@ struct node_list_to_python
 	}
 };
 
+struct action_list_to_python
+{
+	static PyObject* convert(const action::ActionList& action_list)
+	{
+		list result;
+		foreach(const action::Action::pointer& action, action_list)
+			result.append(object(action));
+		return incref(result.ptr());
+	}
+};
+
 #define NESTED_MODULE(parent, name) \
 handle<PyObject> h(borrowed(Py_InitModule((std::string(parent) + "." + name).c_str(), NULL))); \
 scope parent_scope = import(parent); \
@@ -161,6 +172,7 @@ BOOST_PYTHON_MODULE(SCons)
 		;
 	}
 	to_python_converter<dependency_graph::NodeList, node_list_to_python>();
+	to_python_converter<action::ActionList, action_list_to_python>();
 
 	{
 	NESTED_MODULE("SCons", "Script")

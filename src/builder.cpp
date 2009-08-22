@@ -43,7 +43,7 @@ void Builder::create_task(
 		const environment::Environment& env,
 		const NodeList& targets,
 		const NodeList& sources,
-		const std::deque<action::Action::pointer>& actions
+		const action::ActionList& actions
 		) const
 {
 	environment::Environment::pointer task_env = env.override();
@@ -89,7 +89,7 @@ NodeList Command::operator()(
 		const NodeStringList& sources
 		) const
 {
-	std::deque<action::Action::pointer> action;
+	action::ActionList action;
 	action.push_back(action::Action::pointer(new action::Command(command_)));
 	NodeList 
 		target_nodes = make_nodes(targets),

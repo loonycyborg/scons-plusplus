@@ -39,7 +39,7 @@ class Builder
 		const environment::Environment& env,
 		const dependency_graph::NodeList& targets,
 		const dependency_graph::NodeList& sources,
-		const std::deque<action::Action::pointer>& actions
+		const action::ActionList& actions
 		) const;
 	public:
 	typedef boost::shared_ptr<Builder> pointer;
@@ -70,7 +70,7 @@ class Command : public Builder
 
 class SimpleBuilder : public Builder
 {
-	std::deque<action::Action::pointer> actions_;
+	action::ActionList actions_;
 
 	public:
 	dependency_graph::NodeList operator()(
@@ -79,7 +79,7 @@ class SimpleBuilder : public Builder
 		const NodeStringList& sources
 		) const;
 
-	SimpleBuilder(const std::deque<action::Action::pointer>& actions) : actions_(actions) {}
+	SimpleBuilder(const action::ActionList& actions) : actions_(actions) {}
 };
 
 }

@@ -39,30 +39,27 @@ class PythonAction : public action::Action
 	std::string to_string(const environment::Environment&) const;
 };
 
-inline object make_action(object obj, object action_str = object())
+inline action::Action::pointer make_action(object obj, object action_str = object())
 {
 	static object action_type = import("SCons.Action").attr("ActionWrapper");
 	if(is_string(obj)) {
 		if(action_str)
-			return object(action::Action::pointer(new action::Command(extract<std::string>(obj), extract<std::string>(action_str))));
+			return action::Action::pointer(new action::Command(extract<std::string>(obj), extract<std::string>(action_str)));
 		else
-			return object(action::Action::pointer(new action::Command(extract<std::string>(obj))));
+			return action::Action::pointer(new action::Command(extract<std::string>(obj)));
 	} else if(is_instance(obj, action_type)) {
-		return obj;
+		return extract<action::Action::pointer>(obj);
 	} else if(is_callable(obj)) {
-		return object(action::Action::pointer(new PythonAction(obj, action_str)));
+		return action::Action::pointer(new PythonAction(obj, action_str));
 	} else
 		throw std::runtime_error("Cannot make an action from object of type '" + type(obj) + "'");
 }
 
-inline object make_actions(object act, object action_str = object(), list varlist = list())
+inline action::ActionList make_actions(object act, object action_str = object(), list varlist = list())
 {
-	object actions = flatten(act);
-	list result;
-
-	foreach(const object& obj, make_object_iterator_range(actions))
-		result.append(make_action(obj, action_str));
-
+	action::ActionList result;
+	foreach(const object& obj, make_object_iterator_range(flatten(act)))
+		result.push_back(make_action(obj, action_str));
 	return result;
 }
 

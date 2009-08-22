@@ -38,10 +38,7 @@ namespace python_interface
 
 NodeList Command(const environment::Environment& env, object target, object source, object action)
 {
-	std::deque<action::Action::pointer> actions;
-	foreach(const object& act, make_object_iterator_range(make_actions(action)))
-		actions.push_back(extract<action::Action::pointer>(act));
-	builder::SimpleBuilder simple_builder(actions);
+	builder::SimpleBuilder simple_builder(make_actions(action));
 	return call_builder(simple_builder, env, target, source);
 }
 
@@ -69,9 +66,8 @@ NodeWrapper Dir(environment::Environment::pointer, std::string name)
 
 void Execute(environment::Environment::pointer env, object obj)
 {
-	object actions = make_actions(obj);
-	foreach(const object& action, make_object_iterator_range(actions))
-		action::execute(extract<action::Action::pointer>(action), *env);
+	foreach(const action::Action::pointer& action, make_actions(obj))
+		action::execute(action, *env);
 }
 
 object get_item_from_env(const Environment& env, const std::string& key)
