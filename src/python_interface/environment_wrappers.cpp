@@ -21,6 +21,7 @@
 #include "python_interface_internal.hpp"
 
 #include <boost/cast.hpp>
+#include <boost/variant/variant.hpp>
 
 #include "builder_wrapper.hpp"
 #include "environment_wrappers.hpp"
@@ -62,6 +63,13 @@ NodeWrapper File(environment::Environment::pointer, std::string name)
 NodeWrapper Dir(environment::Environment::pointer, std::string name)
 {
 	return NodeWrapper(add_entry(name, false));
+}
+
+NodeList Alias(object aliases, object sources, object actions)
+{
+	static environment::Environment::pointer env = environment::Environment::create();
+	action::ActionList action_list = make_actions(flatten(actions));
+	return builder::AliasBuilder(action_list)(*env, extract_nodes(flatten(aliases)), extract_nodes(flatten(sources)));
 }
 
 void Execute(environment::Environment::pointer env, object obj)

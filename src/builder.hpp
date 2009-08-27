@@ -82,6 +82,20 @@ class SimpleBuilder : public Builder
 	SimpleBuilder(const action::ActionList& actions) : actions_(actions) {}
 };
 
+class AliasBuilder : public Builder
+{
+	action::ActionList actions_;
+
+	public:
+	dependency_graph::NodeList operator()(
+		const environment::Environment& env,
+		const NodeStringList& targets,
+		const NodeStringList& sources
+		) const;
+
+	AliasBuilder(const action::ActionList& actions) : actions_(actions) {}
+};
+
 }
 
 #endif

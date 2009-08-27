@@ -55,6 +55,7 @@ class Task
 
 	const dependency_graph::NodeList& targets() const { return targets_; }
 	const dependency_graph::NodeList& sources() const { return sources_; }
+	action::ActionList& actions() { return actions_; }
 
 	void execute() const;
 };

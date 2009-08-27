@@ -85,6 +85,7 @@ bool FSEntry::up_to_date(const NodeList& targets) const
 			  )
 				up_to_date = false;
 		} catch(const std::bad_cast&) {
+			up_to_date = false;
 		}
 	}
 	if(up_to_date)

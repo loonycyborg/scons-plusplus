@@ -20,4 +20,4 @@ env.Command("qux.blah", "SConstruct", "echo targets: $TARGETS  sources: $SOURCES
 blah = env.Blah("foo.bar", "qux")
 env.Command("SConstruct.blah", "SConstruct", "echo targets: $TARGETS sources: $SOURCES")
 env.Blah("SConstruct")
-baz = env.Command("baz", [blah, "blah_SConstruct.blah"], "echo targets: $TARGETS sources: $SOURCES")
+baz = env.Alias("baz", [blah, "blah_SConstruct.blah"], "echo targets: $TARGETS sources: $SOURCES")

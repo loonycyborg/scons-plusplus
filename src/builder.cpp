@@ -26,6 +26,7 @@
 #include "builder.hpp"
 #include "task.hpp"
 #include "fs_node.hpp"
+#include "alias_node.hpp"
 
 #define foreach BOOST_FOREACH
 
@@ -35,6 +36,7 @@ using taskmaster::Task;
 using dependency_graph::graph;
 using dependency_graph::Node;
 using dependency_graph::NodeList;
+using dependency_graph::add_entry_indeterminate;
 
 namespace builder
 {
@@ -63,6 +65,7 @@ void Builder::create_task(
 			add_edge(target, source, graph);
 }
 
+template <Node (*factory)(const std::string&)>
 struct make_node : public boost::static_visitor<Node>
 {
 	Node operator()(const Node& node) const
@@ -71,14 +74,15 @@ struct make_node : public boost::static_visitor<Node>
 	}
 	Node operator()(const std::string& name) const
 	{
-		return dependency_graph::add_entry_indeterminate(name);
+		return factory(name);
 	}
 };
 
+template <Node (*factory)(const std::string&)>
 inline NodeList make_nodes(const builder::Builder::NodeStringList& list)
 {
 	NodeList result;
-	make_node visitor;
+	make_node<factory> visitor;
 	transform(list.begin(), list.end(), back_inserter(result), boost::apply_visitor(visitor));
 	return result;
 }
@@ -92,8 +96,8 @@ NodeList Command::operator()(
 	action::ActionList action;
 	action.push_back(action::Action::pointer(new action::Command(command_)));
 	NodeList 
-		target_nodes = make_nodes(targets),
-		source_nodes = make_nodes(sources);
+		target_nodes = make_nodes<add_entry_indeterminate>(targets),
+		source_nodes = make_nodes<add_entry_indeterminate>(sources);
 	create_task(env, target_nodes, source_nodes, action);
 	return target_nodes;
 }
@@ -105,10 +109,29 @@ NodeList SimpleBuilder::operator()(
 		) const
 {
 	NodeList
-		target_nodes = make_nodes(targets),
-		source_nodes = make_nodes(sources);
+		target_nodes = make_nodes<add_entry_indeterminate>(targets),
+		source_nodes = make_nodes<add_entry_indeterminate>(sources);
 	create_task(env, target_nodes, source_nodes, actions_);
 	return target_nodes;
+}
+
+NodeList AliasBuilder::operator()(
+		const environment::Environment& env,
+		const NodeStringList& targets,
+		const NodeStringList& sources
+		) const
+{
+	NodeList
+		aliases = make_nodes<dependency_graph::add_alias>(targets),
+		source_nodes = make_nodes<add_entry_indeterminate>(sources);
+	if(!actions_.empty()) {
+		create_task(env, aliases, source_nodes, actions_);
+	} else {
+		foreach(const dependency_graph::Node& alias, aliases)
+			foreach(const dependency_graph::Node& source, source_nodes)
+				add_edge(alias, source, graph);
+	}
+	return aliases;
 }
 
 }

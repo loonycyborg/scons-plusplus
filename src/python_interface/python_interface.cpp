@@ -188,7 +188,7 @@ BOOST_PYTHON_MODULE(SCons)
 		def("Export", raw_function(&Export));
 		def("Import", raw_function(&Import));
 		def("WhereIs", &WhereIs);
-		def("Alias", (NodeWrapper (*)(const std::string& name, object sources))0, Alias_overloads((arg("alias"), arg("targets"))));
+		def("Alias", &Alias, (arg("alias"), arg("targets") = object(), arg("action") = object()));
 	}
 }
 
