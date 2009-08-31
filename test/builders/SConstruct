@@ -20,6 +20,8 @@ builder = Builder(
 env.Append(BUILDERS = { "Blah" : builder })
 
 env.Command("qux.blah", "SConstruct", "echo targets: $TARGETS  sources: $SOURCES")
+AddPreAction("qux.blah", "echo PreAction")
+AddPostAction("qux.blah", "echo PostAction")
 blah = env.Blah("foo.bar", "qux")
 env.Command("SConstruct.blah", "SConstruct", "echo targets: $TARGETS sources: $SOURCES")
 print env.Blah("SConstruct")

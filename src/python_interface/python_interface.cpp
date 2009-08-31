@@ -189,6 +189,8 @@ BOOST_PYTHON_MODULE(SCons)
 		def("Import", raw_function(&Import));
 		def("WhereIs", &WhereIs);
 		def("Alias", &Alias, (arg("alias"), arg("targets") = object(), arg("action") = object()));
+		def("AddPreAction", &AddPreAction, (arg("target"), arg("action")));
+		def("AddPostAction", &AddPostAction, (arg("target"), arg("action")));
 	}
 }
 

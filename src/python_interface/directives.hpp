@@ -30,6 +30,9 @@ namespace python_interface
 	object WhereIs(const std::string& name);
 
 	object subst_directive_args(const char*);
+
+	void AddPreAction(object target, object action);
+	void AddPostAction(object target, object action);
 }
 
 #endif

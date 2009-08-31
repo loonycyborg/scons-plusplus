@@ -25,6 +25,8 @@
 
 #include "util.hpp"
 #include "environment.hpp"
+#include "python_interface/action_wrapper.hpp"
+#include "python_interface/node_wrapper.hpp"
 #include "python_interface/subst.hpp"
 
 namespace python_interface
@@ -57,6 +59,31 @@ class DirectiveWrapper
 object subst_directive_args(const char* name)
 {
 	return raw_function(DirectiveWrapper(name));
+}
+
+template<template<class Container> class insert_iterator>
+inline void AddFooAction(const object& target, const object& action)
+{
+	action::ActionList actions = make_actions(flatten(action));
+	NodeList targets = extract_file_nodes(flatten(target));
+	std::set<boost::shared_ptr<taskmaster::Task> > tasks;
+	foreach(Node node, targets) {
+		boost::shared_ptr<taskmaster::Task> task = graph[node]->task();;
+		if(task)
+			tasks.insert(task);
+	}
+	foreach(boost::shared_ptr<taskmaster::Task> task, tasks)
+		std::copy(actions.begin(), actions.end(), insert_iterator<action::ActionList>(task->actions()));
+}
+
+void AddPreAction(object target, object action)
+{
+	AddFooAction<std::front_insert_iterator>(target, action);
+}
+
+void AddPostAction(object target, object action)
+{
+	AddFooAction<std::back_insert_iterator>(target, action);
 }
 
 }
