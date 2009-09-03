@@ -97,5 +97,13 @@ BOOST_AUTO_TEST_CASE(test_add_method)
 	SCONSPP_EXEC("env.AddMethod(Custom)");
 	SCONSPP_CHECK("env.Custom() == 'foo'");
 }
+BOOST_AUTO_TEST_CASE(test_split)
+{
+	SCONSPP_EXEC("env = Environment()");
+	SCONSPP_EXEC("foo = Split('f o o')");
+	SCONSPP_CHECK("foo == ['f', 'o', 'o']");
+	SCONSPP_EXEC("foo2 = Split('f o o')");
+	SCONSPP_CHECK("foo2 == ['f', 'o', 'o']");
+}
 
 BOOST_AUTO_TEST_SUITE_END()

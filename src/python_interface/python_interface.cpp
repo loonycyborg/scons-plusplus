@@ -65,6 +65,21 @@ object flatten(object obj)
 	return result;
 }
 
+object split(object obj)
+{
+	if(is_none(obj))
+		return list();
+	if(is_list(obj))
+		return obj;
+	if(is_string(obj)) {
+		static object string_split = import("string").attr("split");
+		return string_split(obj);
+	}
+	list result;
+	result.append(obj);
+	return result;
+}
+
 object dictify(object obj)
 {
 	if(is_dict(obj)) return obj;
@@ -169,6 +184,7 @@ BOOST_PYTHON_MODULE(SCons)
 			.def("Clone", &Environment::clone)
 			.def("SConscript", (void(*)(const environment::Environment&, const std::string&))SConscript)
 			.def("WhereIs", subst_directive_args("WhereIs"))
+			.def("Split", subst_directive_args("Split"))
 		;
 	}
 	to_python_converter<dependency_graph::NodeList, node_list_to_python>();
@@ -191,6 +207,7 @@ BOOST_PYTHON_MODULE(SCons)
 		def("Alias", &Alias, (arg("alias"), arg("targets") = object(), arg("action") = object()));
 		def("AddPreAction", &AddPreAction, (arg("target"), arg("action")));
 		def("AddPostAction", &AddPostAction, (arg("target"), arg("action")));
+		def("Split", &split);
 	}
 }
 
