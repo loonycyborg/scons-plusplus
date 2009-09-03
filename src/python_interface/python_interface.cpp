@@ -185,6 +185,7 @@ BOOST_PYTHON_MODULE(SCons)
 			.def("SConscript", (void(*)(const environment::Environment&, const std::string&))SConscript)
 			.def("WhereIs", subst_directive_args("WhereIs"))
 			.def("Split", subst_directive_args("Split"))
+			.def("Flatten", subst_directive_args("Flatten"))
 		;
 	}
 	to_python_converter<dependency_graph::NodeList, node_list_to_python>();
@@ -208,6 +209,7 @@ BOOST_PYTHON_MODULE(SCons)
 		def("AddPreAction", &AddPreAction, (arg("target"), arg("action")));
 		def("AddPostAction", &AddPostAction, (arg("target"), arg("action")));
 		def("Split", &split);
+		def("Flatten", &flatten);
 	}
 }
 
