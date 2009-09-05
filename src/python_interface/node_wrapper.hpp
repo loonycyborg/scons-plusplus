@@ -29,6 +29,7 @@
 #include "task.hpp"
 #include "builder.hpp"
 #include "sconscript.hpp"
+#include "fs_node.hpp"
 
 using dependency_graph::Node;
 using dependency_graph::NodeList;
@@ -47,6 +48,12 @@ struct NodeWrapper
 	std::string to_string() const { return graph[node]->name(); }
 
 	dependency_graph::NodeList sources() const { return graph[node]->task()->sources(); }
+	std::string path() const {
+		return properties<dependency_graph::FSEntry>(node).name();
+	}
+	std::string abspath() const {
+		return properties<dependency_graph::FSEntry>(node).abspath();
+	}
 };
 
 inline std::string extract_string_subst(const environment::Environment& env, object obj)

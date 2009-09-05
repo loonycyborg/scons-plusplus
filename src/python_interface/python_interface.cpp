@@ -127,6 +127,8 @@ BOOST_PYTHON_MODULE(SCons)
 			.def("__str__", &NodeWrapper::to_string)
 			.def("__repr__", &NodeWrapper::to_string)
 			.def_readonly("sources", &NodeWrapper::sources)
+			.def_readonly("path", &NodeWrapper::path)
+			.def_readonly("abspath", &NodeWrapper::abspath)
 		;
 	}
 	{
