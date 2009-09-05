@@ -201,6 +201,8 @@ BOOST_PYTHON_MODULE(SCons)
 		s.attr("COMMAND_LINE_TARGETS") = list();
 		s.attr("DEFAULT_TARGETS") = list();
 
+		s.attr("Action") = import("SCons.Action").attr("Action");
+		s.attr("Builder") = import("SCons.Builder").attr("Builder");
 		s.attr("Environment") = import("SCons.Environment").attr("Environment");
 
 		def("SConscript", (void(*)(const std::string&))SConscript);
