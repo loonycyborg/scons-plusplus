@@ -24,6 +24,7 @@
 #include <boost/python/raw_function.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/foreach.hpp>
+#include <boost/typeof/typeof.hpp>
 #define foreach BOOST_FOREACH
 
 #include "util.hpp"
@@ -154,9 +155,10 @@ BOOST_PYTHON_MODULE(SCons)
 			.add_property("suffix", make_function(&get_builder_suffix))
 		;
 	}
+	object env;
 	{
 	NESTED_MODULE("SCons", "Environment")
-		class_<Environment, environment::Environment::pointer>("Environment", no_init)
+		env = class_<Environment, environment::Environment::pointer>("Environment", no_init)
 			.def("_true__init__", make_constructor(&environment::Environment::create))
 			.def("__init__", raw_function(&make_environment))
 			.def("subst", &Environment::subst)
@@ -185,9 +187,6 @@ BOOST_PYTHON_MODULE(SCons)
 			.def("Dump", &Dump)
 			.def("Clone", &Environment::clone)
 			.def("SConscript", (void(*)(const environment::Environment&, const std::string&))SConscript)
-			.def("WhereIs", subst_directive_args("WhereIs"))
-			.def("Split", subst_directive_args("Split"))
-			.def("Flatten", subst_directive_args("Flatten"))
 		;
 	}
 	to_python_converter<dependency_graph::NodeList, node_list_to_python>();
@@ -208,12 +207,12 @@ BOOST_PYTHON_MODULE(SCons)
 		def("SConscript", (void(*)(const std::string&))SConscript);
 		def("Export", raw_function(&Export));
 		def("Import", raw_function(&Import));
-		def("WhereIs", &WhereIs);
+		def_directive<BOOST_TYPEOF(WhereIs), WhereIs>(env, "WhereIs", (arg("program")));
 		def("Alias", &Alias, (arg("alias"), arg("targets") = object(), arg("action") = object()));
-		def("AddPreAction", &AddPreAction, (arg("target"), arg("action")));
-		def("AddPostAction", &AddPostAction, (arg("target"), arg("action")));
-		def("Split", &split);
-		def("Flatten", &flatten);
+		def_directive<BOOST_TYPEOF(AddPreAction), AddPreAction>(env, "AddPreAction", (arg("target"), arg("action")));
+		def_directive<BOOST_TYPEOF(AddPostAction), AddPostAction>(env, "AddPostAction", (arg("target"), arg("action")));
+		def_directive<BOOST_TYPEOF(split), split>(env, "Split", (arg("arg")));
+		def_directive<BOOST_TYPEOF(flatten), flatten>(env, "Flatten", (arg("arg")));
 	}
 }
 
