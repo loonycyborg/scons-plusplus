@@ -212,4 +212,10 @@ object make_environment(tuple args, dict kw)
 	return object();
 }
 
+object DefaultEnvironment(tuple args, dict kw)
+{
+	static object default_env = call_extended(import("SCons.Environment").attr("Environment"), args, kw);
+	return default_env;
+}
+
 }

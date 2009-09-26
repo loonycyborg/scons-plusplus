@@ -204,6 +204,7 @@ BOOST_PYTHON_MODULE(SCons)
 		s.attr("Builder") = import("SCons.Builder").attr("Builder");
 		s.attr("Environment") = import("SCons.Environment").attr("Environment");
 
+		def("DefaultEnvironment", raw_function(&DefaultEnvironment));
 		def("SConscript", (void(*)(const std::string&))SConscript);
 		def("Export", raw_function(&Export));
 		def("Import", raw_function(&Import));
