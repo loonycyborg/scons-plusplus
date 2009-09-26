@@ -180,6 +180,8 @@ object AddMethod(object, object, object);
 object SetDefault(tuple, dict);
 std::string Dump(const Environment& env);
 object make_environment(tuple, dict);
+environment::Environment::pointer default_environment(tuple, dict);
+environment::Environment::pointer default_environment();
 object DefaultEnvironment(tuple args, dict kw);
 
 }

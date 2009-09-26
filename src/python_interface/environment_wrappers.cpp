@@ -67,9 +67,8 @@ NodeWrapper Dir(environment::Environment::pointer, std::string name)
 
 NodeList Alias(object aliases, object sources, object actions)
 {
-	static environment::Environment::pointer env = environment::Environment::create();
 	action::ActionList action_list = make_actions(flatten(actions));
-	return builder::AliasBuilder(action_list)(*env, extract_nodes(flatten(aliases)), extract_nodes(flatten(sources)));
+	return builder::AliasBuilder(action_list)(*default_environment(), extract_nodes(flatten(aliases)), extract_nodes(flatten(sources)));
 }
 
 void Execute(environment::Environment::pointer env, object obj)
@@ -214,7 +213,18 @@ object make_environment(tuple args, dict kw)
 
 object DefaultEnvironment(tuple args, dict kw)
 {
-	static object default_env = call_extended(import("SCons.Environment").attr("Environment"), args, kw);
+	return object(default_environment());
+}
+
+environment::Environment::pointer default_environment()
+{
+	return default_environment(tuple(), dict());
+}
+
+environment::Environment::pointer default_environment(tuple args, dict kw)
+{
+	static environment::Environment::pointer default_env 
+		= extract<environment::Environment::pointer>(call_extended(import("SCons.Environment").attr("Environment"), args, kw));
 	return default_env;
 }
 
