@@ -37,9 +37,7 @@ void PythonAction::execute(const environment::Environment& env) const
 	try {
 		action_obj(env["TARGETS"], env["SOURCES"], env);
 	} catch(const error_already_set&) {
-		PyErr_Print();
-		PyErr_Clear();
-		throw std::runtime_error("A python exception was raised when executing action.");
+		throw_python_exc("A python exception was raised when executing action.");
 	}
 }
 
@@ -56,7 +54,6 @@ object call_action_factory(tuple args, dict kw)
 
 void ActionCaller::execute(const environment::Environment& env) const
 {
-	object format_exc = import("traceback").attr("format_exc");
 	try {
 		list args;
 		foreach(const object& arg, make_object_iterator_range(args_))
@@ -64,9 +61,7 @@ void ActionCaller::execute(const environment::Environment& env) const
 
 		call_extended(actfunc_, tuple(args), kw_);
 	} catch(const error_already_set&) {
-		PyErr_Print();
-		PyErr_Clear();
-		throw std::runtime_error("A python exception was raised when executing action.");
+		throw_python_exc("A python exception was raised when executing action.");
 	}
 }
 

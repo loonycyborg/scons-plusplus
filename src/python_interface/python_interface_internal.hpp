@@ -127,6 +127,18 @@ inline object reversed(object iter)
 	return reversed_func(iter);
 }
 
+inline void throw_python_exc(const std::string& msg)
+{
+	PyObject *exc, *val, *tb;
+	PyErr_Fetch(&exc, &val, &tb);
+	PyErr_NormalizeException(&exc, &val, &tb);
+	object traceback_lines = import("traceback").attr("format_exception")(
+			handle<PyObject>(exc), handle<PyObject>(val), handle<PyObject>(tb)
+	);
+	std::string traceback = extract<std::string>(str("\n").join(traceback_lines));
+	throw std::runtime_error(msg + "\n" + traceback);
+}
+
 }
 
 #endif

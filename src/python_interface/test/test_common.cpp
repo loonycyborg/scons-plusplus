@@ -10,9 +10,7 @@ using dependency_graph::Node;
 
 static void translate_error_already_set(const error_already_set&)
 {
-	PyErr_Print();
-	PyErr_Clear();
-	throw std::runtime_error("A python exception was thrown");
+	python_interface::throw_python_exc("A python exception was thrown");
 }
 
 struct python_setup
