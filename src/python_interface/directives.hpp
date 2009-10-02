@@ -67,7 +67,7 @@ namespace python_interface
 		{ \
 			return f(BOOST_PP_ENUM_SHIFTED(n, ARG_SUBST, unused)); \
 		}
-	BOOST_PP_REPEAT_FROM_TO(2, 4, DEFINE_SUBST_WAPPER, unused)
+	BOOST_PP_REPEAT_FROM_TO(2, 5, DEFINE_SUBST_WAPPER, unused)
 
 	template<typename F, F* f, typename NoSubstArgs, class Keywords>
 	void def_directive(object env_object, const char* name, const Keywords& keywords)

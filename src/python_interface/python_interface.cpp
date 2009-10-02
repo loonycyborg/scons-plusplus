@@ -167,7 +167,6 @@ BOOST_PYTHON_MODULE(SCons)
 			.def("Entry", &Entry)
 			.def("File", &File)
 			.def("Dir", &Dir)
-			.def("Alias", subst_directive_args("Alias"))
 			.def("Execute", &Execute)
 			.def("__getitem__", &get_item_from_env)
 			.def("__delitem__", &del_item_in_env)
@@ -209,7 +208,7 @@ BOOST_PYTHON_MODULE(SCons)
 		def("Export", raw_function(&Export));
 		def("Import", raw_function(&Import));
 		def_directive<BOOST_TYPEOF(WhereIs), WhereIs>(env, "WhereIs", (arg("program")));
-		def("Alias", &Alias, (arg("alias"), arg("targets") = object(), arg("action") = object()));
+		def_directive<BOOST_TYPEOF(Alias), Alias, boost::mpl::set_c<int, 3> >(env, "Alias", (arg("alias"), arg("targets") = object(), arg("action") = object()));
 		def_directive<BOOST_TYPEOF(AddPreAction), AddPreAction, boost::mpl::set_c<int, 2> >(env, "AddPreAction", (arg("target"), arg("action")));
 		def_directive<BOOST_TYPEOF(AddPostAction), AddPostAction, boost::mpl::set_c<int, 2> >(env, "AddPostAction", (arg("target"), arg("action")));
 		def_directive<BOOST_TYPEOF(split), split>(env, "Split", (arg("arg")));
