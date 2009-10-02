@@ -26,6 +26,8 @@
 #include <boost/function_types/result_type.hpp>
 #include <boost/function_types/parameter_types.hpp>
 #include <boost/function_types/function_type.hpp>
+#include <boost/preprocessor/repetition/enum_shifted.hpp>
+#include <boost/mpl/set_c.hpp>
 #include "environment.hpp"
 #include "python_interface/subst.hpp"
 
@@ -53,25 +55,21 @@ namespace python_interface
 		return expand_python(env, subst(env, str));
 	}
 
-	template <typename F, F* f>
-	typename boost::function_traits<F>::result_type subst_wrap_directive(
-			const environment::Environment& env,
-			typename boost::function_traits<F>::arg1_type x,
-			typename boost::function_traits<F>::arg2_type y
-			)
-	{
-		return f(subst_arg(env, x), y);
-	}
-	template <typename F, F* f>
-	typename boost::function_traits<F>::result_type subst_wrap_directive(
-			const environment::Environment& env,
-			typename boost::function_traits<F>::arg1_type x			
-			)
-	{
-		return f(subst_arg(env, x));
-	}
+	#define ARG_DECL(z, n, data) typename BOOST_PP_CAT(boost::function_traits<F>::arg, BOOST_PP_CAT(n, _type)) BOOST_PP_CAT(arg, n)
+	#define ARG_SUBST(z, n, data) boost::mpl::has_key<NoSubstArgs, boost::mpl::integral_c<int, n> >::type::value ? BOOST_PP_CAT(arg, n) : subst_arg(env, BOOST_PP_CAT(arg, n))
 
-	template<typename F, F* f, class Keywords>
+	#define DEFINE_SUBST_WAPPER(z, n, data) \
+		template <typename F, F* f, typename NoSubstArgs> \
+		typename boost::function_traits<F>::result_type subst_wrap_directive( \
+			const environment::Environment& env, \
+			BOOST_PP_ENUM_SHIFTED(n, ARG_DECL, unused) \
+			) \
+		{ \
+			return f(BOOST_PP_ENUM_SHIFTED(n, ARG_SUBST, unused)); \
+		}
+	BOOST_PP_REPEAT_FROM_TO(2, 4, DEFINE_SUBST_WAPPER, unused)
+
+	template<typename F, F* f, typename NoSubstArgs, class Keywords>
 	void def_directive(object env_object, const char* name, const Keywords& keywords)
 	{
 		def(name, f, keywords);
@@ -82,7 +80,12 @@ namespace python_interface
 					typename boost::mpl::push_front<boost::function_types::parameter_types<F>, const environment::Environment&>::type,
 						typename boost::function_types::result_type<F>::type >::type
 			>::type* wrapper_type;
-		def(name, (wrapper_type)subst_wrap_directive<F, f>, (arg("env"), keywords));
+		def(name, (wrapper_type)subst_wrap_directive<F, f, NoSubstArgs>, (arg("env"), keywords));
+	}
+	template<typename F, F* f, class Keywords>
+	inline void def_directive(object env_object, const char* name, const Keywords& keywords)
+	{
+		def_directive<F, f, boost::mpl::set_c<int>, Keywords>(env_object, name, keywords);
 	}
 }
 
