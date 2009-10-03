@@ -8,6 +8,9 @@
 
 using dependency_graph::Node;
 
+namespace python_interface
+{
+
 static void translate_error_already_set(const error_already_set&)
 {
 	python_interface::throw_python_exc("A python exception was thrown");
@@ -50,3 +53,5 @@ void write_build_graph(std::ostream& os, Node end_goal)
 }
 
 BOOST_GLOBAL_FIXTURE(python_setup);
+
+}

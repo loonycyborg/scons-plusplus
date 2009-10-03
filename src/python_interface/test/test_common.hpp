@@ -8,6 +8,9 @@
 #define SCONSPP_EXECFILE(name) exec_file(name, ns, ns)
 #define SCONSPP_CHECK(cond) BOOST_CHECK_MESSAGE((extract<bool>(eval(cond, ns, ns))), cond)
 
+namespace python_interface
+{
+
 struct python_exception_matches
 {
 	PyObject* type;
@@ -31,3 +34,5 @@ struct sconspp_fixture
 };
 
 void write_build_graph(std::ostream& os, dependency_graph::Node end_goal);
+
+}

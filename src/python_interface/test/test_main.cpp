@@ -1,6 +1,9 @@
 #define BOOST_TEST_MODULE scons_plus_plus regression tests
 #include "test_common.hpp"
 
+namespace python_interface
+{
+
 BOOST_FIXTURE_TEST_SUITE(Environment, sconspp_fixture)
 BOOST_AUTO_TEST_CASE(test_variable_access)
 {
@@ -108,3 +111,5 @@ BOOST_AUTO_TEST_CASE(test_helpers)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}

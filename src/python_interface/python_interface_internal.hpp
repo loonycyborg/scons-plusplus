@@ -28,12 +28,11 @@
 #include <boost/filesystem/path.hpp>
 #define foreach BOOST_FOREACH
 
-using namespace boost::python;
-
-extern dict main_namespace;
+extern boost::python::dict main_namespace;
 
 namespace python_interface
 {
+using namespace boost::python;
 
 inline bool is_instance(object obj, object type)
 {

@@ -3,6 +3,10 @@
 #include "python_interface/node_wrapper.hpp"
 
 #include <boost/test/output_test_stream.hpp>
+
+namespace python_interface
+{
+
 using boost::test_tools::output_test_stream;
 
 BOOST_FIXTURE_TEST_SUITE(Builders, sconspp_fixture)
@@ -15,3 +19,5 @@ BOOST_AUTO_TEST_CASE(builders)
 	BOOST_CHECK(output.match_pattern());
 }
 BOOST_AUTO_TEST_SUITE_END()
+
+}

@@ -30,6 +30,7 @@ using std::string;
 
 namespace
 {
+	using namespace python_interface;
 	boost::filesystem::path sconstruct_file, sconstruct_dir;
 
 	dict exports;
