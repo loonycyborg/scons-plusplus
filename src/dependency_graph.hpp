@@ -61,7 +61,7 @@ class node_properties
 	public:
 	virtual ~node_properties() {}
 	virtual std::string name() const = 0;
-	virtual bool up_to_date(const NodeList& targets) const = 0;
+	virtual bool unchanged(const NodeList& targets) const = 0;
 
 	boost::shared_ptr<taskmaster::Task> task() const { return task_; }
 };
@@ -80,7 +80,7 @@ class dummy_node : public node_properties
 	public:
 	dummy_node(const std::string& name) : name_(name) {}
 	std::string name() const { return name_; }
-	bool up_to_date(const NodeList& targets) const { return true; }
+	bool unchanged(const NodeList& targets) const { return true; }
 };
 
 inline Node add_dummy_node(const std::string& name)

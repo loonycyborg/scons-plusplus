@@ -33,7 +33,7 @@ class Alias : public node_properties
 	Alias(const std::string& name);
 	~Alias();
 	std::string name() const { return name_; }
-	bool up_to_date(const NodeList&) const { return false; }
+	bool unchanged(const NodeList&) const { return false; }
 };
 
 Node add_alias(const std::string& name);

@@ -73,7 +73,7 @@ FSEntry::FSEntry(const std::string name, boost::logic::tribool is_file) : path_(
 		abspath_ = path_;
 }
 
-bool FSEntry::up_to_date(const NodeList& targets) const
+bool FSEntry::unchanged(const NodeList& targets) const
 {
 	std::time_t source_timestamp = timestamp();
 	bool up_to_date = true;
@@ -89,7 +89,7 @@ bool FSEntry::up_to_date(const NodeList& targets) const
 		}
 	}
 	if(up_to_date)
-		std::cout << name() << " is up-to-date." << std::endl;
+		std::cout << name() << " is unchanged." << std::endl;
 	return up_to_date;
 }
 
