@@ -41,6 +41,7 @@ namespace python_interface
 
 	void AddPreAction(object target, object action);
 	void AddPostAction(object target, object action);
+	void Depends(object target, object dependency);
 
 	template<typename T>
 	inline T subst_arg(const environment::Environment&, const T&);

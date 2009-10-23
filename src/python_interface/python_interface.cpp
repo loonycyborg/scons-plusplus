@@ -213,6 +213,7 @@ BOOST_PYTHON_MODULE(SCons)
 		def_directive<BOOST_TYPEOF(AddPostAction), AddPostAction, boost::mpl::set_c<int, 2> >(env, "AddPostAction", (arg("target"), arg("action")));
 		def_directive<BOOST_TYPEOF(split), split>(env, "Split", (arg("arg")));
 		def_directive<BOOST_TYPEOF(flatten), flatten>(env, "Flatten", (arg("arg")));
+		def_directive<BOOST_TYPEOF(Depends), Depends>(env, "Depends", (arg("target"), arg("dependency")));
 	}
 }
 

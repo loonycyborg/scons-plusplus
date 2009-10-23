@@ -86,4 +86,16 @@ void AddPostAction(object target, object action)
 	AddFooAction<std::back_insert_iterator>(target, action);
 }
 
+void Depends(object target, object dependency)
+{
+	NodeList
+		targets = extract_file_nodes(flatten(target)),
+		dependencies = extract_file_nodes(flatten(dependency));
+	foreach(Node t, targets) {
+		foreach(Node d, dependencies) {
+			add_edge(t, d, dependency_graph::graph);
+		}
+	}
+}
+
 }

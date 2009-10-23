@@ -1,5 +1,6 @@
 #define BOOST_TEST_MODULE scons_plus_plus regression tests
 #include "test_common.hpp"
+#include "python_interface/node_wrapper.hpp"
 
 namespace python_interface
 {
@@ -108,6 +109,18 @@ BOOST_AUTO_TEST_CASE(test_helpers)
 	SCONSPP_CHECK("bar == [1, 2, 3]");
 	SCONSPP_EXEC("bar = Flatten([[1,2,[3,4]], [[5,6],7,[]]])");
 	SCONSPP_CHECK("bar == [1, 2, 3, 4, 5, 6, 7]");
+}
+
+BOOST_AUTO_TEST_CASE(test_depends)
+{
+	using boost::is_adjacent;
+	SCONSPP_EXEC("target = Alias('test_depends_target')");
+	SCONSPP_EXEC("dependency = Alias('test_depends_dependency')");
+	SCONSPP_EXEC("Depends(target, dependency)");
+	Node 
+		target = python_interface::extract_node(ns["target"][0]),
+		dependency = python_interface::extract_node(ns["dependency"][0]);
+	BOOST_CHECK(is_adjacent(dependency_graph::graph, target, dependency));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
