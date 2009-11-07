@@ -50,6 +50,7 @@ using boost::phoenix::push_back;
 using boost::phoenix::bind;
 
 using dependency_graph::Node;
+using dependency_graph::Edge;
 using dependency_graph::NodeList;
 
 struct TaskListItem
@@ -144,7 +145,6 @@ namespace taskmaster
 					up_to_date = false;
 					break;
 				}
-				typedef boost::graph_traits<dependency_graph::Graph>::edge_descriptor Edge;
 				foreach(Edge dependency, out_edges(build_target, dependency_graph::graph)) {
 					Node build_source = target(dependency, dependency_graph::graph);
 					if(!dependency_graph::graph[build_source]->unchanged(item.targets)) {

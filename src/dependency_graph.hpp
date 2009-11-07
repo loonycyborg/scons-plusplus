@@ -50,6 +50,7 @@ using boost::add_edge;
 class node_properties;
 typedef boost::adjacency_list<vecS, vecS, directedS, boost::shared_ptr<node_properties> > Graph;
 typedef graph_traits<Graph>::vertex_descriptor Node;
+typedef graph_traits<Graph>::edge_descriptor Edge;
 typedef std::vector<Node> NodeList;
 
 class node_properties
