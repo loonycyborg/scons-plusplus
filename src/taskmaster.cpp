@@ -140,10 +140,17 @@ namespace taskmaster
 
 			bool up_to_date = true;
 			foreach(Node build_target, item.targets) {
+				if(dependency_graph::graph[build_target]->needs_rebuild()) {
+					up_to_date = false;
+					break;
+				}
 				typedef boost::graph_traits<dependency_graph::Graph>::edge_descriptor Edge;
 				foreach(Edge dependency, out_edges(build_target, dependency_graph::graph)) {
 					Node build_source = target(dependency, dependency_graph::graph);
-					up_to_date = up_to_date && dependency_graph::graph[build_source]->unchanged(item.targets);
+					if(!dependency_graph::graph[build_source]->unchanged(item.targets)) {
+						up_to_date = false;
+						break;
+					}
 				}
 			}
 			if(up_to_date)

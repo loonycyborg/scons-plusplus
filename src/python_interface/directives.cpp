@@ -98,4 +98,12 @@ void Depends(object target, object dependency)
 	}
 }
 
+object AlwaysBuild(tuple args, dict keywords)
+{
+	NodeList nodes = extract_file_nodes(flatten(args));
+	foreach(Node node, nodes)
+		dependency_graph::graph[node]->always_build();
+	return object();
+}
+
 }

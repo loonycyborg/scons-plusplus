@@ -58,11 +58,18 @@ class node_properties
 	friend class builder::Builder;
 	void set_task(boost::shared_ptr<taskmaster::Task> task) { task_ = task; }
 
+	protected:
+	bool always_build_;
+
 	public:
+	node_properties() : always_build_(false) {}
 	virtual ~node_properties() {}
 	virtual std::string name() const = 0;
-	virtual bool unchanged(const NodeList& targets) const = 0;
 
+	virtual bool unchanged(const NodeList& targets) const = 0;
+	virtual bool needs_rebuild() const { return always_build_; }
+
+	void always_build() { always_build_ = true; }
 	boost::shared_ptr<taskmaster::Task> task() const { return task_; }
 };
 

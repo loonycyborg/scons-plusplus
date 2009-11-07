@@ -42,6 +42,7 @@ namespace python_interface
 	void AddPreAction(object target, object action);
 	void AddPostAction(object target, object action);
 	void Depends(object target, object dependency);
+	object AlwaysBuild(tuple args, dict keywords);
 
 	template<typename T>
 	inline T subst_arg(const environment::Environment&, const T&);

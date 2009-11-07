@@ -214,6 +214,7 @@ BOOST_PYTHON_MODULE(SCons)
 		def_directive<BOOST_TYPEOF(split), split>(env, "Split", (arg("arg")));
 		def_directive<BOOST_TYPEOF(flatten), flatten>(env, "Flatten", (arg("arg")));
 		def_directive<BOOST_TYPEOF(Depends), Depends>(env, "Depends", (arg("target"), arg("dependency")));
+		def("AlwaysBuild", raw_function(&AlwaysBuild));
 	}
 }
 
