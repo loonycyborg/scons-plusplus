@@ -22,6 +22,7 @@
 #define PYTHON_INTERFACE_DIRECTIVES_HPP
 
 #include <boost/python.hpp>
+#include <boost/python/raw_function.hpp>
 #include <boost/type_traits.hpp>
 #include <boost/function_types/result_type.hpp>
 #include <boost/function_types/parameter_types.hpp>
@@ -88,6 +89,18 @@ namespace python_interface
 	inline void def_directive(object env_object, const char* name, const Keywords& keywords)
 	{
 		def_directive<F, f, boost::mpl::set_c<int>, Keywords>(env_object, name, keywords);
+	}
+	template <object (*directive)(tuple, dict)>
+	object subst_wrap_directive_raw(tuple args, dict keywords)
+	{
+		return directive(tuple(subst(extract<const environment::Environment&>(args[0]), args.slice(1, _))), keywords);
+	}
+	template <object (*directive)(tuple, dict)>
+	inline void def_directive_raw(object env_object, const char* name)
+	{
+		def(name, raw_function(directive));
+		scope s(env_object);
+		def(name, raw_function(subst_wrap_directive_raw<directive>));
 	}
 }
 
