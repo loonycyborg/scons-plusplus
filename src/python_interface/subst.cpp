@@ -34,14 +34,23 @@ namespace
 {
 
 using boost::spirit::raw;
+#if BOOST_VERSION < 104100
 using boost::spirit::char_;
+#else
+using boost::spirit::qi::char_;
+#endif
 using boost::spirit::qi::parse;
 using boost::spirit::qi::rule;
 using boost::spirit::qi::grammar;
 using boost::spirit::ascii::alnum;
 using boost::spirit::ascii::alpha;
+#if BOOST_VERSION < 104100
 using boost::spirit::arg_names::_val;
 namespace args = boost::spirit::arg_names;
+#else
+using boost::spirit::_val;
+namespace args = boost::spirit;
+#endif
 using boost::phoenix::function;
 using boost::phoenix::ref;
 
