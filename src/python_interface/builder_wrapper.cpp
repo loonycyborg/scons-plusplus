@@ -100,12 +100,15 @@ class PythonBuilder : public builder::Builder
 	
 	bool single_source_;
 
+	bool multi_;
+
 	public:
 	PythonBuilder(
 			object actions,
 			object target_factory, object source_factory, object prefix, object suffix, bool ensure_suffix, object src_suffix,
 			object emitter, object src_builder,
-			bool single_source) :
+			bool single_source,
+			bool multi) :
 		actions_(actions),
 		target_factory_(target_factory),
 		source_factory_(source_factory),
@@ -115,7 +118,8 @@ class PythonBuilder : public builder::Builder
 		src_suffix_(src_suffix),
 		emitter_(emitter),
 		src_builder_(src_builder),
-		single_source_(single_source)
+		single_source_(single_source),
+		multi_(multi)
 	{}
 
 	dependency_graph::NodeList operator()(
@@ -178,16 +182,22 @@ class PythonBuilder : public builder::Builder
 			source_nodes.swap(emitted_sources);
 		}
 
-		if(is_dict(actions_)) {
-			if(!sources.empty()) {
-				actions_obj = dict(actions_)[properties<dependency_graph::FSEntry>(source_nodes[0]).suffix()];
-			}
+		if(multi_ && graph[target_nodes[0]]->task()) {
+			graph[target_nodes[0]]->task()->add_sources(source_nodes);
 		} else {
-			actions_obj = actions_;
-		}
-		actions = make_actions(actions_obj);
 
-		create_task(env, target_nodes, source_nodes, actions);
+			if(is_dict(actions_)) {
+				if(!sources.empty()) {
+					actions_obj = dict(actions_)[properties<dependency_graph::FSEntry>(source_nodes[0]).suffix()];
+				}
+			} else {
+				actions_obj = actions_;
+			}
+			actions = make_actions(actions_obj);
+
+			create_task(env, target_nodes, source_nodes, actions);
+		}
+
 		return target_nodes;
 	}
 
@@ -309,7 +319,8 @@ object make_builder(const tuple&, const dict& kw)
 					kw.get("src_suffix"),
 					kw.get("emitter"),
 					kw.get("src_builder"),
-					kw.get("single_source")
+					kw.get("single_source"),
+					kw.get("multi")
 	)));
 }
 

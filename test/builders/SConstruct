@@ -17,7 +17,12 @@ builder = Builder(
     emitter = e,
     ensure_suffix = True)
 
-env.Append(BUILDERS = { "Blah" : builder })
+multi_builder = Builder(
+	action = "echo multi_builder targets: $TARGETS sources: $SOURCES",
+	multi = True
+	)
+
+env.Append(BUILDERS = { "Blah" : builder , "Multi" : multi_builder })
 
 env.Command("qux.blah", "SConstruct", "echo targets: $TARGETS  sources: $SOURCES")
 env.AddPreAction("qux.blah", "echo PreAction $TARGET")
@@ -25,6 +30,7 @@ env.AddPostAction("qux.blah", "echo PostAction $TARGET")
 blah = env.Blah("foo.bar", "qux")
 env.Command("SConstruct.blah", "SConstruct", "echo targets: $TARGETS sources: $SOURCES")
 print env.Blah("SConstruct")
-baz = env.Command(Alias("baz"), [blah, "blah_SConstruct.blah"], "echo targets: $TARGETS sources: $SOURCES")
+baz = env.Multi(Alias("baz"), blah)
+env.Multi(Alias("baz"), "blah_SConstruct.blah")
 AlwaysBuild(baz)
 env.Default(Alias("baz"))
