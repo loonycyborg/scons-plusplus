@@ -23,8 +23,18 @@
 
 #include "task.hpp"
 
+using dependency_graph::graph;
+
 namespace taskmaster
 {
+
+void Task::add_sources(const dependency_graph::NodeList& sources)
+{
+	std::copy(sources.begin(), sources.end(), std::back_inserter(sources_));
+	foreach(const dependency_graph::Node& target, targets_)
+		foreach(const dependency_graph::Node& source, sources)
+			add_edge(target, source, graph);
+}
 
 void Task::execute() const
 {

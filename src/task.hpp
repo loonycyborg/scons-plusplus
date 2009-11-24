@@ -48,13 +48,16 @@ class Task
 		const dependency_graph::NodeList& targets,
 		const dependency_graph::NodeList& sources,
 		const action::ActionList& actions) :
-			targets_(targets), sources_(sources),
+			targets_(targets),
 			actions_(actions), env_(env.shared_from_this())
-		{}
+		{
+			add_sources(sources);
+		}
 	public:
 
 	const dependency_graph::NodeList& targets() const { return targets_; }
 	const dependency_graph::NodeList& sources() const { return sources_; }
+	void add_sources(const dependency_graph::NodeList& sources);
 	action::ActionList& actions() { return actions_; }
 
 	void execute() const;

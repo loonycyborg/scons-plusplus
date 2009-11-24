@@ -51,9 +51,6 @@ void Builder::create_task(
 	boost::shared_ptr<Task> task(new Task(env, targets, sources, actions));
 	foreach(const dependency_graph::Node& node, targets)
 		graph[node]->set_task(task);
-	foreach(const dependency_graph::Node& target, targets)
-		foreach(const dependency_graph::Node& source, sources)
-			add_edge(target, source, graph);
 }
 
 template <Node (*factory)(const std::string&)>
