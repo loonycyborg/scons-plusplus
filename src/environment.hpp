@@ -26,6 +26,7 @@
 #include <vector>
 #include <boost/shared_ptr.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/enable_shared_from_this.hpp>
 
 #include "dependency_graph.hpp"
 
@@ -45,7 +46,7 @@ class Variable
 	virtual pointer clone() const = 0;
 };
 
-class Environment
+class Environment : public boost::enable_shared_from_this<Environment>
 {
 	typedef std::map<std::string, Variable::pointer> Variables;
 	Variables variables_;
@@ -54,6 +55,7 @@ class Environment
 
 	public:
 	typedef boost::shared_ptr<Environment> pointer;
+	typedef boost::shared_ptr<const Environment> const_pointer;
 
 	std::string subst(const std::string&) const;
 	Variable::const_pointer operator[](const std::string str) const

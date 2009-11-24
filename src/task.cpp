@@ -28,8 +28,17 @@ namespace taskmaster
 
 void Task::execute() const
 {
+	environment::Environment::pointer task_env = env_->override();
+	if(targets_.size()) {
+		(*task_env)["TARGETS"] = environment::make_variable(targets_.begin(), targets_.end());
+		(*task_env)["TARGET"] = environment::make_variable(targets_[0]);
+	}
+	if(sources_.size()) {
+		(*task_env)["SOURCES"] = environment::make_variable(sources_.begin(), sources_.end());
+		(*task_env)["SOURCE"] = environment::make_variable(sources_[0]);
+	}
 	foreach(const action::Action::pointer& action, actions_)
-		action::execute(action, *env_);
+		action::execute(action, *task_env);
 }
 
 }

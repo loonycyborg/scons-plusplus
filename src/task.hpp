@@ -40,16 +40,16 @@ class Task
 
 	action::ActionList actions_;
 
-	environment::Environment::pointer env_;
+	environment::Environment::const_pointer env_;
 
 	friend class builder::Builder;
 	Task(
-		const environment::Environment::pointer& env,
+		const environment::Environment& env,
 		const dependency_graph::NodeList& targets,
 		const dependency_graph::NodeList& sources,
 		const action::ActionList& actions) :
 			targets_(targets), sources_(sources),
-			actions_(actions), env_(env)
+			actions_(actions), env_(env.shared_from_this())
 		{}
 	public:
 

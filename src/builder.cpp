@@ -48,16 +48,7 @@ void Builder::create_task(
 		const action::ActionList& actions
 		) const
 {
-	environment::Environment::pointer task_env = env.override();
-	if(targets.size()) {
-		(*task_env)["TARGETS"] = environment::make_variable(targets.begin(), targets.end());
-		(*task_env)["TARGET"] = environment::make_variable(targets[0]);
-	}
-	if(sources.size()) {
-		(*task_env)["SOURCES"] = environment::make_variable(sources.begin(), sources.end());
-		(*task_env)["SOURCE"] = environment::make_variable(sources[0]);
-	}
-	boost::shared_ptr<Task> task(new Task(task_env, targets, sources, actions));
+	boost::shared_ptr<Task> task(new Task(env, targets, sources, actions));
 	foreach(const dependency_graph::Node& node, targets)
 		graph[node]->set_task(task);
 	foreach(const dependency_graph::Node& target, targets)

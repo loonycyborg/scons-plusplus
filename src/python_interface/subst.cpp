@@ -151,9 +151,9 @@ object subst(const environment::Environment& env, const std::string& input)
 	variable_ref<std::string::const_iterator> vref;
 	python_code<std::string::const_iterator> python;
 	interpolator = *(
-		vref[combine_subst(ref(env), _val, lazy_expand(ref(env), args::_1))] ||
-		python[combine_subst(ref(env), _val, lazy_eval_python(ref(env), args::_1))] ||
-		char_[combine_subst(ref(env), _val, args::_1)]
+		vref[combine_subst(boost::phoenix::ref(env), _val, lazy_expand(boost::phoenix::ref(env), args::_1))] ||
+		python[combine_subst(boost::phoenix::ref(env), _val, lazy_eval_python(boost::phoenix::ref(env), args::_1))] ||
+		char_[combine_subst(boost::phoenix::ref(env), _val, args::_1)]
 		);
 	std::string::const_iterator iter = input.begin();
 	parse(iter, input.end(), interpolator, result);
