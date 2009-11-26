@@ -132,7 +132,7 @@ inline void throw_python_exc(const std::string& msg)
 	PyErr_Fetch(&exc, &val, &tb);
 	PyErr_NormalizeException(&exc, &val, &tb);
 	object traceback_lines = import("traceback").attr("format_exception")(
-			handle<PyObject>(exc), handle<PyObject>(val), handle<PyObject>(tb)
+			handle<PyObject>(allow_null(exc)), handle<PyObject>(allow_null(val)), handle<PyObject>(allow_null(tb))
 	);
 	std::string traceback = extract<std::string>(str("\n").join(traceback_lines));
 	throw std::runtime_error(msg + "\n" + traceback);
