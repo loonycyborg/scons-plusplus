@@ -26,6 +26,7 @@
 #define foreach BOOST_FOREACH
 
 #include "action_wrapper.hpp"
+#include "environment_wrappers.hpp"
 
 using std::string;
 
@@ -35,7 +36,7 @@ namespace python_interface
 void PythonAction::execute(const environment::Environment& env) const
 {
 	try {
-		action_obj(env["TARGETS"], env["SOURCES"], env);
+		action_obj(variable_to_python(env["TARGETS"]), variable_to_python(env["SOURCES"]), env);
 	} catch(const error_already_set&) {
 		throw_python_exc("A python exception was raised when executing action.");
 	}
