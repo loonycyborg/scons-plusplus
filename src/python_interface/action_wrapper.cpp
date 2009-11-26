@@ -36,7 +36,10 @@ namespace python_interface
 void PythonAction::execute(const environment::Environment& env) const
 {
 	try {
-		action_obj(variable_to_python(env["TARGETS"]), variable_to_python(env["SOURCES"]), env);
+		action_obj(
+			env["TARGETS"] ? variable_to_python(env["TARGETS"]) : object(),
+			env["SOURCES"] ? variable_to_python(env["SOURCES"]) : object(), 
+		env);
 	} catch(const error_already_set&) {
 		throw_python_exc("A python exception was raised when executing action.");
 	}
