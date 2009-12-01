@@ -65,12 +65,12 @@ Node add_entry(const std::string& name, boost::logic::tribool is_file)
 	return file;
 }
 
-FSEntry::FSEntry(const std::string name, boost::logic::tribool is_file) : path_(name), is_file_(is_file)
+FSEntry::FSEntry(path name, boost::logic::tribool is_file) : path_(name), is_file_(is_file)
 {
-	if(!fs_root.empty())
-		abspath_ = fs_root / path_;
-	else
+	if(name.is_complete())
 		abspath_ = path_;
+	else
+		abspath_ = fs_root / path_;
 }
 
 bool FSEntry::unchanged(const NodeList& targets) const
