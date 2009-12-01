@@ -31,9 +31,6 @@ namespace dependency_graph
 
 using boost::filesystem::path;
 
-typedef std::map<path, Node> FS;
-extern FS fs;
-
 class FSEntry : public node_properties
 {
 	path path_;

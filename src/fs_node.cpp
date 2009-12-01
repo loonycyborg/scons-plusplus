@@ -26,13 +26,15 @@
 
 namespace
 {
-	boost::filesystem::path fs_root;
+
+boost::filesystem::path fs_root;
+typedef std::map<boost::filesystem::path, dependency_graph::Node> FS;
+FS fs;
+
 }
 
 namespace dependency_graph
 {
-
-FS fs;
 
 void set_fs_root(const path& path)
 {
