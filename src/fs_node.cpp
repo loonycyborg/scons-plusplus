@@ -51,7 +51,12 @@ void set_fs_root(const path& path)
 
 Node add_entry(const std::string& name, boost::logic::tribool is_file)
 {
-	path filename = util::canonicalize(system_complete(path(name)));
+	path filename;
+	if(name[0] == '#')
+		filename = fs_root / name.substr(1);
+	else
+		filename = system_complete(path(name));
+	filename = util::canonicalize(filename);
 	if(!fs_root.empty())
 		filename = util::to_relative(filename, fs_root);
 
