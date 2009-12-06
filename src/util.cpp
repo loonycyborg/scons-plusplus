@@ -81,13 +81,13 @@ boost::filesystem::path to_relative(const boost::filesystem::path& p, const boos
 	assert(p.is_complete());
 	assert(base.is_complete());
 	boost::filesystem::path::iterator path_iter = p.begin(), base_iter = base.begin();
-	for(;; path_iter++, base_iter++) {
+	for(;; ++path_iter, ++base_iter) {
 		if(path_iter == p.end()) {
 			return p;
 		}
 		if(base_iter == base.end()) {
 			boost::filesystem::path result;
-			for(;path_iter != p.end(); path_iter++) {
+			for(;path_iter != p.end(); ++path_iter) {
 				result /= *path_iter;
 			}
 			return result;
@@ -101,7 +101,7 @@ boost::filesystem::path to_relative(const boost::filesystem::path& p, const boos
 boost::filesystem::path canonicalize(const boost::filesystem::path& p)
 {
 	std::vector<boost::filesystem::path::iterator> canonicalized_path;
-	for(boost::filesystem::path::iterator i = p.begin(); i != p.end(); i++) {
+	for(boost::filesystem::path::iterator i = p.begin(); i != p.end(); ++i) {
 		if(*i == ".")
 			continue;
 		if(*i == "..") {
