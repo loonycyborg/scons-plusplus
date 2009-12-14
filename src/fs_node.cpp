@@ -21,15 +21,105 @@
 #include "fs_node.hpp"
 #include "util.hpp"
 
+#include <fnmatch.h>
+#include <boost/optional.hpp>
 #include <boost/foreach.hpp>
 #define foreach BOOST_FOREACH
 
 namespace
 {
 
+using boost::optional;
+using boost::filesystem::path;
+using std::map;
+using std::string;
+using dependency_graph::Node;
+using dependency_graph::NodeList;
+using dependency_graph::graph;
+
+struct fs_trie
+{
+	optional<Node> node;
+	map<string, fs_trie> children;
+	typedef map<string, fs_trie>::iterator child_iterator;
+	typedef map<string, fs_trie>::const_iterator const_child_iterator;
+
+	Node add_entry(const path& p, boost::logic::tribool is_file)
+	{
+		path::const_iterator iter = p.begin();
+		return add_entry(iter, p, is_file);
+	}
+	Node add_entry(path::const_iterator& iter, const path& entry_path, boost::logic::tribool is_file)
+	{
+		if(iter == entry_path.end()) {
+			if(!node) {
+				node = add_vertex(graph);
+				graph[node.get()].reset(new dependency_graph::FSEntry(entry_path.string(), is_file));
+			}
+			return node.get();
+		} else {
+			string elem = *iter;
+			return children[elem].add_entry(++iter, entry_path, is_file);
+		}
+	}
+	optional<Node> get(const path& p) const
+	{
+		path::const_iterator iter = p.begin();
+		return get(iter, p.end());
+	}
+	optional<Node> get(path::const_iterator& iter, const path::const_iterator& iter_end) const
+	{
+		if(iter == iter_end)
+			return node;
+
+		const_child_iterator i = children.find(*iter);
+		if(i == children.end())
+			return optional<Node>();
+		return i->second.get(++iter, iter_end);
+	}
+	NodeList glob(const path& pattern) const
+	{
+		path::const_iterator iter = pattern.begin();
+		NodeList result;
+		glob(iter, pattern.end(), result);
+		return result;
+	}
+	void glob(path::const_iterator& iter, const path::const_iterator& iter_end, NodeList& result) const
+	{
+		if(iter == iter_end) {
+			if(node) {
+				result.push_back(node.get());
+			}
+			return;
+		}
+
+		const char* pattern = iter->c_str();
+		path::iterator next_pattern = ++iter;
+		for(const_child_iterator i = children.begin(); i != children.end(); ++i) {
+			if(fnmatch(pattern, i->first.c_str(), FNM_NOESCAPE) == 0) {
+				i->second.glob(next_pattern, iter_end, result);
+			}
+		}
+	}
+	void dump(int nesting_level = 0) const
+	{
+		if(node)
+			std::cout << node.get();
+		else
+			std::cout << "N";
+		std::cout << std::endl;
+		nesting_level++;
+		for(const_child_iterator i = children.begin(); i != children.end(); ++i) {
+			for(int j = 0; j < nesting_level; j++)
+				std::cout << '-';
+			std::cout << i->first << ' ';
+			i->second.dump(nesting_level);
+		}
+	}
+};
+
 boost::filesystem::path fs_root;
-typedef std::map<boost::filesystem::path, dependency_graph::Node> FS;
-FS fs;
+fs_trie fs;
 
 }
 
@@ -60,16 +150,7 @@ Node add_entry(const std::string& name, boost::logic::tribool is_file)
 	if(!fs_root.empty())
 		filename = util::to_relative(filename, fs_root);
 
-	Node file;
-	FS::iterator file_iter = fs.find(filename);
-	if(file_iter == fs.end()) {
-		file = add_vertex(graph);
-		graph[file].reset(new FSEntry(filename.string(), is_file));
-		fs[filename] = file;
-	} else {
-		file = file_iter->second;
-	}
-	return file;
+	return fs.add_entry(filename, is_file);
 }
 
 FSEntry::FSEntry(path name, boost::logic::tribool is_file) : path_(name), is_file_(is_file)
