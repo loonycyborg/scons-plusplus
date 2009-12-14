@@ -61,6 +61,7 @@ class FSEntry : public node_properties
 void set_fs_root(const path& path);
 
 Node add_entry(const std::string& name, boost::logic::tribool is_file);
+NodeList glob(const std::string& pattern);
 
 inline Node add_entry_indeterminate(const std::string& name)
 {

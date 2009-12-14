@@ -93,10 +93,10 @@ struct fs_trie
 			return;
 		}
 
-		const char* pattern = iter->c_str();
+		std::string pattern = *iter;
 		path::iterator next_pattern = ++iter;
 		for(const_child_iterator i = children.begin(); i != children.end(); ++i) {
-			if(fnmatch(pattern, i->first.c_str(), FNM_NOESCAPE) == 0) {
+			if(fnmatch(pattern.c_str(), i->first.c_str(), FNM_NOESCAPE) == 0) {
 				i->second.glob(next_pattern, iter_end, result);
 			}
 		}
@@ -139,7 +139,7 @@ void set_fs_root(const path& path)
 	assert(fs_root.is_complete());
 }
 
-Node add_entry(const std::string& name, boost::logic::tribool is_file)
+path canonical_path(const std::string& name)
 {
 	path filename;
 	if(name[0] == '#')
@@ -149,8 +149,17 @@ Node add_entry(const std::string& name, boost::logic::tribool is_file)
 	filename = util::canonicalize(filename);
 	if(!fs_root.empty())
 		filename = util::to_relative(filename, fs_root);
+	return filename;
+}
 
-	return fs.add_entry(filename, is_file);
+Node add_entry(const std::string& name, boost::logic::tribool is_file)
+{
+	return fs.add_entry(canonical_path(name), is_file);
+}
+
+NodeList glob(const std::string& pattern)
+{
+	return fs.glob(canonical_path(pattern));
 }
 
 FSEntry::FSEntry(path name, boost::logic::tribool is_file) : path_(name), is_file_(is_file)

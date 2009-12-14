@@ -5,6 +5,7 @@
 #include <boost/graph/graphviz.hpp>
 
 #include "taskmaster.hpp"
+#include "fs_node.hpp"
 
 using dependency_graph::Node;
 
@@ -22,6 +23,7 @@ struct python_setup
 	{
 		python_interface::init_python();
 		boost::unit_test::unit_test_monitor.register_exception_translator<error_already_set>(&translate_error_already_set);
+		dependency_graph::set_fs_root(boost::filesystem::current_path());
 	}
 };
 

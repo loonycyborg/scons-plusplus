@@ -123,6 +123,18 @@ BOOST_AUTO_TEST_CASE(test_depends)
 	BOOST_CHECK(is_adjacent(dependency_graph::graph, target, dependency));
 }
 
+BOOST_AUTO_TEST_CASE(test_glob)
+{
+	SCONSPP_EXEC("env = Environment()");
+	SCONSPP_EXEC("f1 = env.File('test_glob_dir/file1.ext')");
+	SCONSPP_EXEC("glob_files = Glob('test_glob_dir/*.ext')");
+	SCONSPP_CHECK("glob_files[0].path == 'test_glob_dir/file1.ext'");
+	SCONSPP_EXEC("f2 = env.File('test_glob_dir/file2.ext')");
+	SCONSPP_EXEC("glob_files = Glob('test_glob_dir/*.ext')");
+	SCONSPP_CHECK("glob_files[0].path == 'test_glob_dir/file1.ext'");
+	SCONSPP_CHECK("glob_files[1].path == 'test_glob_dir/file2.ext'");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }
