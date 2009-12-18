@@ -101,6 +101,34 @@ struct fs_trie
 			}
 		}
 	}
+	NodeList glob_on_disk(const path& pattern, const path& directory)
+	{
+		path::const_iterator iter = pattern.begin();
+		NodeList result;
+		if(directory.is_complete())
+			glob_on_disk(++iter, pattern.end(), *(directory.begin()));
+		else
+			glob_on_disk(iter, pattern.end(), directory);
+		iter = pattern.begin();
+		glob(iter, pattern.end(), result);
+		return result;
+	}
+	void glob_on_disk(path::const_iterator& iter, const path::const_iterator& iter_end, const path& directory)
+	{
+		if(iter == iter_end) {
+			dependency_graph::add_entry(directory.string(),  boost::logic::indeterminate);
+			return;
+		}
+
+		std::string pattern = *iter;
+		path::iterator next_pattern = ++iter;
+		using boost::filesystem::directory_iterator;
+		for(directory_iterator i(directory); i != directory_iterator(); ++i) {
+			if(fnmatch(pattern.c_str(), i->path().filename().c_str(), FNM_NOESCAPE) == 0) {
+				glob_on_disk(next_pattern, iter_end, *i);
+			}
+		}
+	}
 	void dump(int nesting_level = 0) const
 	{
 		if(node)
@@ -157,9 +185,12 @@ Node add_entry(const std::string& name, boost::logic::tribool is_file)
 	return fs.add_entry(canonical_path(name), is_file);
 }
 
-NodeList glob(const std::string& pattern)
+NodeList glob(const std::string& pattern, bool on_disk)
 {
-	return fs.glob(canonical_path(pattern));
+	if(on_disk)
+		return fs.glob_on_disk(canonical_path(pattern), fs_root);
+	else
+		return fs.glob(canonical_path(pattern));
 }
 
 FSEntry::FSEntry(path name, boost::logic::tribool is_file) : path_(name), is_file_(is_file)

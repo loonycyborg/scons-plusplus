@@ -127,12 +127,18 @@ BOOST_AUTO_TEST_CASE(test_glob)
 {
 	SCONSPP_EXEC("env = Environment()");
 	SCONSPP_EXEC("f1 = env.File('test_glob_dir/file1.ext')");
-	SCONSPP_EXEC("glob_files = Glob('test_glob_dir/*.ext')");
+	SCONSPP_EXEC("glob_files = Glob('test_glob_dir/*.ext', ondisk = False)");
 	SCONSPP_CHECK("glob_files[0].path == 'test_glob_dir/file1.ext'");
 	SCONSPP_EXEC("f2 = env.File('test_glob_dir/file2.ext')");
-	SCONSPP_EXEC("glob_files = Glob('test_glob_dir/*.ext')");
+	SCONSPP_EXEC("glob_files = Glob('test_glob_dir/*.ext', ondisk = False)");
 	SCONSPP_CHECK("glob_files[0].path == 'test_glob_dir/file1.ext'");
 	SCONSPP_CHECK("glob_files[1].path == 'test_glob_dir/file2.ext'");
+	SCONSPP_EXEC("from tempfile import NamedTemporaryFile");
+	SCONSPP_EXEC("from os.path import dirname");
+	SCONSPP_EXEC("tmpfile = NamedTemporaryFile(prefix = 'test_glob_ondisk', suffix = '.ext')");
+	SCONSPP_EXEC("tmpfile.write('foo')");
+	SCONSPP_EXEC("glob_file = Glob(dirname(tmpfile.name) + '/test_glob_ondisk*.ext')");
+	SCONSPP_CHECK("glob_file[0].path == tmpfile.name");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

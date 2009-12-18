@@ -46,7 +46,7 @@ namespace python_interface
 	object AlwaysBuild(tuple args, dict keywords);
 
 	template<typename T>
-	inline T subst_arg(const environment::Environment&, const T&);
+	inline T subst_arg(const environment::Environment&, const T& val) { return val; }
 	template<>
 	inline object subst_arg(const environment::Environment& env, const object& obj)
 	{
