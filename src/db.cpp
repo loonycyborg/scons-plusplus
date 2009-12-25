@@ -188,14 +188,15 @@ boost::shared_ptr<SQLite::Db> init_db(const std::string& filename)
 PersistentNodeData::PersistentNodeData(SQLite::Db& db, dependency_graph::Node node) : db(db), node(node)
 {
 	SQLite::Statement read_data(db.handle(), 
-		"select existed, timestamp, signature from nodes where type == ?1 and name == ?2");
+		"select id, existed, timestamp, signature from nodes where type == ?1 and name == ?2");
 	type_ = dependency_graph::graph[node]->type();
 	name_ = dependency_graph::graph[node]->name();
 	read_data.bind(1, type_);
 	read_data.bind(2, name_);
 	if(read_data.step() == SQLITE_ROW) {
-		existed_ = read_data.column<boost::optional<bool> >(0);
-		timestamp_ = read_data.column<boost::optional<int> >(1);
+		id_ = read_data.column<boost::optional<int> >(0);
+		existed_ = read_data.column<boost::optional<bool> >(1);
+		timestamp_ = read_data.column<boost::optional<int> >(2);
 	}
 }
 
@@ -204,11 +205,12 @@ PersistentNodeData::~PersistentNodeData()
 	try {
 		dependency_graph::graph[node]->record_persistent_data(*this);
 		SQLite::Statement write_data(db.handle(), 
-			"insert or replace into nodes (type, name, existed, timestamp) values (?1, ?2, ?3, ?4)");
-		write_data.bind(1, type_);
-		write_data.bind(2, name_);
-		write_data.bind(3, existed_);
-		write_data.bind(4, timestamp_);
+			"insert or replace into nodes (id, type, name, existed, timestamp) values (?1, ?2, ?3, ?4, ?5)");
+		write_data.bind(1, id_);
+		write_data.bind(2, type_);
+		write_data.bind(3, name_);
+		write_data.bind(4, existed_);
+		write_data.bind(5, timestamp_);
 		while(write_data.step() != SQLITE_DONE) {}
 	} catch(const std::exception& e) {
 		std::cout << "An exception occured when recording node " << type_ << "::" << name_ << ": " << e.what() << std::endl;

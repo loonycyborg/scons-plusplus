@@ -37,6 +37,7 @@ namespace db
 
 class PersistentNodeData : public boost::noncopyable
 {
+	boost::optional<int> id_;
 	std::string type_;
 	std::string name_;
 	boost::optional<bool> existed_;
