@@ -204,9 +204,9 @@ FSEntry::FSEntry(path name, boost::logic::tribool is_file) : path_(name), is_fil
 
 bool FSEntry::unchanged(const NodeList& targets, const db::PersistentNodeData& prev_data) const
 {
-	//std::time_t source_timestamp = timestamp();
-	bool up_to_date = true;
 #if 0
+	std::time_t source_timestamp = timestamp();
+	bool up_to_date = true;
 	foreach(Node target, targets) {
 		try {
 			if(
@@ -219,13 +219,15 @@ bool FSEntry::unchanged(const NodeList& targets, const db::PersistentNodeData& p
 		}
 	}
 #endif
-	boost::optional<time_t> current_timestamp;
+	bool unchanged;
 	if(exists())
-		current_timestamp = timestamp();
-	up_to_date = current_timestamp == prev_data.timestamp();
-	if(up_to_date)
+		unchanged = (prev_data.existed() == boost::optional<bool>(true)) &&
+			boost::optional<time_t>(timestamp()) == prev_data.timestamp();
+	else
+		unchanged = (prev_data.existed() == boost::optional<bool>(false));
+	if(unchanged)
 		std::cout << name() << " is unchanged." << std::endl;
-	return up_to_date;
+	return unchanged;
 }
 
 void FSEntry::record_persistent_data(db::PersistentNodeData& data)
