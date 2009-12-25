@@ -161,8 +161,6 @@ namespace taskmaster
 			else
 				item.task->execute();
 		}
-		foreach(PersistentData::value_type& node_data, persistent_data)
-			node_data.second->record();
 	}
 
 }

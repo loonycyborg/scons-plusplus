@@ -199,16 +199,20 @@ PersistentNodeData::PersistentNodeData(SQLite::Db& db, dependency_graph::Node no
 	}
 }
 
-void PersistentNodeData::record()
+PersistentNodeData::~PersistentNodeData()
 {
-	dependency_graph::graph[node]->record_persistent_data(*this);
-	SQLite::Statement write_data(db.handle(), 
-		"insert or replace into nodes (type, name, existed, timestamp) values (?1, ?2, ?3, ?4)");
-	write_data.bind(1, type_);
-	write_data.bind(2, name_);
-	write_data.bind(3, existed_);
-	write_data.bind(4, timestamp_);
-	while(write_data.step() != SQLITE_DONE) {}
+	try {
+		dependency_graph::graph[node]->record_persistent_data(*this);
+		SQLite::Statement write_data(db.handle(), 
+			"insert or replace into nodes (type, name, existed, timestamp) values (?1, ?2, ?3, ?4)");
+		write_data.bind(1, type_);
+		write_data.bind(2, name_);
+		write_data.bind(3, existed_);
+		write_data.bind(4, timestamp_);
+		while(write_data.step() != SQLITE_DONE) {}
+	} catch(const std::exception& e) {
+		std::cout << "An exception occured when recording node " << type_ << "::" << name_ << ": " << e.what() << std::endl;
+	}
 }
 
 }
