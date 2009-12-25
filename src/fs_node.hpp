@@ -40,8 +40,9 @@ class FSEntry : public node_properties
 	FSEntry(path name, boost::logic::tribool is_file = boost::logic::indeterminate);
 	std::string name() const { return is_file_ ? path_.file_string() : path_.directory_string(); }
 	std::string abspath() const { return is_file_ ? abspath_.file_string() : abspath_.directory_string(); }
+	const char* type() const { return "fs"; }
 
-	bool unchanged(const NodeList&) const;
+	bool unchanged(const NodeList&, const db::PersistentNodeData&) const;
 	bool needs_rebuild() const { return always_build_ || !exists(); }
 
 	boost::logic::tribool is_file() const { return is_file_; }
@@ -56,6 +57,8 @@ class FSEntry : public node_properties
 
 	bool exists() const { return boost::filesystem::exists(abspath_); }
 	std::time_t timestamp() const { return boost::filesystem::last_write_time(abspath_); }
+
+	void record_persistent_data(db::PersistentNodeData&);
 };
 
 void set_fs_root(const path& path);

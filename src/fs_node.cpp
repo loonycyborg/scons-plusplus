@@ -20,6 +20,7 @@
 
 #include "fs_node.hpp"
 #include "util.hpp"
+#include "db.hpp"
 
 #include <fnmatch.h>
 #include <boost/optional.hpp>
@@ -201,10 +202,11 @@ FSEntry::FSEntry(path name, boost::logic::tribool is_file) : path_(name), is_fil
 		abspath_ = fs_root / path_;
 }
 
-bool FSEntry::unchanged(const NodeList& targets) const
+bool FSEntry::unchanged(const NodeList& targets, const db::PersistentNodeData& prev_data) const
 {
-	std::time_t source_timestamp = timestamp();
+	//std::time_t source_timestamp = timestamp();
 	bool up_to_date = true;
+#if 0
 	foreach(Node target, targets) {
 		try {
 			if(
@@ -216,9 +218,21 @@ bool FSEntry::unchanged(const NodeList& targets) const
 			up_to_date = false;
 		}
 	}
+#endif
+	boost::optional<time_t> current_timestamp;
+	if(exists())
+		current_timestamp = timestamp();
+	up_to_date = current_timestamp == prev_data.timestamp();
 	if(up_to_date)
 		std::cout << name() << " is unchanged." << std::endl;
 	return up_to_date;
+}
+
+void FSEntry::record_persistent_data(db::PersistentNodeData& data)
+{
+	bool entry_exists = exists();
+	data.existed() = entry_exists;
+	data.timestamp() = entry_exists ? timestamp() : boost::optional<time_t>();
 }
 
 }

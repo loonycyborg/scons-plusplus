@@ -18,26 +18,49 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef ALIAS_NODE_HPP
-#define ALIAS_NODE_HPP
+#ifndef DB_HPP
+#define DB_HPP
+
+#include <boost/optional.hpp>
+#include <boost/utility.hpp>
+#include <boost/array.hpp>
 
 #include "dependency_graph.hpp"
 
-namespace dependency_graph
+namespace SQLite
+{
+class Db;
+}
+
+namespace db
 {
 
-class Alias : public node_properties
+class PersistentNodeData : public boost::noncopyable
 {
+	std::string type_;
 	std::string name_;
+	boost::optional<bool> existed_;
+	boost::optional<time_t> timestamp_;
+	boost::optional<boost::array<unsigned char, 16> > signature_;
+
+	SQLite::Db& db;
+	dependency_graph::Node node;
+
 	public:
-	Alias(const std::string& name);
-	~Alias();
-	std::string name() const { return name_; }
-	const char* type() const { return "alias"; }
-	bool unchanged(const NodeList&, const db::PersistentNodeData&) const { return false; }
+	PersistentNodeData();
+	PersistentNodeData(SQLite::Db& db, dependency_graph::Node node);
+
+	boost::optional<bool> existed() const { return existed_; }
+	boost::optional<time_t> timestamp() const { return timestamp_; }
+	boost::optional<boost::array<unsigned char, 16> > signature() const { return signature_; }
+	boost::optional<bool>& existed() { return existed_; }
+	boost::optional<time_t>& timestamp() { return timestamp_; }
+	boost::optional<boost::array<unsigned char, 16> >& signature() { return signature_; }
+
+	void record();
 };
 
-Node add_alias(const std::string& name);
+boost::shared_ptr<SQLite::Db> init_db(const std::string& filename);
 
 }
 

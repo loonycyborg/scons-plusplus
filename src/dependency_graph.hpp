@@ -36,6 +36,11 @@ namespace builder
 class Builder;
 }
 
+namespace db
+{
+class PersistentNodeData;
+}
+
 namespace dependency_graph
 {
 
@@ -65,12 +70,15 @@ class node_properties
 	node_properties() : always_build_(false) {}
 	virtual ~node_properties() {}
 	virtual std::string name() const = 0;
+	virtual const char* type() const = 0;
 
-	virtual bool unchanged(const NodeList& targets) const = 0;
+	virtual bool unchanged(const NodeList& targets, const db::PersistentNodeData&) const = 0;
 	virtual bool needs_rebuild() const { return always_build_; }
 
 	void always_build() { always_build_ = true; }
 	boost::shared_ptr<taskmaster::Task> task() const { return task_; }
+
+	virtual void record_persistent_data(db::PersistentNodeData&) {}
 };
 
 extern Graph graph;
@@ -87,7 +95,8 @@ class dummy_node : public node_properties
 	public:
 	dummy_node(const std::string& name) : name_(name) {}
 	std::string name() const { return name_; }
-	bool unchanged(const NodeList& targets) const { return true; }
+	const char* type() const { return "dummy"; }
+	bool unchanged(const NodeList& targets, const db::PersistentNodeData&) const { return true; }
 };
 
 inline Node add_dummy_node(const std::string& name)

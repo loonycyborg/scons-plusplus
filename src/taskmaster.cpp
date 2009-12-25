@@ -32,6 +32,7 @@
 
 #include "taskmaster.hpp"
 #include "task.hpp"
+#include "db.hpp"
 
 using std::vector;
 using boost::depth_first_visit;
@@ -133,6 +134,9 @@ namespace taskmaster
 		TaskList tasks;
 		std::vector<Node> nodes;
 		build_order(end_goal, tasks, nodes);
+		boost::shared_ptr<SQLite::Db> db = db::init_db("sconsppsign.sqlite");
+		typedef std::map<Node, boost::shared_ptr<db::PersistentNodeData> > PersistentData;
+		PersistentData persistent_data;
 
 		const int num_tasks = tasks.size();
 		int current_task = 1;
@@ -143,13 +147,12 @@ namespace taskmaster
 			foreach(Node build_target, item.targets) {
 				if(dependency_graph::graph[build_target]->needs_rebuild()) {
 					up_to_date = false;
-					break;
 				}
 				foreach(Edge dependency, out_edges(build_target, dependency_graph::graph)) {
 					Node build_source = target(dependency, dependency_graph::graph);
-					if(!dependency_graph::graph[build_source]->unchanged(item.targets)) {
+					persistent_data[build_source] = boost::shared_ptr<db::PersistentNodeData>(new db::PersistentNodeData(*db, build_source)); 
+					if(!dependency_graph::graph[build_source]->unchanged(item.targets, *(persistent_data[build_source]))) {
 						up_to_date = false;
-						break;
 					}
 				}
 			}
@@ -158,6 +161,8 @@ namespace taskmaster
 			else
 				item.task->execute();
 		}
+		foreach(PersistentData::value_type& node_data, persistent_data)
+			node_data.second->record();
 	}
 
 }

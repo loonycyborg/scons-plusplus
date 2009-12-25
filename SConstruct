@@ -25,7 +25,8 @@ conf = env.Configure(custom_tests = custom_tests, config_h = "src/config.hpp")
 conf.CheckPython() and \
 conf.CheckBoost("python", require_version = "1.39") and \
 conf.CheckBoost("system") and \
-conf.CheckBoost("filesystem") or Exit(1)
+conf.CheckBoost("filesystem") and \
+conf.CheckLibWithHeader("sqlite3", "sqlite3.h", "C") or Exit(1)
 conf.Define("PYTHON_MODULES_PATH", "\"" + Dir("python_modules").abspath + "\"")
 conf.Finish()
 
