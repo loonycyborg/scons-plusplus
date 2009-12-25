@@ -16,6 +16,9 @@ env = Environment(tools = ["default"], toolpath = "scons_tools", variables = opt
 
 opts.Save('options.cache', env)
 
+import os
+env["ENV"]["PATH"] = os.environ.get("PATH")
+
 import sys
 sys.path.insert(0, "scons_tools")
 import metasconf
