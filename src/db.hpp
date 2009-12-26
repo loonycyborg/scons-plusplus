@@ -27,9 +27,21 @@
 
 #include "dependency_graph.hpp"
 
+class sqlite3;
+
 namespace SQLite
 {
-class Db;
+
+class Db : public boost::noncopyable
+{
+	sqlite3* db;
+	public:
+	explicit Db(const std::string& filename);
+	~Db();
+	sqlite3* handle() const { return db; }
+	void exec(const std::string& sql);
+};
+
 }
 
 namespace db
@@ -60,7 +72,14 @@ class PersistentNodeData : public boost::noncopyable
 	boost::optional<boost::array<unsigned char, 16> >& signature() { return signature_; }
 };
 
-boost::shared_ptr<SQLite::Db> init_db(const std::string& filename);
+class PersistentData : public boost::noncopyable
+{
+	SQLite::Db db_;
+	std::map<dependency_graph::Node, boost::shared_ptr<PersistentNodeData> > nodes_;
+	public:
+	explicit PersistentData(const std::string& filename);
+	PersistentNodeData& operator[](dependency_graph::Node);
+};
 
 }
 

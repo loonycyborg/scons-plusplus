@@ -148,28 +148,22 @@ class Statement : public boost::noncopyable
 	}
 };
 
-class Db : public boost::noncopyable
+Db::Db(const std::string& filename)
 {
-	sqlite3* db;
-	public:
-	explicit Db(const std::string& filename)
-	{
-		int result = sqlite3_open(filename.c_str(), &db);
-		if(result != SQLITE_OK) {
-			throw std::runtime_error(std::string("sqlite error when opening ") + filename + ": " + sqlite3_errmsg(db));
-		}
+	int result = sqlite3_open(filename.c_str(), &db);
+	if(result != SQLITE_OK) {
+		throw std::runtime_error(std::string("sqlite error when opening ") + filename + ": " + sqlite3_errmsg(db));
 	}
-	~Db()
-	{
-		sqlite3_close(db);
-	}
-	sqlite3* handle() const { return db; }
-	void exec(const std::string& sql)
-	{
-		Statement stmt(db, sql);
-		while(stmt.step() != SQLITE_DONE) {}
-	}
-};
+}
+Db::~Db()
+{
+	sqlite3_close(db);
+}
+void Db::exec(const std::string& sql)
+{
+	Statement stmt(db, sql);
+	while(stmt.step() != SQLITE_DONE) {}
+}
 
 }
 
@@ -215,6 +209,21 @@ PersistentNodeData::~PersistentNodeData()
 	} catch(const std::exception& e) {
 		std::cout << "An exception occured when recording node " << type_ << "::" << name_ << ": " << e.what() << std::endl;
 	}
+}
+
+PersistentData::PersistentData(const std::string& filename) : db_(filename)
+{
+	db_.exec("create table if not exists nodes "
+		"(id INTEGER PRIMARY KEY, type TEXT, name TEXT, existed INTEGER, timestamp INTEGER, signature BLOB)");
+	db_.exec("create unique index if not exists node_name_index on nodes (type, name)");
+}
+
+PersistentNodeData& PersistentData::operator[](dependency_graph::Node node)
+{
+	boost::shared_ptr<PersistentNodeData>& node_data = nodes_[node];
+	if(!node_data)
+		node_data.reset(new PersistentNodeData(db_, node));
+	return *node_data;
 }
 
 }

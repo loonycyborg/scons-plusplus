@@ -134,9 +134,7 @@ namespace taskmaster
 		TaskList tasks;
 		std::vector<Node> nodes;
 		build_order(end_goal, tasks, nodes);
-		boost::shared_ptr<SQLite::Db> db = db::init_db("sconsppsign.sqlite");
-		typedef std::map<Node, boost::shared_ptr<db::PersistentNodeData> > PersistentData;
-		PersistentData persistent_data;
+		db::PersistentData db("sconsppsign.sqlite");
 
 		const int num_tasks = tasks.size();
 		int current_task = 1;
@@ -150,8 +148,7 @@ namespace taskmaster
 				}
 				foreach(Edge dependency, out_edges(build_target, dependency_graph::graph)) {
 					Node build_source = target(dependency, dependency_graph::graph);
-					persistent_data[build_source] = boost::shared_ptr<db::PersistentNodeData>(new db::PersistentNodeData(*db, build_source)); 
-					if(!dependency_graph::graph[build_source]->unchanged(item.targets, *(persistent_data[build_source]))) {
+					if(!dependency_graph::graph[build_source]->unchanged(item.targets, db[build_source])) {
 						up_to_date = false;
 					}
 				}
