@@ -70,14 +70,20 @@ class PersistentNodeData : public boost::noncopyable
 	boost::optional<bool>& existed() { return existed_; }
 	boost::optional<time_t>& timestamp() { return timestamp_; }
 	boost::optional<boost::array<unsigned char, 16> >& signature() { return signature_; }
+
+	int id() const { return id_.get(); }
+
+	std::set<int> dependencies();
 };
 
 class PersistentData : public boost::noncopyable
 {
 	SQLite::Db db_;
-	std::map<dependency_graph::Node, boost::shared_ptr<PersistentNodeData> > nodes_;
+	typedef std::map<dependency_graph::Node, boost::shared_ptr<PersistentNodeData> > Nodes;
+	Nodes nodes_;
 	public:
 	explicit PersistentData(const std::string& filename);
+	~PersistentData();
 	PersistentNodeData& operator[](dependency_graph::Node);
 };
 

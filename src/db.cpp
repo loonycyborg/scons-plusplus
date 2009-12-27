@@ -22,6 +22,9 @@
 
 #include <sqlite3.h>
 
+#include <boost/foreach.hpp>
+#define foreach BOOST_FOREACH
+
 namespace SQLite
 {
 	
@@ -170,28 +173,26 @@ void Db::exec(const std::string& sql)
 namespace db
 {
 
-boost::shared_ptr<SQLite::Db> init_db(const std::string& filename)
+PersistentNodeData::PersistentNodeData(SQLite::Db& db, dependency_graph::Node node) 
+	: type_(dependency_graph::graph[node]->type()), name_(dependency_graph::graph[node]->name()), db(db), node(node)
 {
-	boost::shared_ptr<SQLite::Db> db(new SQLite::Db(filename));
-	db->exec("create table if not exists nodes "
-		"(id INTEGER PRIMARY KEY, type TEXT, name TEXT, existed INTEGER, timestamp INTEGER, signature BLOB)");
-	db->exec("create unique index if not exists node_name_index on nodes (type, name)");
-	return db;
-}
+	SQLite::Statement prepare_record(db.handle(),
+		"insert or ignore into nodes (type,name) values (?1, ?2);");
+	prepare_record.bind(1, type_);
+	prepare_record.bind(2, name_);
+	int prepare_result = prepare_record.step();
+	assert(prepare_result == SQLITE_DONE);
 
-PersistentNodeData::PersistentNodeData(SQLite::Db& db, dependency_graph::Node node) : db(db), node(node)
-{
 	SQLite::Statement read_data(db.handle(), 
-		"select id, existed, timestamp, signature from nodes where type == ?1 and name == ?2");
-	type_ = dependency_graph::graph[node]->type();
-	name_ = dependency_graph::graph[node]->name();
+		"select id, existed, timestamp, signature from nodes where type == ?1 and name == ?2;");
 	read_data.bind(1, type_);
 	read_data.bind(2, name_);
-	if(read_data.step() == SQLITE_ROW) {
-		id_ = read_data.column<boost::optional<int> >(0);
-		existed_ = read_data.column<boost::optional<bool> >(1);
-		timestamp_ = read_data.column<boost::optional<int> >(2);
-	}
+	int read_data_result = read_data.step();
+	assert(read_data_result == SQLITE_ROW);
+
+	id_ = read_data.column<boost::optional<int> >(0);
+	existed_ = read_data.column<boost::optional<bool> >(1);
+	timestamp_ = read_data.column<boost::optional<int> >(2);
 }
 
 PersistentNodeData::~PersistentNodeData()
@@ -206,24 +207,70 @@ PersistentNodeData::~PersistentNodeData()
 		write_data.bind(4, existed_);
 		write_data.bind(5, timestamp_);
 		while(write_data.step() != SQLITE_DONE) {}
+
 	} catch(const std::exception& e) {
 		std::cout << "An exception occured when recording node " << type_ << "::" << name_ << ": " << e.what() << std::endl;
 	}
 }
 
+std::set<int> PersistentNodeData::dependencies()
+{
+	std::set<int> result;
+	SQLite::Statement get_dependencies(db.handle(),
+		"select source_id from dependencies where target_id == ?1");
+	get_dependencies.bind(1, id_.get());
+	while(get_dependencies.step() != SQLITE_DONE)
+		result.insert(get_dependencies.column<int>(0));
+	return result;
+}
+
 PersistentData::PersistentData(const std::string& filename) : db_(filename)
 {
+	db_.exec("PRAGMA foreign_keys=ON");
+	db_.exec("PRAGMA journal_mode=OFF");
 	db_.exec("create table if not exists nodes "
 		"(id INTEGER PRIMARY KEY, type TEXT, name TEXT, existed INTEGER, timestamp INTEGER, signature BLOB)");
 	db_.exec("create unique index if not exists node_name_index on nodes (type, name)");
+	db_.exec("create table if not exists dependencies "
+		"(target_id INTEGER, source_id INTEGER, "
+		"FOREIGN KEY(source_id) REFERENCES nodes(id), "
+		"FOREIGN KEY(target_id) REFERENCES nodes(id))");
+	db_.exec("create index if not exists source_dep_index on dependencies(source_id)");
+	db_.exec("create index if not exists target_dep_index on dependencies(target_id)");
+}
+
+PersistentData::~PersistentData()
+{
+	db_.exec("begin");
+	SQLite::Statement clear_dependency(db_.handle(),
+		"delete from dependencies where target_id = ?1");
+	SQLite::Statement write_dependency(db_.handle(), 
+		"insert into dependencies values (?1, ?2)");
+	foreach(Nodes::value_type& target_pair, nodes_) {
+		int target_id = target_pair.second->id();
+		dependency_graph::Node target_node = target_pair.first;
+
+		clear_dependency.bind(1, target_id);
+		while(clear_dependency.step() != SQLITE_DONE) {}
+		clear_dependency.reset();
+
+		write_dependency.bind(1, target_pair.second->id());
+
+		foreach(const dependency_graph::Edge& dependency, out_edges(target_node, dependency_graph::graph)) {
+			write_dependency.bind(2, (*this)[target(dependency, dependency_graph::graph)].id());
+			while(write_dependency.step() != SQLITE_DONE) {}
+			write_dependency.reset();
+		}
+	}
+	db_.exec("end");
 }
 
 PersistentNodeData& PersistentData::operator[](dependency_graph::Node node)
 {
-	boost::shared_ptr<PersistentNodeData>& node_data = nodes_[node];
-	if(!node_data)
-		node_data.reset(new PersistentNodeData(db_, node));
-	return *node_data;
+	Nodes::iterator node_iter = nodes_.find(node);
+	if(node_iter == nodes_.end())
+		nodes_[node].reset(new PersistentNodeData(db_, node));
+	return *(nodes_[node]);
 }
 
 }

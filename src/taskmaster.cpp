@@ -146,12 +146,21 @@ namespace taskmaster
 				if(dependency_graph::graph[build_target]->needs_rebuild()) {
 					up_to_date = false;
 				}
+				std::set<int> 
+					source_ids,
+					prev_sources(db[build_target].dependencies());
 				foreach(Edge dependency, out_edges(build_target, dependency_graph::graph)) {
 					Node build_source = target(dependency, dependency_graph::graph);
-					if(!dependency_graph::graph[build_source]->unchanged(item.targets, db[build_source])) {
+					db::PersistentNodeData& source_data = db[build_source];
+					source_ids.insert(source_data.id());
+					if(!dependency_graph::graph[build_source]->unchanged(item.targets, source_data)) {
 						up_to_date = false;
 					}
 				}
+				if(prev_sources.size() == source_ids.size() && std::equal(source_ids.begin(), source_ids.end(), prev_sources.begin()))
+					std::cout << "Dependency relations are unchanged\n";
+				else
+					up_to_date = false;
 			}
 			if(up_to_date)
 				std::cout << "Task is up-to-date.\n";
