@@ -26,6 +26,8 @@
 #include <vector>
 #include <boost/scoped_ptr.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/array.hpp>
+#include "md5.h"
 
 namespace util
 {
@@ -77,6 +79,34 @@ class scoped_chdir
 };
 
 void exec(const std::vector<std::string>&);
+
+class MD5
+{
+	md5_state_t state;
+
+	public:
+	MD5()
+	{
+		md5_init(&state);
+	}
+	void append(const unsigned char* data, size_t length)
+	{
+		md5_append(&state, data, length);
+	}
+	boost::array<unsigned char, 16> finish()
+	{
+		boost::array<unsigned char, 16> result;
+		md5_finish(&state, result.c_array());
+		return result;
+	}
+	static boost::array<unsigned char, 16> hash(const std::string& str)
+	{
+		MD5 md5;
+		md5.append((const unsigned char*)str.data(), str.length());
+		return md5.finish();
+	}
+	static boost::array<unsigned char, 16> hash_file(const std::string& filename);
+};
 
 }
 

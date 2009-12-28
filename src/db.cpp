@@ -60,6 +60,16 @@ template<> struct sqlite3_column_impl<time_t>
 		return sqlite3_column_int64(stmt, i);
 	}
 };
+template<typename T, unsigned int n> struct sqlite3_column_impl<boost::array<T, n> >
+{
+	static boost::array<T, n> sqlite3_column(sqlite3_stmt* stmt, int i)
+	{
+		boost::array<T, n> result;
+		memcpy(result.c_array(), sqlite3_column_blob(stmt, i), n);
+		assert(sqlite3_column_bytes(stmt, i) == n);
+		return result;
+	}
+};
 
 template<typename T> inline T sqlite3_column(sqlite3_stmt* stmt, int i)
 {
@@ -77,6 +87,10 @@ inline void sqlite3_bind(sqlite3_stmt* stmt, int i, time_t val)
 inline void sqlite3_bind(sqlite3_stmt* stmt, int i, const std::string& val)
 {
 	sqlite3_bind_text(stmt, i, val.c_str(), val.size()+1, SQLITE_TRANSIENT);
+}
+template<typename T, unsigned int n> void sqlite3_bind(sqlite3_stmt* stmt, int i, boost::array<T, n> val)
+{
+	sqlite3_bind_blob(stmt, i, val.data(), n, SQLITE_TRANSIENT);
 }
 template<typename T> inline void sqlite3_bind(sqlite3_stmt* stmt, int i, boost::optional<T> val)
 {
@@ -193,6 +207,7 @@ PersistentNodeData::PersistentNodeData(SQLite::Db& db, dependency_graph::Node no
 	id_ = read_data.column<boost::optional<int> >(0);
 	existed_ = read_data.column<boost::optional<bool> >(1);
 	timestamp_ = read_data.column<boost::optional<int> >(2);
+	signature_ = read_data.column<boost::optional<boost::array<unsigned char, 16> > >(3);
 }
 
 PersistentNodeData::~PersistentNodeData()
@@ -200,12 +215,13 @@ PersistentNodeData::~PersistentNodeData()
 	try {
 		dependency_graph::graph[node]->record_persistent_data(*this);
 		SQLite::Statement write_data(db.handle(), 
-			"insert or replace into nodes (id, type, name, existed, timestamp) values (?1, ?2, ?3, ?4, ?5)");
+			"insert or replace into nodes (id, type, name, existed, timestamp, signature) values (?1, ?2, ?3, ?4, ?5, ?6)");
 		write_data.bind(1, id_);
 		write_data.bind(2, type_);
 		write_data.bind(3, name_);
 		write_data.bind(4, existed_);
 		write_data.bind(5, timestamp_);
+		write_data.bind(6, signature_);
 		while(write_data.step() != SQLITE_DONE) {}
 
 	} catch(const std::exception& e) {

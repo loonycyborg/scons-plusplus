@@ -222,7 +222,8 @@ bool FSEntry::unchanged(const NodeList& targets, const db::PersistentNodeData& p
 	bool unchanged;
 	if(exists())
 		unchanged = (prev_data.existed() == boost::optional<bool>(true)) &&
-			boost::optional<time_t>(timestamp()) == prev_data.timestamp();
+			boost::optional<time_t>(timestamp()) == prev_data.timestamp() &&
+			util::MD5::hash_file(abspath_.string()) == prev_data.signature();
 	else
 		unchanged = (prev_data.existed() == boost::optional<bool>(false));
 	if(unchanged)
@@ -235,6 +236,7 @@ void FSEntry::record_persistent_data(db::PersistentNodeData& data)
 	bool entry_exists = exists();
 	data.existed() = entry_exists;
 	data.timestamp() = entry_exists ? timestamp() : boost::optional<time_t>();
+	data.signature() = entry_exists ? util::MD5::hash_file(abspath_.string()) : boost::optional<boost::array<unsigned char, 16> >();
 }
 
 }

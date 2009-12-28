@@ -168,4 +168,21 @@ void exec(const std::vector<string>& args)
 	}
 }
 
+boost::array<unsigned char, 16> util::MD5::hash_file(const std::string& filename)
+{
+	MD5 md5;
+	FILE* file = fopen(filename.c_str(), "r");
+	if(file == NULL) throw boost::system::system_error(errno, boost::system::get_system_category(), "util::MD5::hash_file: Failed to open " + filename);
+	while(!feof(file)) {
+		const int blocksize = 4096;
+		unsigned char buffer[blocksize];
+
+		size_t count = fread(buffer, 1, blocksize, file);
+		if(ferror(file)) throw boost::system::system_error(errno, boost::system::get_system_category(), "util::MD5::hash_file: Failed to read " + filename);
+
+		md5.append(buffer, count);
+	}
+	return md5.finish();
+}
+
 }
