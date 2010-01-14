@@ -48,7 +48,7 @@ void Builder::create_task(
 		const action::ActionList& actions
 		) const
 {
-	boost::shared_ptr<Task> task(new Task(env, targets, sources, actions));
+	Task::pointer task(new Task(env, targets, sources, actions));
 	foreach(const dependency_graph::Node& node, targets)
 		graph[node]->set_task(task);
 }

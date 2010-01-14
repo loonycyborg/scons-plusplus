@@ -56,10 +56,10 @@ using dependency_graph::NodeList;
 
 struct TaskListItem
 {
-	boost::shared_ptr<taskmaster::Task> task;
+	taskmaster::Task::pointer task;
 	NodeList targets;
 
-	TaskListItem(boost::shared_ptr<taskmaster::Task> task, Node target) : task(task) { targets.push_back(target); }
+	TaskListItem(taskmaster::Task::pointer task, Node target) : task(task) { targets.push_back(target); }
 };
 
 struct sequence_index;
@@ -69,7 +69,7 @@ typedef multi_index_container<
 	TaskListItem,
 	indexed_by<
 		sequenced<tag<sequence_index> >,
-		ordered_unique<tag<task_index>, BOOST_MULTI_INDEX_MEMBER(TaskListItem, boost::shared_ptr<taskmaster::Task>, task)>
+		ordered_unique<tag<task_index>, BOOST_MULTI_INDEX_MEMBER(TaskListItem, taskmaster::Task::pointer, task)>
 		>
 	> TaskList;
 
@@ -85,7 +85,7 @@ class BuildVisitor : public boost::default_dfs_visitor
 	void back_edge(const Edge&, const dependency_graph::Graph& graph) const { throw boost::not_a_dag(); }
 	void finish_vertex(Node node, const dependency_graph::Graph& graph) const
 	{
-		boost::shared_ptr<taskmaster::Task> task = graph[node]->task();
+		taskmaster::Task::pointer task = graph[node]->task();
 		if(task) {
 			bool inserted;
 			TaskList::iterator iter;

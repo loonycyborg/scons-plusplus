@@ -66,13 +66,13 @@ inline void AddFooAction(const object& target, const object& action)
 {
 	action::ActionList actions = make_actions(flatten(action));
 	NodeList targets = extract_file_nodes(flatten(target));
-	std::set<boost::shared_ptr<taskmaster::Task> > tasks;
+	std::set<taskmaster::Task::pointer> tasks;
 	foreach(Node node, targets) {
-		boost::shared_ptr<taskmaster::Task> task = graph[node]->task();;
+		taskmaster::Task::pointer task = graph[node]->task();;
 		if(task)
 			tasks.insert(task);
 	}
-	foreach(boost::shared_ptr<taskmaster::Task> task, tasks)
+	foreach(taskmaster::Task::pointer task, tasks)
 		std::copy(actions.begin(), actions.end(), insert_iterator<action::ActionList>(task->actions()));
 }
 

@@ -54,6 +54,8 @@ class Task
 			add_sources(sources);
 		}
 	public:
+	typedef boost::shared_ptr<Task> pointer;
+	typedef boost::shared_ptr<const Task> const_pointer;
 
 	const dependency_graph::NodeList& targets() const { return targets_; }
 	const dependency_graph::NodeList& sources() const { return sources_; }
