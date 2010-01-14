@@ -20,6 +20,7 @@
 
 #include "python_interface_internal.hpp"
 
+#include <iostream>
 #include <boost/python.hpp>
 #include <boost/python/raw_function.hpp>
 #include <boost/algorithm/string/join.hpp>

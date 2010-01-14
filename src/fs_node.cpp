@@ -23,6 +23,7 @@
 #include "db.hpp"
 
 #include <fnmatch.h>
+#include <iostream>
 #include <boost/optional.hpp>
 #include <boost/foreach.hpp>
 #define foreach BOOST_FOREACH

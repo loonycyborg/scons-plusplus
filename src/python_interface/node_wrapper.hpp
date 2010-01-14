@@ -26,6 +26,7 @@
 #include <boost/cast.hpp>
 
 #include "dependency_graph.hpp"
+#include "node_properties.hpp"
 #include "task.hpp"
 #include "builder.hpp"
 #include "sconscript.hpp"

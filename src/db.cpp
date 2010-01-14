@@ -19,6 +19,9 @@
  ***************************************************************************/
 
 #include "db.hpp"
+#include "node_properties.hpp"
+
+#include <iostream>
 
 #include <sqlite3.h>
 

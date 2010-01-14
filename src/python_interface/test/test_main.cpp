@@ -1,6 +1,7 @@
 #define BOOST_TEST_MODULE scons_plus_plus regression tests
 #include "test_common.hpp"
 #include "python_interface/node_wrapper.hpp"
+#include <boost/graph/graph_utility.hpp>
 
 namespace python_interface
 {

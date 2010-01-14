@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2009 by Sergey Popov                                    *
+ *   Copyright (C) 2010 by Sergey Popov                                    *
  *   loonycyborg@gmail.com                                                 *
  *                                                                         *
  *  This file is part of SCons++.                                          *
@@ -18,27 +18,63 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef ALIAS_NODE_HPP
-#define ALIAS_NODE_HPP
+#ifndef NODE_PROPERTIES_HPP
+#define NODE_PROPERTIES_HPP
 
 #include "dependency_graph.hpp"
-#include "node_properties.hpp"
+#include "task.hpp"
+#include "db.hpp"
+
+#include <boost/cast.hpp>
 
 namespace dependency_graph
 {
 
-class Alias : public node_properties
+class node_properties
+{
+	boost::shared_ptr<taskmaster::Task> task_;
+	friend class builder::Builder;
+	void set_task(taskmaster::Task::pointer task) { task_ = task; }
+
+	protected:
+	bool always_build_;
+
+	public:
+	node_properties() : always_build_(false) {}
+	virtual ~node_properties() {}
+	virtual std::string name() const = 0;
+	virtual const char* type() const = 0;
+
+	virtual bool unchanged(const NodeList& targets, const db::PersistentNodeData&) const = 0;
+	virtual bool needs_rebuild() const { return always_build_; }
+
+	void always_build() { always_build_ = true; }
+	boost::shared_ptr<taskmaster::Task> task() const { return task_; }
+
+	virtual void record_persistent_data(db::PersistentNodeData&) {}
+};
+
+template<class NodeClass> inline NodeClass& properties(Node node)
+{
+	return *boost::polymorphic_cast<NodeClass*>(graph[node].get());
+}
+
+class dummy_node : public node_properties
 {
 	std::string name_;
 	public:
-	Alias(const std::string& name);
-	~Alias();
+	dummy_node(const std::string& name) : name_(name) {}
 	std::string name() const { return name_; }
-	const char* type() const { return "alias"; }
-	bool unchanged(const NodeList&, const db::PersistentNodeData&) const { return false; }
+	const char* type() const { return "dummy"; }
+	bool unchanged(const NodeList& targets, const db::PersistentNodeData&) const { return true; }
 };
 
-Node add_alias(const std::string& name);
+inline Node add_dummy_node(const std::string& name)
+{
+	Node node = add_vertex(graph);
+	graph[node].reset(new dummy_node(name));
+	return node;
+}
 
 }
 

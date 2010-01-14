@@ -25,6 +25,7 @@
 #include <boost/filesystem.hpp>
 
 #include "dependency_graph.hpp"
+#include "node_properties.hpp"
 
 namespace dependency_graph
 {

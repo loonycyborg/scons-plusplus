@@ -22,24 +22,7 @@
 #define DEPENDENCY_GRAPH_HPP
 
 #include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/graph_utility.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/cast.hpp>
-
-namespace taskmaster
-{
-class Task;
-}
-
-namespace builder
-{
-class Builder;
-}
-
-namespace db
-{
-class PersistentNodeData;
-}
 
 namespace dependency_graph
 {
@@ -57,54 +40,8 @@ typedef graph_traits<Graph>::vertex_descriptor Node;
 typedef graph_traits<Graph>::edge_descriptor Edge;
 typedef std::vector<Node> NodeList;
 
-class node_properties
-{
-	boost::shared_ptr<taskmaster::Task> task_;
-	friend class builder::Builder;
-	void set_task(boost::shared_ptr<taskmaster::Task> task) { task_ = task; }
-
-	protected:
-	bool always_build_;
-
-	public:
-	node_properties() : always_build_(false) {}
-	virtual ~node_properties() {}
-	virtual std::string name() const = 0;
-	virtual const char* type() const = 0;
-
-	virtual bool unchanged(const NodeList& targets, const db::PersistentNodeData&) const = 0;
-	virtual bool needs_rebuild() const { return always_build_; }
-
-	void always_build() { always_build_ = true; }
-	boost::shared_ptr<taskmaster::Task> task() const { return task_; }
-
-	virtual void record_persistent_data(db::PersistentNodeData&) {}
-};
-
 extern Graph graph;
 extern std::set<Node> default_targets;
-
-template<class NodeClass> inline NodeClass& properties(Node node)
-{
-	return *boost::polymorphic_cast<NodeClass*>(graph[node].get());
-}
-
-class dummy_node : public node_properties
-{
-	std::string name_;
-	public:
-	dummy_node(const std::string& name) : name_(name) {}
-	std::string name() const { return name_; }
-	const char* type() const { return "dummy"; }
-	bool unchanged(const NodeList& targets, const db::PersistentNodeData&) const { return true; }
-};
-
-inline Node add_dummy_node(const std::string& name)
-{
-	Node node = add_vertex(graph);
-	graph[node].reset(new dummy_node(name));
-	return node;
-}
 
 }
 

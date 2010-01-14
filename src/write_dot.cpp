@@ -21,6 +21,7 @@
 #include <boost/graph/graphviz.hpp>
 
 #include "write_dot.hpp"
+#include "node_properties.hpp"
 
 using dependency_graph::Graph;
 using dependency_graph::Node;

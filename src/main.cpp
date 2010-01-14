@@ -19,6 +19,7 @@
  ***************************************************************************/
 
 #include "dependency_graph.hpp"
+#include "node_properties.hpp"
 #include "python_interface/python_interface.hpp"
 #include "write_dot.hpp"
 #include "taskmaster.hpp"
