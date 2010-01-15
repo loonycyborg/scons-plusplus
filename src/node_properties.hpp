@@ -49,7 +49,7 @@ class node_properties
 	virtual bool needs_rebuild() const { return always_build_; }
 
 	void always_build() { always_build_ = true; }
-	boost::shared_ptr<taskmaster::Task> task() const { return task_; }
+	taskmaster::Task::pointer task() const { return task_; }
 
 	virtual void record_persistent_data(db::PersistentNodeData&) {}
 };
