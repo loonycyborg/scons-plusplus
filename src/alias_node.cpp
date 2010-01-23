@@ -38,7 +38,6 @@ Alias::Alias(const std::string& name) : name_(name)
 
 Alias::~Alias()
 {
-	alias_namespace.erase(name_);
 }
 
 Node add_alias(const std::string& name)
