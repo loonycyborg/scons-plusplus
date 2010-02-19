@@ -25,6 +25,7 @@
 
 #include <sqlite3.h>
 
+#include <boost/lexical_cast.hpp>
 #include <boost/foreach.hpp>
 #define foreach BOOST_FOREACH
 
@@ -179,10 +180,20 @@ Db::~Db()
 {
 	sqlite3_close(db);
 }
+
 void Db::exec(const std::string& sql)
 {
 	Statement stmt(db, sql);
 	while(stmt.step() != SQLITE_DONE) {}
+}
+
+template<class T>
+T Db::exec(const std::string& sql)
+{
+	Statement stmt(db, sql);
+	int result = stmt.step();
+	assert(result == SQLITE_ROW);
+	return stmt.column<T>(0);
 }
 
 }
@@ -247,6 +258,15 @@ PersistentData::PersistentData(const std::string& filename) : db_(filename)
 {
 	db_.exec("PRAGMA foreign_keys=ON");
 	db_.exec("PRAGMA journal_mode=OFF");
+
+	const int current_db_version = 0;
+	if(db_.exec<int>("PRAGMA user_version") < current_db_version) {
+		std::cout << "Signature database has older version. It will be reinitialized." << std::endl;
+		db_.exec("drop table if exists dependencies");
+		db_.exec("drop table if exists nodes");
+		db_.exec("PRAGMA user_version = " + boost::lexical_cast<std::string>(current_db_version));
+	}
+
 	db_.exec("create table if not exists nodes "
 		"(id INTEGER PRIMARY KEY, type TEXT, name TEXT, existed INTEGER, timestamp INTEGER, signature BLOB)");
 	db_.exec("create unique index if not exists node_name_index on nodes (type, name)");

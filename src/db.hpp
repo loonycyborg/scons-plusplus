@@ -40,6 +40,8 @@ class Db : public boost::noncopyable
 	~Db();
 	sqlite3* handle() const { return db; }
 	void exec(const std::string& sql);
+	template<class T>
+	T exec(const std::string& sql);
 };
 
 }
