@@ -39,7 +39,7 @@ env.Append(CPPPATH = ["#/src"])
 env.Decider("MD5-timestamp")
 
 def test(name, dir):
-    test = AlwaysBuild(Alias("test_" + name, [File("scons++"), Dir(dir)], "-cd ${SOURCES[1]}; ${SOURCE.abspath}"))
+    test = AlwaysBuild(env.Alias("test_" + name, [File("scons++"), Dir(dir)], "-cd ${SOURCES[1]}; ${SOURCE.abspath}"))
     Alias("check", test)
 
 test("general", "test")

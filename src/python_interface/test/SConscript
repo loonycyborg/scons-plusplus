@@ -4,6 +4,6 @@ if not test_env["have_boost_test"]:
 
 test_sources = Glob("test_*.cpp")
 test = test_env.Program("test", [test_sources, common_objects])
-run_test = Alias("run-test", test, "./$SOURCE")
+run_test = test_env.Alias("run-test", test, "./$SOURCE")
 AlwaysBuild(run_test)
-Alias("check", run_test)
+test_env.Alias("check", run_test)
