@@ -212,7 +212,7 @@ PersistentNodeData::PersistentNodeData(SQLite::Db& db, dependency_graph::Node no
 	assert(prepare_result == SQLITE_DONE);
 
 	SQLite::Statement read_data(db.handle(), 
-		"select id, existed, timestamp, signature from nodes where type == ?1 and name == ?2;");
+		"select id, existed, timestamp, signature, task_signature from nodes where type == ?1 and name == ?2;");
 	read_data.bind(1, type_);
 	read_data.bind(2, name_);
 	int read_data_result = read_data.step();
@@ -222,6 +222,7 @@ PersistentNodeData::PersistentNodeData(SQLite::Db& db, dependency_graph::Node no
 	existed_ = read_data.column<boost::optional<bool> >(1);
 	timestamp_ = read_data.column<boost::optional<int> >(2);
 	signature_ = read_data.column<boost::optional<boost::array<unsigned char, 16> > >(3);
+	task_signature_ = read_data.column<boost::optional<boost::array<unsigned char, 16> > >(4);
 }
 
 PersistentNodeData::~PersistentNodeData()
@@ -229,13 +230,14 @@ PersistentNodeData::~PersistentNodeData()
 	try {
 		dependency_graph::graph[node]->record_persistent_data(*this);
 		SQLite::Statement write_data(db.handle(), 
-			"insert or replace into nodes (id, type, name, existed, timestamp, signature) values (?1, ?2, ?3, ?4, ?5, ?6)");
+			"insert or replace into nodes (id, type, name, existed, timestamp, signature, task_signature) values (?1, ?2, ?3, ?4, ?5, ?6, ?7)");
 		write_data.bind(1, id_);
 		write_data.bind(2, type_);
 		write_data.bind(3, name_);
 		write_data.bind(4, existed_);
 		write_data.bind(5, timestamp_);
 		write_data.bind(6, signature_);
+		write_data.bind(7, task_signature_);
 		while(write_data.step() != SQLITE_DONE) {}
 
 	} catch(const std::exception& e) {
@@ -259,7 +261,7 @@ PersistentData::PersistentData(const std::string& filename) : db_(filename)
 	db_.exec("PRAGMA foreign_keys=ON");
 	db_.exec("PRAGMA journal_mode=OFF");
 
-	const int current_db_version = 0;
+	const int current_db_version = 1;
 	if(db_.exec<int>("PRAGMA user_version") < current_db_version) {
 		std::cout << "Signature database has older version. It will be reinitialized." << std::endl;
 		db_.exec("drop table if exists dependencies");
@@ -268,7 +270,7 @@ PersistentData::PersistentData(const std::string& filename) : db_(filename)
 	}
 
 	db_.exec("create table if not exists nodes "
-		"(id INTEGER PRIMARY KEY, type TEXT, name TEXT, existed INTEGER, timestamp INTEGER, signature BLOB)");
+		"(id INTEGER PRIMARY KEY, type TEXT, name TEXT, existed INTEGER, timestamp INTEGER, signature BLOB, task_signature BLOB)");
 	db_.exec("create unique index if not exists node_name_index on nodes (type, name)");
 	db_.exec("create table if not exists dependencies "
 		"(target_id INTEGER, source_id INTEGER, "

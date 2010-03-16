@@ -57,6 +57,7 @@ class PersistentNodeData : public boost::noncopyable
 	boost::optional<bool> existed_;
 	boost::optional<time_t> timestamp_;
 	boost::optional<boost::array<unsigned char, 16> > signature_;
+	boost::optional<boost::array<unsigned char, 16> > task_signature_;
 
 	SQLite::Db& db;
 	dependency_graph::Node node;
@@ -72,6 +73,7 @@ class PersistentNodeData : public boost::noncopyable
 	boost::optional<bool>& existed() { return existed_; }
 	boost::optional<time_t>& timestamp() { return timestamp_; }
 	boost::optional<boost::array<unsigned char, 16> >& signature() { return signature_; }
+	boost::optional<boost::array<unsigned char, 16> >& task_signature() { return task_signature_; }
 
 	int id() const { return id_.get(); }
 

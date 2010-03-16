@@ -22,6 +22,7 @@
 #define foreach BOOST_FOREACH
 
 #include "task.hpp"
+#include "util.hpp"
 
 using dependency_graph::graph;
 
@@ -36,7 +37,7 @@ void Task::add_sources(const dependency_graph::NodeList& sources)
 			add_edge(target, source, graph);
 }
 
-void Task::execute() const
+environment::Environment::const_pointer Task::env() const
 {
 	environment::Environment::pointer task_env = env_->override();
 	if(targets_.size()) {
@@ -47,6 +48,23 @@ void Task::execute() const
 		(*task_env)["SOURCES"] = environment::make_variable(sources_.begin(), sources_.end());
 		(*task_env)["SOURCE"] = environment::make_variable(sources_[0]);
 	}
+	return task_env;
+}
+
+boost::optional<boost::array<unsigned char, 16> > Task::signature() const
+{
+	boost::optional<boost::array<unsigned char, 16> > result;
+	if(actions_.empty())
+		return result;
+	util::MD5 md5_sum;
+	foreach(const action::Action::pointer& action, actions_)
+		md5_sum.append(action->to_string(*env()));
+	return md5_sum.finish();
+}
+
+void Task::execute() const
+{
+	environment::Environment::const_pointer task_env = env();
 	foreach(const action::Action::pointer& action, actions_)
 		action::execute(action, *task_env);
 }

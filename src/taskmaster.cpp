@@ -162,6 +162,11 @@ namespace taskmaster
 					std::cout << "Dependency relations are unchanged\n";
 				else
 					up_to_date = false;
+				if(db[build_target].task_signature() != item.task->signature()) {
+					up_to_date = false;
+					db[build_target].task_signature() = item.task->signature();
+				} else
+					std::cout << "Task signature is unchanged\n";
 			}
 			if(up_to_date)
 				std::cout << "Task is up-to-date.\n";

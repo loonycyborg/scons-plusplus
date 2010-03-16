@@ -25,6 +25,9 @@
 #include "environment.hpp"
 #include "action.hpp"
 
+#include <boost/array.hpp>
+#include <boost/optional.hpp>
+
 namespace builder
 {
 class Builder;
@@ -61,6 +64,9 @@ class Task
 	const dependency_graph::NodeList& sources() const { return sources_; }
 	void add_sources(const dependency_graph::NodeList& sources);
 	action::ActionList& actions() { return actions_; }
+	environment::Environment::const_pointer env() const;
+
+	boost::optional<boost::array<unsigned char, 16> > signature() const;
 
 	void execute() const;
 };

@@ -93,6 +93,10 @@ class MD5
 	{
 		md5_append(&state, data, length);
 	}
+	void append(const std::string& data)
+	{
+		md5_append(&state, (const unsigned char*)data.data(), data.size());
+	}
 	boost::array<unsigned char, 16> finish()
 	{
 		boost::array<unsigned char, 16> result;
