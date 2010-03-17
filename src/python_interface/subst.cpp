@@ -22,7 +22,9 @@
 #include <boost/spirit/include/phoenix_core.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
 #include <boost/spirit/include/phoenix_function.hpp>
+#include <boost/spirit/include/phoenix_bind.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/variant/apply_visitor.hpp>
 
 #include "environment.hpp"
 #include "subst.hpp"
@@ -54,89 +56,85 @@ namespace args = boost::spirit;
 using boost::phoenix::function;
 using boost::phoenix::ref;
 
-template <typename Iterator>
-struct variable_ref : grammar<Iterator, std::string()>
+boost::variant<std::string, object> expand_variable(const environment::Environment& env, const boost::iterator_range<std::string::const_iterator>& str)
 {
-	variable_ref() : variable_ref::base_type(ref)
+	using namespace python_interface;
+	std::string name(str.begin(), str.end());
+	environment::Variable::const_pointer var = env[name];
+	if(!var)
+		return "";
+	try {
+		const PythonVariable* variable = boost::polymorphic_cast<const PythonVariable*>(var.get());
+		object obj = variable->get();
+		if(is_callable(obj))
+			obj = obj(get_item_from_env(env, "SOURCES"), get_item_from_env(env, "TARGETS"), env, false);
+		return python_interface::subst(env, obj);
+	} catch(const std::bad_cast&) {
+	}
+	return python_interface::subst(env, python_interface::variable_to_python(var));
+}
+
+boost::variant<std::string, object> eval_python(const environment::Environment& env, const std::string& code)
+{
+	return python_interface::subst(env, python_interface::eval(str(code), object(env), object(env)));
+}
+
+template <typename Iterator>
+struct interpolator : grammar<Iterator, std::vector<boost::variant<std::string, object> >()>
+{
+	interpolator(const environment::Environment& env) : interpolator::base_type(input)
 	{
+		input %= *(variable_ref | python | text);
+
+		raw_text %= raw[+(char_ - '$')];
+		text = raw_text[_val = args::_1];
+
+		variable_ref = ('$' >> (variable_name | ('{' >> variable_name >> '}')))
+			[_val = boost::phoenix::bind(expand_variable, boost::phoenix::ref(env), args::_1)];
 		variable_name %= raw[((alpha | '_') >> *(alnum | '_'))];
-		ref %= '$' >> (variable_name | ('{' >> variable_name >> '}'));
+
+		python_code %= raw[*(char_ - '}')];
+		python = ("${" >> python_code >> '}')
+			[_val = boost::phoenix::bind(eval_python, boost::phoenix::ref(env), args::_1)];
 	}
 
-	rule<Iterator, std::string()> variable_name, ref;
+	rule<Iterator, std::vector<boost::variant<std::string, object> >()> input;
+	rule<Iterator, boost::variant<std::string, object>()> variable_ref, python, text;
+	rule<Iterator, std::string()> raw_text, variable_name, python_code;
 };
 
-template <typename Iterator>
-struct python_code : grammar<Iterator, std::string()>
+class to_object : public boost::static_visitor<object>
 {
-	python_code() : python_code::base_type(placeholder)
+	public:
+	object operator()(object& obj) const
 	{
-		placeholder %= "${" >> code >> '}';
-		code %= raw[(*(char_ - '}'))];
+		return obj;
 	}
 
-	rule<Iterator, std::string()> code, placeholder;
+	object operator()(const std::string& str) const
+	{
+		return boost::python::str(str);
+	}
 };
 
-struct expand_impl
+class to_string : public boost::static_visitor<std::string>
 {
-	template<typename Arg1, typename Arg2>
-	struct result
+	const environment::Environment& env;
+	public:
+	to_string(const environment::Environment& env) : env(env)
 	{
-		typedef object type;
-	};
+	}
+	std::string operator()(object& obj) const
+	{
+		return python_interface::expand_python(env, obj);
+	}
 
-	object operator()(const environment::Environment& env, const std::string& variable) const
+	std::string operator()(const std::string& str) const
 	{
-		return env.count(variable) ? python_interface::subst(env, python_interface::variable_to_python(env[variable])) : object();
+		return str;
 	}
 };
 
-function<expand_impl> lazy_expand;
-
-struct eval_python_impl
-{
-	template<typename Arg1, typename Arg2>
-	struct result
-	{
-		typedef object type;
-	};
-
-	object operator()(const environment::Environment& env, const std::string& python) const
-	{
-		return python_interface::subst(env, eval(str(python), object(env), object(env)));
-	}
-};
-
-function<eval_python_impl> lazy_eval_python;
-
-struct combine_subst_impl
-{
-	template<typename Arg1, typename Arg2, typename Arg3>
-	struct result
-	{
-		typedef void type;
-	};
-
-	void operator()(const environment::Environment& env, object& val, object new_val) const
-	{
-		if(!val) {
-			val = new_val;
-			return;
-		}
-		if(!python_interface::is_string(val))
-			val = str(python_interface::subst_to_string(env, python_interface::expand_python(env, val)));
-		if(!python_interface::is_string(new_val))
-			new_val = str(python_interface::subst_to_string(env, python_interface::expand_python(env, new_val)));
-		val += new_val;
-	}
-	void operator()(const environment::Environment& env, object& val, const char new_val) const
-	{
-		(*this)(env, val, str(new_val));
-	}
-};
-
-function<combine_subst_impl> combine_subst;
 
 }
 
@@ -146,19 +144,20 @@ namespace python_interface
 object subst(const environment::Environment& env, const std::string& input)
 {
 	object result;
+	std::vector<boost::variant<std::string, object> > parse_result;
+	std::string::const_iterator iter(input.begin());
 
-	rule<std::string::const_iterator, object()> interpolator;
-	variable_ref<std::string::const_iterator> vref;
-	python_code<std::string::const_iterator> python;
-	interpolator = *(
-		vref[combine_subst(boost::phoenix::ref(env), _val, lazy_expand(boost::phoenix::ref(env), args::_1))] |
-		python[combine_subst(boost::phoenix::ref(env), _val, lazy_eval_python(boost::phoenix::ref(env), args::_1))] |
-		char_[combine_subst(boost::phoenix::ref(env), _val, args::_1)]
-		);
-	std::string::const_iterator iter = input.begin();
-	parse(iter, input.end(), interpolator, result);
+	parse(iter, input.end(), interpolator<std::string::const_iterator>(env), parse_result);
 
-	return result;
+	if(parse_result.empty())
+		return str();
+	if(parse_result.size() == 1)
+		return boost::apply_visitor(::to_object(), parse_result[0]);
+
+	std::vector<std::string> strings;
+	::to_string visitor(env);
+	std::transform(parse_result.begin(), parse_result.end(), std::back_inserter(strings), boost::apply_visitor(visitor));
+	return object(boost::algorithm::join(strings, ""));
 }
 
 object subst(const environment::Environment& env, object obj)
@@ -180,8 +179,6 @@ std::string expand_python(const environment::Environment& env, object obj)
 {
 	if(is_none(obj))
 		return std::string();
-	if(is_callable(obj))
-		return extract<string>(str(obj(get_item_from_env(env, "SOURCES"), get_item_from_env(env, "TARGETS"), env, false)));
 	try {
 		std::vector<std::string> words;
 		foreach(object item, make_object_iterator_range(obj))
