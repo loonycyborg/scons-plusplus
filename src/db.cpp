@@ -64,7 +64,7 @@ template<> struct sqlite3_column_impl<time_t>
 		return sqlite3_column_int64(stmt, i);
 	}
 };
-template<typename T, unsigned int n> struct sqlite3_column_impl<boost::array<T, n> >
+template<typename T, std::size_t n> struct sqlite3_column_impl<boost::array<T, n> >
 {
 	static boost::array<T, n> sqlite3_column(sqlite3_stmt* stmt, int i)
 	{
@@ -92,7 +92,7 @@ inline void sqlite3_bind(sqlite3_stmt* stmt, int i, const std::string& val)
 {
 	sqlite3_bind_text(stmt, i, val.c_str(), val.size()+1, SQLITE_TRANSIENT);
 }
-template<typename T, unsigned int n> void sqlite3_bind(sqlite3_stmt* stmt, int i, boost::array<T, n> val)
+template<typename T, std::size_t n> void sqlite3_bind(sqlite3_stmt* stmt, int i, boost::array<T, n> val)
 {
 	sqlite3_bind_blob(stmt, i, val.data(), n, SQLITE_TRANSIENT);
 }
