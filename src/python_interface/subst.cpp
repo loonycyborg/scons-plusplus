@@ -147,7 +147,8 @@ object subst(const environment::Environment& env, const std::string& input)
 	std::vector<boost::variant<std::string, object> > parse_result;
 	std::string::const_iterator iter(input.begin());
 
-	parse(iter, input.end(), interpolator<std::string::const_iterator>(env), parse_result);
+	interpolator<std::string::const_iterator> interp(env);
+	parse(iter, input.end(), interp, parse_result);
 
 	if(parse_result.empty())
 		return str();

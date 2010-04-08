@@ -45,7 +45,7 @@ builder::Builder::NodeStringList extract_nodes(object obj)
 	builder::Builder::NodeStringList result;
 	foreach(object node, make_object_iterator_range(obj)) {
 		if(is_string(node))
-			result.push_back(extract<std::string>(node));
+			result.push_back(extract<std::string>(node)());
 		else
 			result.push_back(extract_node(node));
 	}
