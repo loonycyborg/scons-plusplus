@@ -18,6 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
+#include <numeric>
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
@@ -79,12 +80,47 @@ boost::variant<std::string, object> eval_python(const environment::Environment& 
 	return python_interface::subst(env, python_interface::eval(str(code), object(env), object(env)));
 }
 
+class concat : public boost::static_visitor<boost::variant<std::string, object> >
+{
+	const environment::Environment& env;
+
+	public:
+	concat(const environment::Environment& env) : env(env) {}
+	boost::variant<std::string, object> operator()(const std::string str1, const std::string str2)
+	{
+		return str1 + str2;
+	}
+	boost::variant<std::string, object> operator()(object obj, const std::string str)
+	{
+		return python_interface::expand_python(env, obj) + str;
+	}
+	boost::variant<std::string, object> operator()(const std::string str, object obj)
+	{
+		return str + python_interface::expand_python(env, obj);
+	}
+	boost::variant<std::string, object> operator()(object obj1, object obj2)
+	{
+		return python_interface::expand_python(env, obj1) + python_interface::expand_python(env, obj2);
+	}
+};
+
+boost::variant<std::string, object> concat_subst(const environment::Environment& env, const std::vector<boost::variant<std::string, object> >& objs)
+{
+	if(objs.empty())
+		return "";
+	::concat visitor(env);
+	return std::accumulate(++objs.begin(), objs.end(), objs[0], boost::apply_visitor(visitor));
+}
+
 template <typename Iterator>
-struct interpolator : grammar<Iterator, std::vector<boost::variant<std::string, object> >()>
+struct interpolator : grammar<Iterator, boost::variant<std::string, object>()>
 {
 	interpolator(const environment::Environment& env) : interpolator::base_type(input)
 	{
-		input %= *(variable_ref | python | text);
+		input = (*(variable_ref | python | skip | text))
+			[_val = boost::phoenix::bind(concat_subst, boost::phoenix::ref(env), args::_1)];
+
+		skip %= "$(" >> input >> "$)";
 
 		raw_text %= raw[+(char_ - '$')];
 		text = raw_text[_val = args::_1];
@@ -98,8 +134,7 @@ struct interpolator : grammar<Iterator, std::vector<boost::variant<std::string, 
 			[_val = boost::phoenix::bind(eval_python, boost::phoenix::ref(env), args::_1)];
 	}
 
-	rule<Iterator, std::vector<boost::variant<std::string, object> >()> input;
-	rule<Iterator, boost::variant<std::string, object>()> variable_ref, python, text;
+	rule<Iterator, boost::variant<std::string, object>()> variable_ref, python, text, skip, input;
 	rule<Iterator, std::string()> raw_text, variable_name, python_code;
 };
 
@@ -143,22 +178,14 @@ namespace python_interface
 
 object subst(const environment::Environment& env, const std::string& input)
 {
-	object result;
-	std::vector<boost::variant<std::string, object> > parse_result;
+	boost::variant<std::string, object> parse_result;
 	std::string::const_iterator iter(input.begin());
 
 	interpolator<std::string::const_iterator> interp(env);
 	parse(iter, input.end(), interp, parse_result);
 
-	if(parse_result.empty())
-		return str();
-	if(parse_result.size() == 1)
-		return boost::apply_visitor(::to_object(), parse_result[0]);
-
-	std::vector<std::string> strings;
-	::to_string visitor(env);
-	std::transform(parse_result.begin(), parse_result.end(), std::back_inserter(strings), boost::apply_visitor(visitor));
-	return object(boost::algorithm::join(strings, ""));
+	::to_object visitor;
+	return boost::apply_visitor(visitor, parse_result);
 }
 
 object subst(const environment::Environment& env, object obj)
