@@ -32,6 +32,7 @@ BOOST_AUTO_TEST_CASE(test_substitution)
 	SCONSPP_CHECK("env.subst(\"${'blah'}\") == 'blah'");
 	SCONSPP_EXEC("env['varname'] = [1,2,3]");
 	SCONSPP_CHECK("env.subst(\"${varname[1]}\") == '2'");
+	SCONSPP_CHECK("env.subst('$varname') == '1 2 3'");
 	SCONSPP_CHECK("env.subst('foo $( foo $) foo') == 'foo  foo  foo'");
 }
 BOOST_AUTO_TEST_CASE(test_clone)
