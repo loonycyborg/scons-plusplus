@@ -22,7 +22,7 @@ struct python_exception_matches
 		return result;
 	}
 };
-#define SCONSPP_CHECK_THROW(expr, exeption) BOOST_CHECK_EXCEPTION(eval(expr, ns, ns), error_already_set, python_exception_matches(exeption))
+#define SCONSPP_CHECK_THROW(expr, exception) BOOST_CHECK_EXCEPTION(eval(expr, ns, ns), error_already_set, python_exception_matches(exception))
 
 struct sconspp_fixture
 {
