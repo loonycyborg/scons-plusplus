@@ -34,6 +34,7 @@ BOOST_AUTO_TEST_CASE(test_substitution)
 	SCONSPP_CHECK("env.subst(\"${varname[1]}\") == '2'");
 	SCONSPP_CHECK("env.subst('$varname') == '1 2 3'");
 	SCONSPP_CHECK("env.subst('foo $( foo $) foo') == 'foo  foo  foo'");
+	SCONSPP_CHECK_THROW("env.subst('${foo')", PyExc_Exception);
 }
 BOOST_AUTO_TEST_CASE(test_clone)
 {

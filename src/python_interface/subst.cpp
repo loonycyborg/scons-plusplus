@@ -24,6 +24,8 @@
 #include <boost/spirit/include/phoenix_operator.hpp>
 #include <boost/spirit/include/phoenix_function.hpp>
 #include <boost/spirit/include/phoenix_bind.hpp>
+#include <boost/spirit/include/phoenix_object.hpp>
+#include <boost/spirit/include/phoenix_statement.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/variant/apply_visitor.hpp>
 
@@ -45,6 +47,8 @@ using boost::spirit::qi::char_;
 using boost::spirit::qi::parse;
 using boost::spirit::qi::rule;
 using boost::spirit::qi::grammar;
+using boost::spirit::qi::on_error;
+using boost::spirit::qi::fail;
 using boost::spirit::ascii::alnum;
 using boost::spirit::ascii::alpha;
 #if BOOST_VERSION < 104100
@@ -56,6 +60,9 @@ namespace args = boost::spirit;
 #endif
 using boost::phoenix::function;
 using boost::phoenix::ref;
+using boost::phoenix::val;
+using boost::phoenix::throw_;
+using boost::phoenix::construct;
 
 boost::variant<std::string, object> expand_variable(const environment::Environment& env, const boost::iterator_range<std::string::const_iterator>& str)
 {
@@ -120,7 +127,7 @@ struct interpolator : grammar<Iterator, boost::variant<std::string, object>()>
 		input = (*(variable_ref | python | skip | text))
 			[_val = boost::phoenix::bind(concat_subst, boost::phoenix::ref(env), args::_1)];
 
-		skip %= "$(" >> input >> "$)";
+		skip %= "$(" > input > "$)";
 
 		raw_text %= raw[+(char_ - '$')];
 		text = raw_text[_val = args::_1];
@@ -130,8 +137,14 @@ struct interpolator : grammar<Iterator, boost::variant<std::string, object>()>
 		variable_name %= raw[((alpha | '_') >> *(alnum | '_'))];
 
 		python_code %= raw[*(char_ - '}')];
-		python = ("${" >> python_code >> '}')
+		python = ("${" > python_code > '}')
 			[_val = boost::phoenix::bind(eval_python, boost::phoenix::ref(env), args::_1)];
+
+		on_error<fail>(input,
+			throw_(construct<std::runtime_error>(
+                	val("Parse error during substitution: Expecting ") +
+                	args::_4
+			)));
 	}
 
 	rule<Iterator, boost::variant<std::string, object>()> variable_ref, python, text, skip, input;
