@@ -57,7 +57,7 @@ class Environment : public boost::enable_shared_from_this<Environment>
 	typedef boost::shared_ptr<Environment> pointer;
 	typedef boost::shared_ptr<const Environment> const_pointer;
 
-	std::string subst(const std::string&) const;
+	std::string subst(const std::string&, bool for_signature = false) const;
 	Variable::const_pointer operator[](const std::string str) const
 	{
 		Variables::const_iterator iter = variables_.find(str);

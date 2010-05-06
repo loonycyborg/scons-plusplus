@@ -122,12 +122,15 @@ boost::variant<std::string, object> concat_subst(const environment::Environment&
 template <typename Iterator>
 struct interpolator : grammar<Iterator, boost::variant<std::string, object>()>
 {
-	interpolator(const environment::Environment& env) : interpolator::base_type(input)
+	interpolator(const environment::Environment& env, bool for_signature) : interpolator::base_type(input)
 	{
 		input = (*(variable_ref | python | skip | text))
 			[_val = boost::phoenix::bind(concat_subst, boost::phoenix::ref(env), args::_1)];
 
-		skip %= "$(" > input > "$)";
+		if(for_signature)
+			skip = "$(" > (*(char_ - "$)")) > "$)";
+		else
+			skip %= "$(" > input > "$)";
 
 		raw_text %= raw[+(char_ - '$')];
 		text = raw_text[_val = args::_1];
@@ -189,30 +192,30 @@ class to_string : public boost::static_visitor<std::string>
 namespace python_interface
 {
 
-object subst(const environment::Environment& env, const std::string& input)
+object subst(const environment::Environment& env, const std::string& input, bool for_signature)
 {
 	boost::variant<std::string, object> parse_result;
 	std::string::const_iterator iter(input.begin());
 
-	interpolator<std::string::const_iterator> interp(env);
+	interpolator<std::string::const_iterator> interp(env, for_signature);
 	parse(iter, input.end(), interp, parse_result);
 
 	::to_object visitor;
 	return boost::apply_visitor(visitor, parse_result);
 }
 
-object subst(const environment::Environment& env, object obj)
+object subst(const environment::Environment& env, object obj, bool for_signature)
 {
 	if(is_list(obj) || is_tuple(obj)) {
 		list result;
 		foreach(object item, make_object_iterator_range(obj)) {
-			result.append(subst(env, item));
+			result.append(subst(env, item, for_signature));
 		}
 		return result;
 	}
 
 	if(is_string(obj))
-		return subst(env, extract<std::string>(obj));
+		return subst(env, extract<std::string>(obj), for_signature);
 	return obj;
 }
 
@@ -231,9 +234,9 @@ std::string expand_python(const environment::Environment& env, object obj)
 	return extract<std::string>(str(obj));
 }
 
-std::string subst_to_string(const environment::Environment& env, const std::string& input)
+std::string subst_to_string(const environment::Environment& env, const std::string& input, bool for_signature)
 {
-	return expand_python(env, subst(env, input));
+	return expand_python(env, subst(env, input, for_signature));
 }
 
 }

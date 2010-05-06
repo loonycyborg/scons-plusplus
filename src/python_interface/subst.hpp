@@ -30,8 +30,8 @@ using namespace boost::python;
 namespace python_interface
 {
 
-object subst(const environment::Environment& env, const std::string&);
-object subst(const environment::Environment& env, object);
+object subst(const environment::Environment& env, const std::string&, bool for_signature = false);
+object subst(const environment::Environment& env, object, bool for_signature = false);
 std::string expand_python(const environment::Environment& env, object obj);
 
 }

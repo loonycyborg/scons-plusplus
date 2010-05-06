@@ -31,9 +31,9 @@ using std::vector;
 namespace environment
 {
 
-std::string Environment::subst(const std::string& str) const
+std::string Environment::subst(const std::string& str, bool for_signature) const
 {
-	return python_interface::subst_to_string(*this, str);
+	return python_interface::subst_to_string(*this, str, for_signature);
 }
 
 Environment::pointer Environment::clone() const
