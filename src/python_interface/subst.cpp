@@ -119,6 +119,25 @@ boost::variant<std::string, object> concat_subst(const environment::Environment&
 	return std::accumulate(++objs.begin(), objs.end(), objs[0], boost::apply_visitor(visitor));
 }
 
+struct handle_parse_error_impl
+{
+	template <class Arg1, class Arg2, class Arg3, class Arg4>
+	struct result
+	{
+		typedef std::string type;
+	};
+	template <class Arg1, class Arg2, class Arg3, class Arg4>
+	std::string operator()(Arg1 arg1, Arg2 arg2, Arg3 arg3, Arg4 arg4) const
+	{
+		std::ostringstream os;
+		os << "Parse error during substitution: Expecting " << arg4;
+		throw std::runtime_error(os.str());
+	}
+
+};
+
+function<handle_parse_error_impl> handle_parse_error;
+
 template <typename Iterator>
 struct interpolator : grammar<Iterator, boost::variant<std::string, object>()>
 {
@@ -128,7 +147,7 @@ struct interpolator : grammar<Iterator, boost::variant<std::string, object>()>
 			[_val = boost::phoenix::bind(concat_subst, boost::phoenix::ref(env), args::_1)];
 
 		if(for_signature)
-			skip = "$(" > (*(char_ - "$)")) > "$)";
+			skip = "$(" > (*(char_ - "$)"))[_val = ""] > "$)";
 		else
 			skip %= "$(" > input > "$)";
 
@@ -143,11 +162,7 @@ struct interpolator : grammar<Iterator, boost::variant<std::string, object>()>
 		python = ("${" > python_code > '}')
 			[_val = boost::phoenix::bind(eval_python, boost::phoenix::ref(env), args::_1)];
 
-		on_error<fail>(input,
-			throw_(construct<std::runtime_error>(
-                	val("Parse error during substitution: Expecting ") +
-                	args::_4
-			)));
+		on_error<fail>(input, handle_parse_error(args::_1, args::_2, args::_3, args::_4));
 	}
 
 	rule<Iterator, boost::variant<std::string, object>()> variable_ref, python, text, skip, input;
