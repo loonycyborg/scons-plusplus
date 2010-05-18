@@ -47,7 +47,7 @@ void Command::execute(const environment::Environment& env) const
 
 std::string Command::to_string(const environment::Environment& env) const
 {
-	return env.subst(command_);
+	return env.subst(command_, true);
 }
 
 }

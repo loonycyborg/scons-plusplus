@@ -64,7 +64,7 @@ using boost::phoenix::val;
 using boost::phoenix::throw_;
 using boost::phoenix::construct;
 
-boost::variant<std::string, object> expand_variable(const environment::Environment& env, const boost::iterator_range<std::string::const_iterator>& str)
+boost::variant<std::string, object> expand_variable(const environment::Environment& env, const boost::iterator_range<std::string::const_iterator>& str, bool for_signature)
 {
 	using namespace python_interface;
 	std::string name(str.begin(), str.end());
@@ -76,15 +76,15 @@ boost::variant<std::string, object> expand_variable(const environment::Environme
 		object obj = variable->get();
 		if(is_callable(obj))
 			obj = obj(get_item_from_env(env, "SOURCES"), get_item_from_env(env, "TARGETS"), env, false);
-		return python_interface::subst(env, obj);
+		return python_interface::subst(env, obj, for_signature);
 	} catch(const std::bad_cast&) {
 	}
-	return python_interface::subst(env, python_interface::variable_to_python(var));
+	return python_interface::subst(env, python_interface::variable_to_python(var), for_signature);
 }
 
-boost::variant<std::string, object> eval_python(const environment::Environment& env, const std::string& code)
+boost::variant<std::string, object> eval_python(const environment::Environment& env, const std::string& code, bool for_signature)
 {
-	return python_interface::subst(env, python_interface::eval(str(code), object(env), object(env)));
+	return python_interface::subst(env, python_interface::eval(str(code), object(env), object(env)), for_signature);
 }
 
 class concat : public boost::static_visitor<boost::variant<std::string, object> >
@@ -155,12 +155,12 @@ struct interpolator : grammar<Iterator, boost::variant<std::string, object>()>
 		text = raw_text[_val = args::_1];
 
 		variable_ref = ('$' >> (variable_name | ('{' >> variable_name >> '}')))
-			[_val = boost::phoenix::bind(expand_variable, boost::phoenix::ref(env), args::_1)];
+			[_val = boost::phoenix::bind(expand_variable, boost::phoenix::ref(env), args::_1, for_signature)];
 		variable_name %= raw[((alpha | '_') >> *(alnum | '_'))];
 
 		python_code %= raw[*(char_ - '}')];
 		python = ("${" > python_code > '}')
-			[_val = boost::phoenix::bind(eval_python, boost::phoenix::ref(env), args::_1)];
+			[_val = boost::phoenix::bind(eval_python, boost::phoenix::ref(env), args::_1, for_signature)];
 
 		on_error<fail>(input, handle_parse_error(args::_1, args::_2, args::_3, args::_4));
 	}
