@@ -191,6 +191,15 @@ std::string Dump(const Environment& env)
 	return os.str();
 }
 
+object concat(const std::string& prefix, object objs, const std::string& suffix, const Environment& env)
+{
+	objs = flatten(subst(env, objs));
+	list result;
+	foreach(object obj, make_object_iterator_range(objs))
+		result.append(str(prefix + expand_python(env, obj) + suffix));
+	return result;
+}
+
 object make_environment(tuple args, dict kw)
 {
 	args[0].attr("_true__init__")();
@@ -201,10 +210,19 @@ object make_environment(tuple args, dict kw)
 		Platform(env, kw.has_key("platform") ? extract<string>(kw["platform"])() : "");
 		Tool(env, str("default"));
 
-		(*env)["_concat"] = extract_variable(import("SCons.Defaults").attr("_concat"));
+		(*env)["_concat"] = extract_variable(make_function(concat));
+		(*env)["_defines"] = extract_variable(import("SCons.Defaults").attr("_defines"));
 		(*env)["_stripixes"] = extract_variable(import("SCons.Defaults").attr("_stripixes"));
+		(*env)["RDirs"] = extract_variable(eval("lambda x : x"));
+		(*env)["_LIBFLAGS"] = extract_variable(str("${_concat(LIBLINKPREFIX, LIBS, LIBLINKSUFFIX, __env__)}"));
+		(*env)["_LIBDIRFLAGS"] = extract_variable(str("$( ${_concat(LIBDIRPREFIX, LIBPATH, LIBDIRSUFFIX, __env__)} $)"));
+		(*env)["_CPPINCFLAGS"] = extract_variable(str("$( ${_concat(INCPREFIX, CPPPATH, INCSUFFIX, __env__)} $)"));
+		(*env)["_CPPDEFFLAGS"] = extract_variable(str("${_concat(CPPDEFPREFIX, CPPDEFINES, CPPDEFSUFFIX, __env__)}"));
+		(*env)["CPPDEFINES"] = extract_variable(list());
+		(*env)["CPPPATH"] = extract_variable(list());
 		(*env)["RPATH"] = extract_variable(list());
 		(*env)["LIBS"] = extract_variable(list());
+		(*env)["LIBPATH"] = extract_variable(list());
 		(*env)["__env__"] = extract_variable(args[0]);
 	}
 
