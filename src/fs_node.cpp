@@ -27,6 +27,7 @@
 #include <boost/optional.hpp>
 #include <boost/foreach.hpp>
 #define foreach BOOST_FOREACH
+#include <boost/filesystem/fstream.hpp>
 
 namespace
 {
@@ -230,6 +231,14 @@ bool FSEntry::unchanged(const NodeList& targets, const db::PersistentNodeData& p
 	if(unchanged)
 		std::cout << name() << " is unchanged." << std::endl;
 	return unchanged;
+}
+
+std::string FSEntry::get_contents() const
+{
+	boost::filesystem::ifstream ifs(abspath_);
+	std::ostringstream os;
+	os << ifs.rdbuf();
+	return os.str();
 }
 
 void FSEntry::record_persistent_data(db::PersistentNodeData& data)

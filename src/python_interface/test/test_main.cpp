@@ -146,6 +146,16 @@ BOOST_AUTO_TEST_CASE(test_glob)
 	SCONSPP_CHECK("glob_file[0].path == tmpfile.name");
 }
 
+BOOST_AUTO_TEST_CASE(test_node_get_contents)
+{
+	SCONSPP_EXEC("env = Environment()");
+	SCONSPP_EXEC("from tempfile import NamedTemporaryFile");
+	SCONSPP_EXEC("tmpfile = NamedTemporaryFile(prefix = 'test_node_get_contents', suffix = '.ext')");
+	SCONSPP_EXEC("tmpfile.write('bar')");
+	SCONSPP_EXEC("tmpfile.flush()");
+	SCONSPP_CHECK("env.File(tmpfile.name).get_contents() == 'bar'");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }

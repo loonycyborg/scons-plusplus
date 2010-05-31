@@ -55,6 +55,11 @@ struct NodeWrapper
 	std::string abspath() const {
 		return properties<dependency_graph::FSEntry>(node).abspath();
 	}
+	std::string get_contents() const {
+		try {
+			return properties<dependency_graph::FSEntry>(node).get_contents();
+		} catch(const std::bad_cast&) { return std::string(); }
+	}
 };
 
 inline std::string extract_string_subst(const environment::Environment& env, object obj)

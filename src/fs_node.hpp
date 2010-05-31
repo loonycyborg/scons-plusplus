@@ -59,6 +59,8 @@ class FSEntry : public node_properties
 	bool exists() const { return boost::filesystem::exists(abspath_); }
 	std::time_t timestamp() const { return boost::filesystem::last_write_time(abspath_); }
 
+	std::string get_contents() const;
+
 	void record_persistent_data(db::PersistentNodeData&);
 };
 
