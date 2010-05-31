@@ -28,6 +28,7 @@
 #include "dependency_graph.hpp"
 #include "environment.hpp"
 #include "action.hpp"
+#include "task.hpp"
 
 namespace builder
 {
@@ -39,7 +40,8 @@ class Builder
 		const environment::Environment& env,
 		const dependency_graph::NodeList& targets,
 		const dependency_graph::NodeList& sources,
-		const action::ActionList& actions
+		const action::ActionList& actions,
+		taskmaster::Task::Scanner scanner = taskmaster::Task::Scanner()
 		) const;
 	public:
 	typedef boost::shared_ptr<Builder> pointer;

@@ -24,7 +24,6 @@
 #include <boost/variant/static_visitor.hpp>
 
 #include "builder.hpp"
-#include "task.hpp"
 #include "fs_node.hpp"
 #include "alias_node.hpp"
 
@@ -45,12 +44,14 @@ void Builder::create_task(
 		const environment::Environment& env,
 		const NodeList& targets,
 		const NodeList& sources,
-		const action::ActionList& actions
+		const action::ActionList& actions,
+		Task::Scanner scanner
 		) const
 {
 	Task::pointer task(new Task(env, targets, sources, actions));
 	foreach(const dependency_graph::Node& node, targets)
 		graph[node]->set_task(task);
+	task->set_scanner(scanner);
 }
 
 template <Node (*factory)(const std::string&)>

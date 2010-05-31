@@ -84,6 +84,12 @@ class BuildVisitor : public boost::default_dfs_visitor
 
 	template <typename Edge>
 	void back_edge(const Edge&, const dependency_graph::Graph& graph) const { throw boost::not_a_dag(); }
+	void examine_edge(Edge edge, const dependency_graph::Graph& graph) const
+	{
+		taskmaster::Task::pointer task = graph[source(edge, graph)]->task();
+		if(task)
+			task->scan(source(edge, graph), target(edge, graph));
+	}
 	void finish_vertex(Node node, const dependency_graph::Graph& graph) const
 	{
 		taskmaster::Task::pointer task = graph[node]->task();

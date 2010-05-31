@@ -27,6 +27,7 @@
 
 #include <boost/array.hpp>
 #include <boost/optional.hpp>
+#include <boost/function.hpp>
 
 namespace builder
 {
@@ -44,6 +45,9 @@ class Task
 	action::ActionList actions_;
 
 	environment::Environment::const_pointer env_;
+
+	typedef boost::function<void(const environment::Environment&, dependency_graph::Node, dependency_graph::Node)> Scanner;
+	Scanner scanner_;
 
 	friend class builder::Builder;
 	Task(
@@ -65,6 +69,9 @@ class Task
 	void add_sources(const dependency_graph::NodeList& sources);
 	action::ActionList& actions() { return actions_; }
 	environment::Environment::const_pointer env() const;
+
+	void scan(dependency_graph::Node target, dependency_graph::Node source) const { if(scanner_) scanner_(*env_, target, source); }
+	void set_scanner(Scanner scanner) { scanner_ = scanner; }
 
 	boost::optional<boost::array<unsigned char, 16> > signature() const;
 
