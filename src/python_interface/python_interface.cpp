@@ -131,7 +131,10 @@ BOOST_PYTHON_MODULE(SCons)
 			.def_readonly("sources", &NodeWrapper::sources)
 			.def_readonly("path", &NodeWrapper::path)
 			.def_readonly("abspath", &NodeWrapper::abspath)
+			.def_readonly("dir", &NodeWrapper::dir)
 			.def("get_contents", &NodeWrapper::get_contents)
+			.def("scanner_key", &NodeWrapper::scanner_key)
+			.def("exists", &NodeWrapper::exists)
 		;
 	}
 	{

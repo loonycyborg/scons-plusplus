@@ -39,16 +39,6 @@ namespace taskmaster
 
 class Task
 {
-	dependency_graph::NodeList targets_;
-	dependency_graph::NodeList sources_;
-
-	action::ActionList actions_;
-
-	environment::Environment::const_pointer env_;
-
-	typedef boost::function<void(const environment::Environment&, dependency_graph::Node, dependency_graph::Node)> Scanner;
-	Scanner scanner_;
-
 	friend class builder::Builder;
 	Task(
 		const environment::Environment& env,
@@ -61,6 +51,7 @@ class Task
 			add_sources(sources);
 		}
 	public:
+	typedef boost::function<void(const environment::Environment&, dependency_graph::Node, dependency_graph::Node)> Scanner;
 	typedef boost::shared_ptr<Task> pointer;
 	typedef boost::shared_ptr<const Task> const_pointer;
 
@@ -76,6 +67,17 @@ class Task
 	boost::optional<boost::array<unsigned char, 16> > signature() const;
 
 	void execute() const;
+
+	private:
+
+	dependency_graph::NodeList targets_;
+	dependency_graph::NodeList sources_;
+
+	action::ActionList actions_;
+
+	environment::Environment::const_pointer env_;
+
+	Scanner scanner_;
 };
 
 }

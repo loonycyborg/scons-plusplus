@@ -82,6 +82,31 @@ inline NodeList extract_file_nodes(const environment::Environment& env, object o
 	return result;
 }
 
+class PythonScanner
+{
+	object target_scanner_, source_scanner_;
+
+	public:
+	PythonScanner(object target_scanner, object source_scanner)
+	: target_scanner_(target_scanner), source_scanner_(source_scanner)
+	{
+	}
+	void operator()(const environment::Environment& env, dependency_graph::Node target, dependency_graph::Node source)
+	{
+		list nodes;
+		try {
+			if(target_scanner_)
+				nodes.extend(target_scanner_(NodeWrapper(target), env));
+			if(source_scanner_)
+				nodes.extend(source_scanner_(NodeWrapper(source), env));
+			foreach(object node, make_object_iterator_range(nodes))
+				add_edge(extract_node(node), target, dependency_graph::graph);
+		} catch(const error_already_set&) {
+			throw_python_exc("Exception while running a python scanner: ");
+		}
+	}
+};
+
 class PythonBuilder : public builder::Builder
 {
 	object actions_;
@@ -102,13 +127,16 @@ class PythonBuilder : public builder::Builder
 
 	bool multi_;
 
+	taskmaster::Task::Scanner scanner_;
+
 	public:
 	PythonBuilder(
 			object actions,
 			object target_factory, object source_factory, object prefix, object suffix, bool ensure_suffix, object src_suffix,
 			object emitter, object src_builder,
 			bool single_source,
-			bool multi) :
+			bool multi,
+			object target_scanner, object source_scanner) :
 		actions_(actions),
 		target_factory_(target_factory),
 		source_factory_(source_factory),
@@ -119,7 +147,8 @@ class PythonBuilder : public builder::Builder
 		emitter_(emitter),
 		src_builder_(src_builder),
 		single_source_(single_source),
-		multi_(multi)
+		multi_(multi),
+		scanner_(PythonScanner(target_scanner, source_scanner))
 	{}
 
 	dependency_graph::NodeList operator()(
@@ -195,7 +224,7 @@ class PythonBuilder : public builder::Builder
 			}
 			actions = make_actions(actions_obj);
 
-			create_task(env, target_nodes, source_nodes, actions);
+			create_task(env, target_nodes, source_nodes, actions, scanner_);
 		}
 
 		return target_nodes;
@@ -320,7 +349,9 @@ object make_builder(const tuple&, const dict& kw)
 					kw.get("emitter"),
 					kw.get("src_builder"),
 					kw.get("single_source"),
-					kw.get("multi")
+					kw.get("multi"),
+					kw.get("target_scanner"),
+					kw.get("source_scanner")
 	)));
 }
 

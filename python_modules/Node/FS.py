@@ -23,3 +23,8 @@ if os.path.normcase("TeSt") == os.path.normpath("TeSt") and not _is_cygwin:
 else:
     def _my_normcase(x):
         return string.upper(x)
+
+def find_file(filename, paths):
+    print "filename", filename
+    print "paths", paths
+    return []

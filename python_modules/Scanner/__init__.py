@@ -210,13 +210,9 @@ class Base:
             list = self.function(node, env, path)
 
         kw = {}
-        if hasattr(node, 'dir'):
-            kw['directory'] = node.dir
-        node_factory = env.get_factory(self.node_factory)
         nodes = []
-        for l in list:
-            if self.node_class and not isinstance(l, self.node_class):
-                l = apply(node_factory, (l,), kw)
+        for l in env.Flatten(list):
+            l = env.File(l)
             nodes.append(l)
         return nodes
 
@@ -326,7 +322,6 @@ class Classic(Current):
         self.cre = re.compile(regex, re.M)
 
         def _scan(node, env, path=(), self=self):
-            node = node.rfile()
             if not node.exists():
                 return []
             return self.scan(node, path)
@@ -351,12 +346,7 @@ class Classic(Current):
 
     def scan(self, node, path=()):
 
-        # cache the includes list in node so we only scan it once:
-        if node.includes != None:
-            includes = node.includes
-        else:
-            includes = self.find_include_names (node)
-            node.includes = includes
+        includes = self.find_include_names (node)
 
         # This is a hand-coded DSU (decorate-sort-undecorate, or
         # Schwartzian transform) pattern.  The sort key is the raw name
@@ -365,7 +355,7 @@ class Classic(Current):
         # us keep the sort order constant regardless of whether the file
         # is actually found in a Repository or locally.
         nodes = []
-        source_dir = node.get_dir()
+        source_dir = node.dir
         if callable(path):
             path = path()
         for include in includes:

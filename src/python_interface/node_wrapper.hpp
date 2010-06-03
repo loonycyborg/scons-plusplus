@@ -55,10 +55,24 @@ struct NodeWrapper
 	std::string abspath() const {
 		return properties<dependency_graph::FSEntry>(node).abspath();
 	}
+	std::string dir() const {
+		return properties<dependency_graph::FSEntry>(node).dir();
+	}
 	std::string get_contents() const {
 		try {
 			return properties<dependency_graph::FSEntry>(node).get_contents();
 		} catch(const std::bad_cast&) { return std::string(); }
+	}
+	std::string scanner_key() const {
+		try {
+			dependency_graph::FSEntry& props = properties<dependency_graph::FSEntry>(node);
+			return props.suffix();
+		} catch(const std::bad_cast&) {}
+		return std::string();
+	}
+	bool exists() const
+	{
+		return properties<dependency_graph::FSEntry>(node).exists();
 	}
 };
 
