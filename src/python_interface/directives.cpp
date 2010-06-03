@@ -106,4 +106,15 @@ object AlwaysBuild(tuple args, dict keywords)
 	return object();
 }
 
+object FindFile(const std::string& name, object dir_objs)
+{
+	std::vector<std::string> directories;
+	foreach(object dir, make_object_iterator_range(flatten(dir_objs)))
+		directories.push_back(extract<std::string>(dir)());
+	boost::optional<Node> file = dependency_graph::find_file(name, directories);
+	if(file)
+		return object(NodeWrapper(file.get()));
+	return object();
+}
+
 }

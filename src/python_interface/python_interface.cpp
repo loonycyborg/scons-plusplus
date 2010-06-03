@@ -221,6 +221,7 @@ BOOST_PYTHON_MODULE(SCons)
 		def_directive<BOOST_TYPEOF(Depends), Depends>(env, "Depends", (arg("target"), arg("dependency")));
 		def_directive_raw<AlwaysBuild>(env, "AlwaysBuild");
 		def_directive<BOOST_TYPEOF(dependency_graph::glob), dependency_graph::glob>(env, "Glob", (arg("pattern"), arg("ondisk") = true));
+		def_directive<BOOST_TYPEOF(FindFile), FindFile>(env, "FindFile", (arg("file"), arg("dirs")));
 	}
 }
 

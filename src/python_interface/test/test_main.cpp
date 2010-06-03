@@ -156,6 +156,17 @@ BOOST_AUTO_TEST_CASE(test_node_get_contents)
 	SCONSPP_CHECK("env.File(tmpfile.name).get_contents() == 'bar'");
 }
 
+BOOST_AUTO_TEST_CASE(test_find_file)
+{
+	SCONSPP_EXEC("from tempfile import NamedTemporaryFile");
+	SCONSPP_EXEC("from os.path import basename, dirname");
+	SCONSPP_EXEC("tmpfile = NamedTemporaryFile(prefix = 'test_find_file', suffix = '.ext')");
+	SCONSPP_EXEC("tmpfile.write('baz')");
+	SCONSPP_EXEC("tmpfile.flush()");
+	SCONSPP_CHECK("FindFile(basename(tmpfile.name), dirname(tmpfile.name)).abspath == tmpfile.name");
+	SCONSPP_CHECK("FindFile('nonexistant_file_name', dirname(tmpfile.name)) == None");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }

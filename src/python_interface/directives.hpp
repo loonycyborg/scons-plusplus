@@ -44,6 +44,7 @@ namespace python_interface
 	void AddPostAction(object target, object action);
 	void Depends(object target, object dependency);
 	object AlwaysBuild(tuple args, dict keywords);
+	object FindFile(const std::string& name, object dir_objs);
 
 	template<typename T>
 	inline T subst_arg(const environment::Environment&, const T& val) { return val; }

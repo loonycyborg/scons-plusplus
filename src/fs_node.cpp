@@ -188,6 +188,20 @@ Node add_entry(const std::string& name, boost::logic::tribool is_file)
 	return fs.add_entry(canonical_path(name), is_file);
 }
 
+boost::optional<Node> find_file(const std::string& name, const std::vector<std::string>& directories)
+{
+	foreach(const std::string& directory, directories) {
+		path p = canonical_path(directory) / name;
+		boost::optional<Node> result = fs.get(p);
+		if(result) return result;
+		if(!p.is_complete())
+			p = fs_root / p;
+		if(exists(p))
+			return fs.add_entry(p, boost::logic::indeterminate);
+	}
+	return boost::optional<Node>();
+}
+
 NodeList glob(const std::string& pattern, bool on_disk)
 {
 	if(on_disk)
