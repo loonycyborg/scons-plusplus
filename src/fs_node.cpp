@@ -108,7 +108,7 @@ struct fs_trie
 	{
 		path::const_iterator iter = pattern.begin();
 		NodeList result;
-		if(directory.is_complete())
+		if(pattern.is_complete())
 			glob_on_disk(++iter, pattern.end(), *(directory.begin()));
 		else
 			glob_on_disk(iter, pattern.end(), directory);
