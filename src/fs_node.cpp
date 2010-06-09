@@ -170,6 +170,14 @@ void set_fs_root(const path& path)
 	assert(fs_root.is_complete());
 }
 
+path canonical_path(const path& name)
+{
+	path result = util::canonicalize(name);
+	if(!fs_root.empty())
+		result = util::to_relative(result, fs_root);
+	return result;
+}
+
 path canonical_path(const std::string& name)
 {
 	path filename;
@@ -177,10 +185,7 @@ path canonical_path(const std::string& name)
 		filename = fs_root / name.substr(1);
 	else
 		filename = system_complete(path(name));
-	filename = util::canonicalize(filename);
-	if(!fs_root.empty())
-		filename = util::to_relative(filename, fs_root);
-	return filename;
+	return canonical_path(filename);
 }
 
 Node add_entry(const std::string& name, boost::logic::tribool is_file)
@@ -191,13 +196,13 @@ Node add_entry(const std::string& name, boost::logic::tribool is_file)
 boost::optional<Node> find_file(const std::string& name, const std::vector<std::string>& directories)
 {
 	foreach(const std::string& directory, directories) {
-		path p = canonical_path(directory) / name;
+		path p = canonical_path(directory.empty() ? "." : directory) / name;
 		boost::optional<Node> result = fs.get(p);
 		if(result) return result;
 		if(!p.is_complete())
 			p = fs_root / p;
 		if(exists(p))
-			return fs.add_entry(p, boost::logic::indeterminate);
+			return fs.add_entry(canonical_path(p), boost::logic::indeterminate);
 	}
 	return boost::optional<Node>();
 }

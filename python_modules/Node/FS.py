@@ -24,7 +24,4 @@ else:
     def _my_normcase(x):
         return string.upper(x)
 
-def find_file(filename, paths):
-    print "filename", filename
-    print "paths", paths
-    return []
+from SCons.Script import FindFile as find_file

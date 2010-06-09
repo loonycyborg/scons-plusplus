@@ -100,7 +100,7 @@ class PythonScanner
 			if(source_scanner_)
 				nodes.extend(source_scanner_(NodeWrapper(source), env));
 			foreach(object node, make_object_iterator_range(nodes))
-				add_edge(extract_node(node), target, dependency_graph::graph);
+				add_edge(target, extract_node(node), dependency_graph::graph);
 		} catch(const error_already_set&) {
 			throw_python_exc("Exception while running a python scanner: ");
 		}

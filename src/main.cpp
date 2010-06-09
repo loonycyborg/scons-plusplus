@@ -48,11 +48,6 @@ int main(int argc, char** argv)
 	if(!script_found)
 		std::cerr << "scons++: *** No SConstruct file found." << std::endl;
 	
-	{
-	std::ofstream dot_file("graph.dot");
-	visualization::write_dot(dot_file, dependency_graph::graph);
-	}
-
 	if(dependency_graph::default_targets.size())
 	{
 		Node default_target = dependency_graph::add_dummy_node("The end goal");
@@ -64,5 +59,10 @@ int main(int argc, char** argv)
 			std::cerr << "scons++: *** " << e.what() << std::endl;
 			return 1;
 		}
+	}
+
+	{
+	std::ofstream dot_file("graph.dot");
+	visualization::write_dot(dot_file, dependency_graph::graph);
 	}
 }

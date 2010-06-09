@@ -212,7 +212,6 @@ class Base:
         kw = {}
         nodes = []
         for l in env.Flatten(list):
-            l = env.File(l)
             nodes.append(l)
         return nodes
 
