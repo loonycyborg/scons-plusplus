@@ -36,7 +36,7 @@ class Action
 
 	virtual ~Action() {}
 	virtual void execute(const environment::Environment&) const = 0;
-	virtual std::string to_string(const environment::Environment&) const = 0;
+	virtual std::string to_string(const environment::Environment&, bool for_signature = false) const = 0;
 };
 
 typedef std::deque<Action::pointer> ActionList;
@@ -53,7 +53,7 @@ class Command : public Action
 	Command(const std::string& command, const std::string& output_string) : command_(command), output_string_(output_string) {}
 	
 	void execute(const environment::Environment&) const;
-	std::string to_string(const environment::Environment&) const;
+	std::string to_string(const environment::Environment&, bool for_signature = false) const;
 };
 
 }

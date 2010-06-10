@@ -45,7 +45,7 @@ void PythonAction::execute(const environment::Environment& env) const
 	}
 }
 
-std::string PythonAction::to_string(const environment::Environment& env) const
+std::string PythonAction::to_string(const environment::Environment& env, bool) const
 {
 	return string(extract<std::string>(action_obj.attr("__name__"))) + "()";
 }
@@ -69,7 +69,7 @@ void ActionCaller::execute(const environment::Environment& env) const
 	}
 }
 
-std::string ActionCaller::to_string(const environment::Environment& env) const
+std::string ActionCaller::to_string(const environment::Environment& env, bool) const
 {
 	list args;
 	foreach(const object& arg, make_object_iterator_range(args_))

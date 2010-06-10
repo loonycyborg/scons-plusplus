@@ -45,9 +45,9 @@ void Command::execute(const environment::Environment& env) const
 	util::exec(command);
 }
 
-std::string Command::to_string(const environment::Environment& env) const
+std::string Command::to_string(const environment::Environment& env, bool for_signature) const
 {
-	return env.subst(command_, true);
+	return env.subst(command_, for_signature);
 }
 
 }

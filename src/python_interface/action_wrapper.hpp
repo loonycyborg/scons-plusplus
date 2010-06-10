@@ -36,7 +36,7 @@ class PythonAction : public action::Action
 
 	PythonAction(object callable, object action_str_) : action_obj(callable), action_str(action_str_) {}
 	void execute(const environment::Environment&) const;
-	std::string to_string(const environment::Environment&) const;
+	std::string to_string(const environment::Environment&, bool for_signature = false) const;
 };
 
 inline action::Action::pointer make_action(object obj, object action_str = object())
@@ -88,7 +88,7 @@ class ActionCaller : public action::Action
 	ActionCaller(object actfunc, object strfunc, object convert, tuple args, dict kw) : actfunc_(actfunc), strfunc_(strfunc), convert_(convert), args_(args), kw_(kw) {}
 
 	void execute(const environment::Environment&) const;
-	std::string to_string(const environment::Environment&) const;
+	std::string to_string(const environment::Environment&, bool for_signature = false) const;
 };
 
 }

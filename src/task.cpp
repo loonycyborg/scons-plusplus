@@ -58,7 +58,7 @@ boost::optional<boost::array<unsigned char, 16> > Task::signature() const
 		return result;
 	util::MD5 md5_sum;
 	foreach(const action::Action::pointer& action, actions_)
-		md5_sum.append(action->to_string(*env()));
+		md5_sum.append(action->to_string(*env(), true));
 	return md5_sum.finish();
 }
 
