@@ -88,7 +88,7 @@ def scan(node, env, libpath = ()):
             lib = env.subst(lib)
             for pref, suf in pairs:
                 l = adjustixes(lib, pref, suf)
-                l = find_file(l, libpath, verbose=print_find_libs)
+                l = find_file(l, libpath)
                 if l:
                     result.append(l)
         else:
