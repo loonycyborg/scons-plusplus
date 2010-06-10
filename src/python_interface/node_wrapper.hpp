@@ -55,6 +55,9 @@ struct NodeWrapper
 	std::string abspath() const {
 		return properties<dependency_graph::FSEntry>(node).abspath();
 	}
+	std::string name() const {
+		return properties<dependency_graph::FSEntry>(node).file();
+	}
 	std::string dir() const {
 		return properties<dependency_graph::FSEntry>(node).dir();
 	}
