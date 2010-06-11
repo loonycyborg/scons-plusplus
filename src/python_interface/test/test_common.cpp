@@ -50,7 +50,8 @@ void write_build_graph(std::ostream& os, Node end_goal)
 	taskmaster::build_order(end_goal, nodes);
 	boost::write_graphviz(
 		os,
-		boost::make_filtered_graph(dependency_graph::graph, all_edges, NodeInSet(nodes.begin(), nodes.end()))
+		boost::make_filtered_graph(dependency_graph::graph, all_edges, NodeInSet(nodes.begin(), nodes.end())),
+		boost::default_writer(), boost::default_writer(), boost::default_writer(), dependency_graph::IdMap(dependency_graph::graph)
 		);
 }
 

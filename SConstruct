@@ -33,7 +33,7 @@ conf.CheckLibWithHeader("sqlite3", "sqlite3.h", "C") or Exit(1)
 conf.Define("PYTHON_MODULES_PATH", "\"" + Dir("python_modules").abspath + "\"")
 conf.Finish()
 
-env.Append(CCFLAGS = Split("-O0 -ggdb"), CXXFLAGS = Split("-Wall -ansi -Wno-deprecated -Wno-parentheses"))
+env.Append(CCFLAGS = Split("-O0 -ggdb"), CXXFLAGS = Split("-Wall -ansi -Wno-deprecated -Wno-parentheses"), CPPDEFINES = ["_GLIBCXX_DEBUG", "_GLIBCXX_DEBUG_PEDANTIC"])
 env.Append(CPPPATH = ["#/src"])
 
 env.Decider("MD5-timestamp")

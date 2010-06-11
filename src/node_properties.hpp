@@ -40,7 +40,8 @@ class node_properties
 	bool always_build_;
 
 	public:
-	node_properties() : always_build_(false) {}
+	std::size_t id;
+	node_properties() : always_build_(false) { static size_t counter = 0; id = counter++; }
 	virtual ~node_properties() {}
 	virtual std::string name() const = 0;
 	virtual const char* type() const = 0;
@@ -57,6 +58,21 @@ class node_properties
 template<class NodeClass> inline NodeClass& properties(Node node)
 {
 	return *boost::polymorphic_cast<NodeClass*>(graph[node].get());
+}
+
+struct IdMap
+{
+	const Graph& graph;
+	typedef Node key_type; 
+	typedef std::size_t value_type;
+	typedef boost::readable_property_map_tag category;
+
+	IdMap(const Graph& graph) : graph(graph) {}
+};
+
+inline std::size_t get(const IdMap& map, Node node)
+{
+	return map.graph[node]->id;
 }
 
 class dummy_node : public node_properties

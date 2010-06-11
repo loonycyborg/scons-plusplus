@@ -41,7 +41,7 @@ class DAG_writer
 
 void write_dot(std::ostream& os, const dependency_graph::Graph& graph)
 {
-	boost::write_graphviz(os, graph, DAG_writer(graph));
+	boost::write_graphviz(os, graph, DAG_writer(graph), boost::default_writer(), boost::default_writer(), dependency_graph::IdMap(graph));
 }
 
 }
