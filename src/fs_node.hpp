@@ -41,6 +41,7 @@ class FSEntry : public node_properties
 	FSEntry(path name, boost::logic::tribool is_file = boost::logic::indeterminate);
 	std::string name() const { return is_file_ ? path_.file_string() : path_.directory_string(); }
 	std::string abspath() const { return is_file_ ? abspath_.file_string() : abspath_.directory_string(); }
+	std::string relpath() const;
 	const char* type() const { return "fs"; }
 
 	bool unchanged(const NodeList&, const db::PersistentNodeData&) const;

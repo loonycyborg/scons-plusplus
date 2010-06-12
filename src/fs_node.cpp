@@ -252,6 +252,12 @@ bool FSEntry::unchanged(const NodeList& targets, const db::PersistentNodeData& p
 	return unchanged;
 }
 
+std::string FSEntry::relpath() const
+{
+	path relpath = util::to_relative(abspath_, boost::filesystem::current_path());
+	return is_file_ ? relpath.file_string() : relpath.directory_string();
+}
+
 std::string FSEntry::get_contents() const
 {
 	boost::filesystem::ifstream ifs(abspath_);

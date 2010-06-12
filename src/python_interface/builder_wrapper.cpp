@@ -186,6 +186,15 @@ class PythonBuilder : public builder::Builder
 				implicit_target.push_back(split_ext(*name));
 				return (*this)(env, implicit_target, sources);
 			}
+			const dependency_graph::Node* node = boost::get<const dependency_graph::Node>(&sources[0]);
+			if(node) {
+				NodeStringList implicit_target;
+				try {
+					std::string name = properties<dependency_graph::FSEntry>(*node).relpath();
+					implicit_target.push_back(split_ext(name));
+					return (*this)(env, implicit_target, sources);
+				} catch(const std::bad_cast&) {}
+			}
 		}
 
 		make_node_visitor<&PythonBuilder::make_target_node> target_visitor(env, this, target_nodes);
