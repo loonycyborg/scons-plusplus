@@ -1,0 +1,20 @@
+env = Environment()
+env.Append(CPPPATH = "src")
+Export("env")
+test_env = Environment()
+test_env["have_boost_test"] = False
+Export("test_env")
+
+import distutils.sysconfig
+env.AppendUnique(CPPPATH = distutils.sysconfig.get_python_inc())
+version = distutils.sysconfig.get_config_var("VERSION")
+if not version:
+    version = sys.version[:3]
+if env["PLATFORM"] == "win32":
+    version = version.replace('.', '')
+env.AppendUnique(LIBPATH = distutils.sysconfig.get_config_var("LIBDIR") or \
+                               os.path.join(distutils.sysconfig.get_config_var("prefix"), "libs") )
+env.AppendUnique(LIBS = "python" + version)
+env.AppendUnique(LIBS = ["boost_filesystem", "boost_system", "boost_python", "sqlite3"])
+
+SConscript("src/SConscript")
