@@ -86,7 +86,10 @@ class BuildVisitor : public boost::default_dfs_visitor
 	void back_edge(const Edge&, const dependency_graph::Graph& graph) const { throw boost::not_a_dag(); }
 	void discover_vertex(Node node, const dependency_graph::Graph& graph) const
 	{
-		foreach(Edge edge, out_edges(node, graph)) {
+		const std::pair<dependency_graph::Graph::out_edge_iterator, dependency_graph::Graph::out_edge_iterator>&
+			iterators = out_edges(node, graph);
+		std::vector<Edge> edges(iterators.first, iterators.second);
+		foreach(Edge edge, edges) {
 			taskmaster::Task::pointer task = graph[source(edge, graph)]->task();
 			if(task)
 				task->scan(source(edge, graph), target(edge, graph));
