@@ -86,6 +86,18 @@ class PythonScanner
 {
 	object target_scanner_, source_scanner_;
 
+	void scan(const environment::Environment& env, object& scanner, dependency_graph::Node node, std::set<dependency_graph::Node>& deps) {
+		if(scanner) {
+			object result = scanner(NodeWrapper(node), env);
+			foreach(object node, make_object_iterator_range(result)) {
+				dependency_graph::Node dep = extract_node(node);
+				if(!deps.count(dep)) {
+					deps.insert(dep);
+					scan(env, scanner, dep, deps);
+				}
+			}
+		}
+	}
 	public:
 	PythonScanner(object target_scanner, object source_scanner)
 	: target_scanner_(target_scanner), source_scanner_(source_scanner)
@@ -93,14 +105,12 @@ class PythonScanner
 	}
 	void operator()(const environment::Environment& env, dependency_graph::Node target, dependency_graph::Node source)
 	{
-		list nodes;
+		std::set<dependency_graph::Node> deps;
 		try {
-			if(target_scanner_)
-				nodes.extend(target_scanner_(NodeWrapper(target), env));
-			if(source_scanner_)
-				nodes.extend(source_scanner_(NodeWrapper(source), env));
-			foreach(object node, make_object_iterator_range(nodes))
-				add_edge(target, extract_node(node), dependency_graph::graph);
+			scan(env, source_scanner_, source, deps);
+			scan(env, target_scanner_, target, deps);
+			foreach(dependency_graph::Node node, deps)
+				add_edge(target, node, dependency_graph::graph);
 		} catch(const error_already_set&) {
 			throw_python_exc("Exception while running a python scanner: ");
 		}
