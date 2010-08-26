@@ -23,6 +23,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <vector>
+#include <boost/version.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -120,7 +121,11 @@ boost::filesystem::path canonicalize(const boost::filesystem::path& p)
 inline int throw_if_error(int return_value)
 {
 	if(return_value == -1)
+#if BOOST_VERSION < 104400
 		throw boost::system::system_error(errno, boost::system::system_category);
+#else
+		throw boost::system::system_error(errno, boost::system::system_category());
+#endif
 	return return_value;
 }
 
