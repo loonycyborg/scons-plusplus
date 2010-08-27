@@ -41,6 +41,7 @@ namespace
 		SConscriptFile* old_sconscript;
 
 		object& ns_;
+		list return_value_;
 
 		static SConscriptFile* current_sconscript;
 
@@ -61,15 +62,22 @@ namespace
 		boost::filesystem::path path() const { return path_; }
 		boost::filesystem::path dir() const { return dir_; }
 		object& ns() { return ns_; }
+		list& return_value() { return return_value_; }
 	};
 
 	SConscriptFile* SConscriptFile::current_sconscript;
+
+	object SConscriptReturnException()
+	{
+		static object exception = object(handle<>(PyErr_NewException((char*)"SConspp.SConscriptReturn", NULL, NULL)));
+		return exception;
+	}
 }
 
 namespace python_interface
 {
 
-void SConscript(const std::string& script)
+object SConscript(const std::string& script)
 {
 	object ns = copy(main_namespace);
 
@@ -82,12 +90,20 @@ void SConscript(const std::string& script)
 
 	util::scoped_chdir chdir(SConscriptFile::current().dir());
 
-	exec_file(SConscriptFile::current().path().string().c_str(), ns, ns);
+	try {
+		exec_file(SConscriptFile::current().path().string().c_str(), ns, ns);
+	} catch(const error_already_set&) {
+		if(PyErr_ExceptionMatches(SConscriptReturnException().ptr()))
+			PyErr_Clear();
+		else
+			throw;
+	}
+	return SConscriptFile::current().return_value();
 }
 
-void SConscript(const environment::Environment&, const std::string& script)
+object SConscript(const environment::Environment&, const std::string& script)
 {
-	SConscript(script);
+	return SConscript(script);
 }
 
 object Export(tuple args, dict kw)
@@ -104,6 +120,20 @@ object Import(tuple args, dict kw)
 	foreach(object var, make_object_iterator_range(flatten(args))) {
 		string name = extract<string>(var);
 		SConscriptFile::current().ns()[name] = exports[name];
+	}
+	return object();
+}
+
+object Return(tuple args, dict kw)
+{
+	list& return_value = SConscriptFile::current().return_value();
+	foreach(object var, make_object_iterator_range(flatten(args))) {
+		string name = extract<string>(var);
+		return_value.append(SConscriptFile::current().ns()[name]);
+	}
+	if(kw.get("stop", object(true))) {
+		PyErr_SetObject(SConscriptReturnException().ptr(),  SConscriptReturnException()().ptr());
+		throw_error_already_set();
 	}
 	return object();
 }

@@ -26,11 +26,12 @@
 namespace python_interface
 {
 
-void SConscript(const std::string& script);
-void SConscript(const environment::Environment&, const std::string& script);
+object SConscript(const std::string& script);
+object SConscript(const environment::Environment&, const std::string& script);
 
 object Export(tuple args, dict kw);
 object Import(tuple args, dict kw);
+object Return(tuple args, dict kw);
 
 }
 

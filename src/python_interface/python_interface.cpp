@@ -191,7 +191,7 @@ BOOST_PYTHON_MODULE(SCons)
 			.def("SetDefault", raw_function(&SetDefault))
 			.def("Dump", &Dump)
 			.def("Clone", &Environment::clone)
-			.def("SConscript", (void(*)(const environment::Environment&, const std::string&))SConscript)
+			.def("SConscript", (object(*)(const environment::Environment&, const std::string&))SConscript)
 		;
 	}
 	to_python_converter<dependency_graph::NodeList, node_list_to_python>();
@@ -210,9 +210,10 @@ BOOST_PYTHON_MODULE(SCons)
 		s.attr("Environment") = import("SCons.Environment").attr("Environment");
 
 		def("DefaultEnvironment", raw_function(&DefaultEnvironment));
-		def("SConscript", (void(*)(const std::string&))SConscript);
+		def("SConscript", (object(*)(const std::string&))SConscript);
 		def("Export", raw_function(&Export));
 		def("Import", raw_function(&Import));
+		def("Return", raw_function(&Return));
 		def_directive<BOOST_TYPEOF(WhereIs), WhereIs>(env, "WhereIs", (arg("program")));
 		def_directive<BOOST_TYPEOF(Alias), Alias, boost::mpl::set_c<int, 3> >(env, "Alias", (arg("alias"), arg("targets") = object(), arg("action") = object()));
 		def_directive<BOOST_TYPEOF(AddPreAction), AddPreAction, boost::mpl::set_c<int, 2> >(env, "AddPreAction", (arg("target"), arg("action")));
