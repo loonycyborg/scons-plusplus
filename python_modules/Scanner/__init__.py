@@ -74,9 +74,10 @@ class FindPathDirs:
         except KeyError:
             return ()
 
-        dir = dir or env.fs._cwd
+        import os
+        dir = dir or os.getcwd()
         path = SCons.PathList.PathList(path).subst_path(env, target, source)
-        return tuple(dir.Rfindalldirs(path))
+        return tuple(path)
 
 
 

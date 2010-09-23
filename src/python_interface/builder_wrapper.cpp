@@ -86,17 +86,26 @@ class PythonScanner
 {
 	object target_scanner_, source_scanner_;
 
-	void scan(const environment::Environment& env, object& scanner, dependency_graph::Node node, std::set<dependency_graph::Node>& deps) {
+	void scan(const environment::Environment& env, object& scanner, dependency_graph::Node node, std::set<dependency_graph::Node>& deps, object path) {
 		if(scanner) {
-			object result = scanner(NodeWrapper(node), env);
+			object result = scanner(NodeWrapper(node), env, path);
 			foreach(object node, make_object_iterator_range(result)) {
 				dependency_graph::Node dep = extract_node(node);
 				if(!deps.count(dep)) {
 					deps.insert(dep);
-					scan(env, scanner, dep, deps);
+					scan(env, scanner, dep, deps, path);
 				}
 			}
 		}
+	}
+	object get_path(const environment::Environment& env, object& scanner, dependency_graph::Node node, object cwd, dependency_graph::Node target, dependency_graph::Node source)
+	{
+		if(!scanner)
+			return tuple();
+		object scan_path = scanner.attr("select")(NodeWrapper(node));
+		if(!scan_path)
+			scan_path = scanner;
+		return scan_path.attr("path")(env, cwd, NodeWrapper(target), NodeWrapper(source));
 	}
 	public:
 	PythonScanner(object target_scanner, object source_scanner)
@@ -107,8 +116,8 @@ class PythonScanner
 	{
 		std::set<dependency_graph::Node> deps;
 		try {
-			scan(env, source_scanner_, source, deps);
-			scan(env, target_scanner_, target, deps);
+			scan(env, source_scanner_, source, deps, get_path(env, source_scanner_, source, object(), target, source));
+			scan(env, target_scanner_, target, deps, get_path(env, target_scanner_, target, object(), target, source));
 			foreach(dependency_graph::Node node, deps)
 				add_edge(target, node, dependency_graph::graph);
 		} catch(const error_already_set&) {
