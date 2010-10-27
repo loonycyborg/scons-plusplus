@@ -16,5 +16,6 @@ env.AppendUnique(LIBPATH = distutils.sysconfig.get_config_var("LIBDIR") or \
                                os.path.join(distutils.sysconfig.get_config_var("prefix"), "libs") )
 env.AppendUnique(LIBS = "python" + version)
 env.AppendUnique(LIBS = ["boost_filesystem", "boost_system", "boost_python", "sqlite3"])
+env.AppendUnique(CXXFLAGS = Split("-Wall -O0 -ggdb -Wno-deprecated -Wno-parentheses"), CPPDEFINES = ["_GLIBCXX_DEBUG", "_GLIBCXX_DEBUG_PEDANTIC"])
 
 SConscript("src/SConscript")
