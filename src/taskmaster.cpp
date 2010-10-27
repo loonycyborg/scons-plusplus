@@ -34,6 +34,7 @@
 #include "taskmaster.hpp"
 #include "task.hpp"
 #include "node_properties.hpp"
+#include "log.hpp"
 
 using std::vector;
 using boost::depth_first_visit;
@@ -167,20 +168,22 @@ namespace taskmaster
 					source_ids.insert(source_data.id());
 					if(!dependency_graph::graph[build_source]->unchanged(item.targets, source_data)) {
 						up_to_date = false;
+					} else {
+						logging::debug(logging::Taskmaster) << dependency_graph::graph[build_source]->name() << " is unchanged\n";
 					}
 				}
 				if(prev_sources.size() == source_ids.size() && std::equal(source_ids.begin(), source_ids.end(), prev_sources.begin()))
-					std::cout << "Dependency relations are unchanged\n";
+					logging::debug(logging::Taskmaster) << "Dependency relations are unchanged\n";
 				else
 					up_to_date = false;
 				if(db[build_target].task_signature() != item.task->signature()) {
 					up_to_date = false;
 					db[build_target].task_signature() = item.task->signature();
 				} else
-					std::cout << "Task signature is unchanged\n";
+					logging::debug(logging::Taskmaster) << "Task signature is unchanged\n";
 			}
 			if(up_to_date)
-				std::cout << "Task is up-to-date.\n";
+				logging::debug(logging::Taskmaster) << "Task is up-to-date.\n";
 			else
 				item.task->execute();
 		}

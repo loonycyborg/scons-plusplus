@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2009 by Sergey Popov                                    *
+ *   Copyright (C) 2010 by Sergey Popov                                    *
  *   loonycyborg@gmail.com                                                 *
  *                                                                         *
  *  This file is part of SCons++.                                          *
@@ -18,52 +18,42 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include "dependency_graph.hpp"
-#include "node_properties.hpp"
-#include "python_interface/python_interface.hpp"
-#include "write_dot.hpp"
-#include "taskmaster.hpp"
-#include "log.hpp"
+#include <iostream>
 
-#include <fstream>
+namespace logging {
 
-#include <boost/filesystem/operations.hpp>
-#include <boost/foreach.hpp>
-#define foreach BOOST_FOREACH
-
-using dependency_graph::Graph;
-using dependency_graph::Node;
-
-int main(int argc, char** argv)
+enum Severity
 {
-	python_interface::init_python();
-	const char* default_script_names[] = { "SConstruct++", "SConstruct" };
-	bool script_found = false;
-	foreach(const char* name, default_script_names) {
-		if(boost::filesystem::exists(name)) {
-			script_found = true;
-			python_interface::run_script(name, argc, argv);
-			break;
-		}
-	}
-	if(!script_found)
-		logging::error() << "No SConstruct file found." << std::endl;
-	
-	if(dependency_graph::default_targets.size())
-	{
-		Node default_target = dependency_graph::add_dummy_node("The end goal");
-		foreach(Node node, dependency_graph::default_targets)
-			add_edge(default_target, node, dependency_graph::graph);
-		try {
-			taskmaster::build(default_target);
-		} catch(const std::exception& e) {
-			logging::error() << e.what() << std::endl;
-			return 1;
-		}
-	}
+	Error,
+	Warning,
+	Debug
+};
+const char* const severity_msgs[] = { "***", "warning:", "debug:" };
 
+enum Domain
+{
+	General,
+	Taskmaster
+};
+const char* const domain_msgs[] = { "", "taskmaster:" } ;
+
+template<Severity severity>
+class log
+{
+	Domain domain;
+	public:
+	log(Domain domain = General) : domain(domain) {}
+	template<class T>
+	std::ostream& operator<<(const T& msg) 
 	{
-	std::ofstream dot_file("graph.dot");
-	visualization::write_dot(dot_file, dependency_graph::graph);
+		return std::cerr << "scons++: " <<
+			severity_msgs[severity] << " " <<
+			domain_msgs[domain] << (strlen(domain_msgs[domain]) >= 1 ? " " : "") <<
+			msg;
 	}
+};
+typedef log<Error> error;
+typedef log<Warning> warning;
+typedef log<Debug> debug;
+
 }

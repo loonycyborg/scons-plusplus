@@ -23,7 +23,6 @@
 #include "db.hpp"
 
 #include <fnmatch.h>
-#include <iostream>
 #include <boost/optional.hpp>
 #include <boost/foreach.hpp>
 #define foreach BOOST_FOREACH
@@ -132,6 +131,7 @@ struct fs_trie
 			}
 		}
 	}
+	/*
 	void dump(int nesting_level = 0) const
 	{
 		if(node)
@@ -147,6 +147,7 @@ struct fs_trie
 			i->second.dump(nesting_level);
 		}
 	}
+	*/
 };
 
 boost::filesystem::path fs_root;
@@ -247,8 +248,6 @@ bool FSEntry::unchanged(const NodeList& targets, const db::PersistentNodeData& p
 			util::MD5::hash_file(abspath_.string()) == prev_data.signature());
 	else
 		unchanged = (prev_data.existed() == boost::optional<bool>(false));
-	if(unchanged)
-		std::cout << name() << " is unchanged." << std::endl;
 	return unchanged;
 }
 
