@@ -18,55 +18,32 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <iostream>
+#include <boost/program_options.hpp>
 
-namespace logging {
+#include "options.hpp"
+#include "log.hpp"
 
-class null_streambuf : public std::streambuf
+namespace options
 {
-	virtual int overflow(int c) { return std::char_traits< char >::not_eof(c); }
-public:
-	null_streambuf() {}
-};
 
-static std::ostream null_ostream(new null_streambuf);
-
-enum Severity
+void parse(int argc, char** argv)
 {
-	Error,
-	Warning,
-	Debug
-};
-const char* const severity_msgs[] = { "***", "warning:", "debug:" };
-extern unsigned int min_severity;
+	boost::program_options::options_description desc;
+	desc.add_options()
+		("debug,d", "Enable debug messages")
+		("help,h", "Produce this message and exit");
+	boost::program_options::variables_map vm;
+	boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+	boost::program_options::notify(vm);
 
-enum Domain
-{
-	General,
-	Taskmaster
-};
-const char* const domain_msgs[] = { "", "taskmaster:" } ;
-
-template<Severity severity>
-class log
-{
-	Domain domain;
-	public:
-	log(Domain domain = General) : domain(domain) {}
-	template<class T>
-	std::ostream& operator<<(const T& msg) 
-	{
-		if(severity <= min_severity)
-			return std::cerr << "scons++: " <<
-				severity_msgs[severity] << " " <<
-				domain_msgs[domain] << (strlen(domain_msgs[domain]) >= 1 ? " " : "") <<
-				msg;
-		else
-			return null_ostream;
+	if(vm.count("help")) {
+		std::cout << desc << std::endl;
+		exit(0);
 	}
-};
-typedef log<Error> error;
-typedef log<Warning> warning;
-typedef log<Debug> debug;
+
+	if(vm.count("debug")) {
+		logging::min_severity = 2;
+	}
+}
 
 }

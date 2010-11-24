@@ -18,55 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <iostream>
-
-namespace logging {
-
-class null_streambuf : public std::streambuf
+namespace options
 {
-	virtual int overflow(int c) { return std::char_traits< char >::not_eof(c); }
-public:
-	null_streambuf() {}
-};
-
-static std::ostream null_ostream(new null_streambuf);
-
-enum Severity
-{
-	Error,
-	Warning,
-	Debug
-};
-const char* const severity_msgs[] = { "***", "warning:", "debug:" };
-extern unsigned int min_severity;
-
-enum Domain
-{
-	General,
-	Taskmaster
-};
-const char* const domain_msgs[] = { "", "taskmaster:" } ;
-
-template<Severity severity>
-class log
-{
-	Domain domain;
-	public:
-	log(Domain domain = General) : domain(domain) {}
-	template<class T>
-	std::ostream& operator<<(const T& msg) 
-	{
-		if(severity <= min_severity)
-			return std::cerr << "scons++: " <<
-				severity_msgs[severity] << " " <<
-				domain_msgs[domain] << (strlen(domain_msgs[domain]) >= 1 ? " " : "") <<
-				msg;
-		else
-			return null_ostream;
-	}
-};
-typedef log<Error> error;
-typedef log<Warning> warning;
-typedef log<Debug> debug;
-
+	void parse(int argc, char** argv);
 }

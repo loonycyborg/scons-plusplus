@@ -7,6 +7,7 @@ PREREQUISITES
    boost::system
    boost::filesystem
    boost::python
+   boost::program_options
    Boost Graph Library
 * SQLite 3
 * scons >= 0.98.5

@@ -24,6 +24,7 @@
 #include "write_dot.hpp"
 #include "taskmaster.hpp"
 #include "log.hpp"
+#include "options.hpp"
 
 #include <fstream>
 
@@ -36,30 +37,31 @@ using dependency_graph::Node;
 
 int main(int argc, char** argv)
 {
-	python_interface::init_python();
-	const char* default_script_names[] = { "SConstruct++", "SConstruct" };
-	bool script_found = false;
-	foreach(const char* name, default_script_names) {
-		if(boost::filesystem::exists(name)) {
-			script_found = true;
-			python_interface::run_script(name, argc, argv);
-			break;
+	try {
+		options::parse(argc, argv);
+		python_interface::init_python();
+		const char* default_script_names[] = { "SConstruct++", "SConstruct" };
+		bool script_found = false;
+		foreach(const char* name, default_script_names) {
+			if(boost::filesystem::exists(name)) {
+				script_found = true;
+				python_interface::run_script(name, argc, argv);
+				break;
+			}
 		}
-	}
-	if(!script_found)
-		logging::error() << "No SConstruct file found." << std::endl;
+		if(!script_found)
+			logging::error() << "No SConstruct file found." << std::endl;
 	
-	if(dependency_graph::default_targets.size())
-	{
-		Node default_target = dependency_graph::add_dummy_node("The end goal");
-		foreach(Node node, dependency_graph::default_targets)
-			add_edge(default_target, node, dependency_graph::graph);
-		try {
+		if(dependency_graph::default_targets.size())
+		{
+			Node default_target = dependency_graph::add_dummy_node("The end goal");
+			foreach(Node node, dependency_graph::default_targets)
+				add_edge(default_target, node, dependency_graph::graph);
 			taskmaster::build(default_target);
-		} catch(const std::exception& e) {
-			logging::error() << e.what() << std::endl;
-			return 1;
 		}
+	} catch(const std::exception& e) {
+		logging::error() << e.what() << std::endl;
+		return 1;
 	}
 
 	{
