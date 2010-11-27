@@ -20,6 +20,8 @@
 
 #include "dependency_graph.hpp"
 #include "node_properties.hpp"
+#include "fs_node.hpp"
+#include "alias_node.hpp"
 #include "python_interface/python_interface.hpp"
 #include "write_dot.hpp"
 #include "taskmaster.hpp"
@@ -38,7 +40,7 @@ using dependency_graph::Node;
 int main(int argc, char** argv)
 {
 	try {
-		options::parse(argc, argv);
+		std::vector<std::string> command_line_targets = options::parse(argc, argv);
 		python_interface::init_python();
 		const char* default_script_names[] = { "SConstruct++", "SConstruct" };
 		bool script_found = false;
@@ -50,15 +52,23 @@ int main(int argc, char** argv)
 			}
 		}
 		if(!script_found)
-			logging::error() << "No SConstruct file found." << std::endl;
-	
-		if(dependency_graph::default_targets.size())
-		{
-			Node default_target = dependency_graph::add_dummy_node("The end goal");
+			throw std::runtime_error("No SConstruct file found.");
+
+		Node end_goal = dependency_graph::add_dummy_node("The end goal");
+		if(!command_line_targets.empty()) {
+			foreach(std::string target, command_line_targets) {
+				boost::optional<Node> node = dependency_graph::get_alias(target);
+				if(!node)
+					node = dependency_graph::get_entry(target);
+				if(node)
+					add_edge(end_goal, node.get(), dependency_graph::graph);
+				else
+					throw std::runtime_error("I don't see alias or file target named '" + target + "'. That's really all there is to be said on the matter");
+			}
+		} else
 			foreach(Node node, dependency_graph::default_targets)
-				add_edge(default_target, node, dependency_graph::graph);
-			taskmaster::build(default_target);
-		}
+				add_edge(end_goal, node, dependency_graph::graph);
+		taskmaster::build(end_goal);
 	} catch(const std::exception& e) {
 		logging::error() << e.what() << std::endl;
 		return 1;

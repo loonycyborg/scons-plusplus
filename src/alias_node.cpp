@@ -55,4 +55,13 @@ Node add_alias(const std::string& name)
 	return alias;
 }
 
+boost::optional<Node> get_alias(const std::string& name)
+{
+	AliasNamespace::iterator iter = alias_namespace.find(name);
+	if(iter != alias_namespace.end())
+		return iter->second;
+	else
+		return boost::optional<Node>();
+}
+
 }

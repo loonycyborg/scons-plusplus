@@ -193,6 +193,10 @@ Node add_entry(const std::string& name, boost::logic::tribool is_file)
 {
 	return fs.add_entry(canonical_path(name), is_file);
 }
+boost::optional<Node> get_entry(const std::string& name)
+{
+	return fs.get(canonical_path(name));
+}
 
 boost::optional<Node> find_file(const std::string& name, const std::vector<std::string>& directories)
 {

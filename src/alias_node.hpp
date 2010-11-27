@@ -39,6 +39,7 @@ class Alias : public node_properties
 };
 
 Node add_alias(const std::string& name);
+boost::optional<Node> get_alias(const std::string& name);
 
 }
 

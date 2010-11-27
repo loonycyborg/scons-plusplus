@@ -68,6 +68,7 @@ class FSEntry : public node_properties
 void set_fs_root(const path& path);
 
 Node add_entry(const std::string& name, boost::logic::tribool is_file);
+boost::optional<Node> get_entry(const std::string& name);
 boost::optional<Node> find_file(const std::string& name, const std::vector<std::string>& directories);
 NodeList glob(const std::string& pattern, bool on_disk = true);
 

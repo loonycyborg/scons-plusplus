@@ -18,7 +18,10 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
+#include <vector>
+#include <string>
+
 namespace options
 {
-	void parse(int argc, char** argv);
+	std::vector<std::string> parse(int argc, char** argv);
 }

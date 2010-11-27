@@ -18,7 +18,10 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
+#include <vector>
 #include <boost/program_options.hpp>
+#include <boost/foreach.hpp>
+#define foreach BOOST_FOREACH
 
 #include "options.hpp"
 #include "log.hpp"
@@ -26,14 +29,17 @@
 namespace options
 {
 
-void parse(int argc, char** argv)
+std::vector<std::string> parse(int argc, char** argv)
 {
 	boost::program_options::options_description desc;
 	desc.add_options()
 		("debug,d", "Enable debug messages")
-		("help,h", "Produce this message and exit");
+		("help,h", "Produce this message and exit")
+		("target", boost::program_options::value<std::vector<std::string> >(), "Specify a build target");
+	boost::program_options::positional_options_description p;
+	p.add("target", -1);
 	boost::program_options::variables_map vm;
-	boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+	boost::program_options::store(boost::program_options::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
 	boost::program_options::notify(vm);
 
 	if(vm.count("help")) {
@@ -44,6 +50,11 @@ void parse(int argc, char** argv)
 	if(vm.count("debug")) {
 		logging::min_severity = 2;
 	}
+
+	std::vector<std::string> targets;
+	if(vm.count("target"))
+		targets = vm["target"].as<std::vector<std::string> >();
+	return targets;
 }
 
 }
