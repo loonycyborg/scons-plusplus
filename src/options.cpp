@@ -31,11 +31,11 @@ namespace options
 
 std::vector<std::string> parse(int argc, char** argv)
 {
-	boost::program_options::options_description desc;
+	boost::program_options::options_description desc("Usage: scons++ [option]... [target]...\nOptions");
 	desc.add_options()
 		("debug,d", "Enable debug messages")
 		("help,h", "Produce this message and exit")
-		("target", boost::program_options::value<std::vector<std::string> >(), "Specify a build target");
+		("target", boost::program_options::value<std::vector<std::string> >(), "Specify a build target(equivalent to the positional arguments)");
 	boost::program_options::positional_options_description p;
 	p.add("target", -1);
 	boost::program_options::variables_map vm;
