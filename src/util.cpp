@@ -29,6 +29,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/scope_exit.hpp>
 #include <boost/foreach.hpp>
 #define foreach BOOST_FOREACH
 
@@ -178,6 +179,10 @@ boost::array<unsigned char, 16> util::MD5::hash_file(const std::string& filename
 {
 	MD5 md5;
 	FILE* file = fopen(filename.c_str(), "r");
+	BOOST_SCOPE_EXIT( (&file) ) {
+		fclose(file);
+	} BOOST_SCOPE_EXIT_END
+
 	if(file == NULL) throw boost::system::system_error(errno, boost::system::get_system_category(), "util::MD5::hash_file: Failed to open " + filename);
 	while(!feof(file)) {
 		const int blocksize = 4096;
