@@ -175,9 +175,11 @@ Db::Db(const std::string& filename)
 	if(result != SQLITE_OK) {
 		throw std::runtime_error(std::string("sqlite error when opening ") + filename + ": " + sqlite3_errmsg(db));
 	}
+	exec("begin");
 }
 Db::~Db()
 {
+	exec("end");
 	sqlite3_close(db);
 }
 
@@ -282,7 +284,6 @@ PersistentData::PersistentData(const std::string& filename) : db_(filename)
 
 PersistentData::~PersistentData()
 {
-	db_.exec("begin");
 	SQLite::Statement clear_dependency(db_.handle(),
 		"delete from dependencies where target_id = ?1");
 	SQLite::Statement write_dependency(db_.handle(), 
@@ -303,7 +304,6 @@ PersistentData::~PersistentData()
 			write_dependency.reset();
 		}
 	}
-	db_.exec("end");
 }
 
 PersistentNodeData& PersistentData::operator[](dependency_graph::Node node)
