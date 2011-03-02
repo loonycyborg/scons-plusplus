@@ -37,6 +37,7 @@ class FSEntry : public node_properties
 	path path_;
 	path abspath_;
 	boost::logic::tribool is_file_;
+	mutable boost::optional<bool> unchanged_;
 	public:
 	FSEntry(path name, boost::logic::tribool is_file = boost::logic::indeterminate);
 	std::string name() const { return is_file_ ? path_.file_string() : path_.directory_string(); }
