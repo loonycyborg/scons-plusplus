@@ -32,6 +32,7 @@
 #include "python_interface/python_interface.hpp"
 #include "fs_node.hpp"
 #include "builder.hpp"
+#include "scan_cpp.hpp"
 
 #include "python_interface/sconscript.hpp"
 #include "python_interface/node_wrapper.hpp"
@@ -224,6 +225,12 @@ BOOST_PYTHON_MODULE(SCons)
 		def_directive_raw<AlwaysBuild>(env, "AlwaysBuild");
 		def_directive<BOOST_TYPEOF(dependency_graph::glob), dependency_graph::glob>(env, "Glob", (arg("pattern"), arg("ondisk") = true));
 		def_directive<BOOST_TYPEOF(FindFile), FindFile>(env, "FindFile", (arg("file"), arg("dirs")));
+	}
+
+	{
+	NESTED_MODULE("SCons", "SConsppExt")
+		class_<taskmaster::Task::Scanner>("Scanner");
+		s.attr("CPPScanner") = taskmaster::Task::Scanner(taskmaster::scan_cpp);
 	}
 }
 

@@ -8,6 +8,7 @@ def e(target, source, env):
     print env
     return (target, source)
 
+import SCons.SConsppExt
 builder = Builder(
     action = { ".blah" : "echo blah_builder targets: $TARGETS sources: $SOURCES" },
     target_factory = env.File,
@@ -15,7 +16,8 @@ builder = Builder(
     suffix = "blah",
     src_suffix = "blah",
     emitter = e,
-    ensure_suffix = True)
+    ensure_suffix = True,
+    cxx_scanner = SCons.SConsppExt.CPPScanner)
 
 multi_builder = Builder(
 	action = "echo multi_builder targets: $TARGETS sources: $SOURCES",
