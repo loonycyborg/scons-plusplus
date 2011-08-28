@@ -293,13 +293,15 @@ def createObjBuilders(env):
     try:
         static_obj = env['BUILDERS']['StaticObject']
     except KeyError:
+        from SCons.SConsppExt import CPPScanner
         static_obj = SCons.Builder.Builder(action = {},
                                            emitter = {},
                                            prefix = '$OBJPREFIX',
                                            suffix = '$OBJSUFFIX',
                                            src_builder = ['CFile', 'CXXFile'],
                                            source_scanner = SourceFileScanner,
-                                           single_source = 1)
+                                           single_source = 1,
+                                           scanner = CPPScanner)
         env['BUILDERS']['StaticObject'] = static_obj
         env['BUILDERS']['Object'] = static_obj
 

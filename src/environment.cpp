@@ -52,6 +52,16 @@ string CompositeVariable::to_string() const
 	return boost::join(strings, " ");
 }
 
+std::list<string> CompositeVariable::to_string_list() const
+{
+	std::list<string> result;
+	foreach(const Variable::pointer& variable, variables_) {
+		std::list<string> strings = variable->to_string_list();
+		result.splice(result.end(), strings, strings.begin(), strings.end());
+	}
+	return result;
+}
+
 CompositeVariable::pointer CompositeVariable::clone() const
 {
 	boost::shared_ptr<CompositeVariable> result(new CompositeVariable);

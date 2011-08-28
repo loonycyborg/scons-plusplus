@@ -42,6 +42,7 @@ class Variable
 	virtual ~Variable() {}
 
 	virtual std::string to_string() const = 0;
+	virtual std::list<std::string> to_string_list() const = 0;
 
 	virtual pointer clone() const = 0;
 };
@@ -92,6 +93,10 @@ template<typename T> class SimpleVariable : public Variable
 	public:
 	SimpleVariable(const T& value) : value_(value) {}
 	std::string to_string() const { return boost::lexical_cast<std::string>(value_); }
+	std::list<std::string> to_string_list() const
+	{ 
+		return std::list<std::string>(1, this->to_string());
+	}
 	pointer clone() const { return pointer(new SimpleVariable<T>(value_)); }
 	const T& get() const { return value_; }
 };
@@ -112,6 +117,7 @@ class CompositeVariable : public Variable
 		std::transform(start, end, back_inserter(variables_), make_variable<typename Iterator::value_type>);
 	}
 	std::string to_string() const;
+	std::list<std::string> to_string_list() const;
 	pointer clone() const;
 
 	void push_back(const Variable::pointer& var)

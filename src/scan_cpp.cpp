@@ -73,7 +73,6 @@ namespace taskmaster
 {
 	void scan_cpp(const environment::Environment& env, dependency_graph::Node target, dependency_graph::Node source)
 	{
-		std::cout << "CPPSCAN: " << dependency_graph::graph[target]->name() << " <- " << dependency_graph::graph[source]->name() << std::endl;
 		try {
 			std::string contents = dependency_graph::properties<dependency_graph::FSEntry>(source).get_contents();
 			std::string::iterator iter(contents.begin()), iend(contents.end());
@@ -81,16 +80,20 @@ namespace taskmaster
 			cpp<std::string::iterator> preprocessor;
 			parse(iter, iend, preprocessor, deps);
 			foreach(const IncludeDeps::value_type& item, deps) {
+				std::vector<std::string> search_paths;
 				if(!item.first) {
-					boost::filesystem::path included_file(dependency_graph::properties<dependency_graph::FSEntry>(source).dir());
-					included_file /= item.second;
-					if(exists(included_file) && is_regular_file(included_file)) {
-						dependency_graph::Node included_node = dependency_graph::add_file(included_file.string());
-						bool added;
-						boost::tie(boost::tuples::ignore, added) = add_edge(target, included_node, dependency_graph::graph);
-						if(added) // Only recurse into newly added edges to prevent infinite recursion in case of circular includes
-							scan_cpp(env, target, included_node);
-					}
+					std::string source_dir(dependency_graph::properties<dependency_graph::FSEntry>(source).dir());
+					search_paths.push_back(source_dir);
+				}
+				foreach(std::string dir, env["CPPPATH"]->to_string_list()) {
+					search_paths.push_back(dir);
+				}
+				boost::optional<dependency_graph::Node> included_file = dependency_graph::find_file(item.second, search_paths);
+				if(included_file) {
+					bool added;
+					boost::tie(boost::tuples::ignore, added) = add_edge(target, *included_file, dependency_graph::graph);
+					if(added) // Only recurse into newly added edges to prevent infinite recursion in case of circular includes
+						scan_cpp(env, target, *included_file);
 				}
 			}
 		} catch(const std::bad_cast&) {}

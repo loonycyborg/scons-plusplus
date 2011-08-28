@@ -46,6 +46,13 @@ class PythonVariable : public environment::Variable
 	public:
 	PythonVariable(object obj) : obj_(obj) {}
 	string to_string() const { return extract<string>(str(obj_)); }
+	std::list<std::string> to_string_list() const
+	{
+		std::list<std::string> result;
+		foreach(const object& item, make_object_iterator_range(flatten(obj_)))
+			result.push_back(extract<string>(str(item)));
+		return result;
+	}
 	object get() const { return obj_; }
 	object& get() { return obj_; }
 	pointer clone() const

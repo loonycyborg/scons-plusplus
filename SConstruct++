@@ -1,5 +1,5 @@
 env = Environment()
-env.Append(CPPPATH = "src")
+env.Append(CPPPATH = ["src"])
 Export("env")
 test_env = Environment()
 test_env["have_boost_test"] = False
@@ -16,6 +16,6 @@ env.AppendUnique(LIBPATH = distutils.sysconfig.get_config_var("LIBDIR") or \
                                os.path.join(distutils.sysconfig.get_config_var("prefix"), "libs") )
 env.AppendUnique(LIBS = "python" + version)
 env.AppendUnique(LIBS = ["boost_filesystem", "boost_system", "boost_python", "boost_program_options", "sqlite3"])
-env.AppendUnique(CXXFLAGS = Split("-Wall -O0 -ggdb -Wno-deprecated -Wno-parentheses"))
+env.AppendUnique(CXXFLAGS = Split("-Wall -O0 -ggdb -Wno-deprecated -Wno-parentheses"), CPPDEFINES = ["BOOST_FILESYSTEM_VERSION=2"])
 
 SConscript("src/SConscript")

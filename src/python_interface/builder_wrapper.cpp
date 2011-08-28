@@ -155,7 +155,7 @@ class PythonBuilder : public builder::Builder
 			object emitter, object src_builder,
 			bool single_source,
 			bool multi,
-			object target_scanner, object source_scanner, object cxx_scanner) :
+			object target_scanner, object source_scanner, object scanner) :
 		actions_(actions),
 		target_factory_(target_factory),
 		source_factory_(source_factory),
@@ -167,7 +167,7 @@ class PythonBuilder : public builder::Builder
 		src_builder_(src_builder),
 		single_source_(single_source),
 		multi_(multi),
-		scanner_(cxx_scanner ? extract<taskmaster::Task::Scanner>(cxx_scanner)() : PythonScanner(target_scanner, source_scanner))
+		scanner_(scanner ? extract<taskmaster::Task::Scanner>(scanner)() : PythonScanner(target_scanner, source_scanner))
 	{}
 
 	dependency_graph::NodeList operator()(
@@ -380,7 +380,7 @@ object make_builder(const tuple&, const dict& kw)
 					kw.get("multi"),
 					kw.get("target_scanner"),
 					kw.get("source_scanner"),
-					kw.get("cxx_scanner")
+					kw.get("scanner")
 	)));
 }
 
