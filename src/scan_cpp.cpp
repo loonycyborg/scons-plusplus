@@ -74,12 +74,17 @@ namespace taskmaster
 	void scan_cpp(const environment::Environment& env, dependency_graph::Node target, dependency_graph::Node source)
 	{
 		try {
-			std::string contents = dependency_graph::properties<dependency_graph::FSEntry>(source).get_contents();
-			std::string::iterator iter(contents.begin()), iend(contents.end());
-			IncludeDeps deps;
-			cpp<std::string::iterator> preprocessor;
-			parse(iter, iend, preprocessor, deps);
-			foreach(const IncludeDeps::value_type& item, deps) {
+			static std::map<dependency_graph::Node, IncludeDeps> scanner_cache;
+			if(!scanner_cache.count(source)) {
+				std::string contents = dependency_graph::properties<dependency_graph::FSEntry>(source).get_contents();
+				std::string::iterator iter(contents.begin()), iend(contents.end());
+				IncludeDeps deps;
+				cpp<std::string::iterator> preprocessor;
+				parse(iter, iend, preprocessor, deps);
+				scanner_cache[source] = deps;
+			}
+
+			foreach(const IncludeDeps::value_type& item, scanner_cache[source]) {
 				std::vector<std::string> search_paths;
 				if(!item.first) {
 					std::string source_dir(dependency_graph::properties<dependency_graph::FSEntry>(source).dir());
