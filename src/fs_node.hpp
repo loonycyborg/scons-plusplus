@@ -70,7 +70,7 @@ void set_fs_root(const path& path);
 
 Node add_entry(const std::string& name, boost::logic::tribool is_file);
 boost::optional<Node> get_entry(const std::string& name);
-boost::optional<Node> find_file(const std::string& name, const std::vector<std::string>& directories);
+boost::optional<Node> find_file(const std::string& name, const std::vector<std::string>& directories, bool cached = false);
 NodeList glob(const std::string& pattern, bool on_disk = true);
 
 inline Node add_entry_indeterminate(const std::string& name)

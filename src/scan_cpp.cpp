@@ -93,7 +93,7 @@ namespace taskmaster
 				foreach(std::string dir, env["CPPPATH"]->to_string_list()) {
 					search_paths.push_back(dir);
 				}
-				boost::optional<dependency_graph::Node> included_file = dependency_graph::find_file(item.second, search_paths);
+				boost::optional<dependency_graph::Node> included_file = dependency_graph::find_file(item.second, search_paths, true);
 				if(included_file) {
 					bool added;
 					boost::tie(boost::tuples::ignore, added) = add_edge(target, *included_file, dependency_graph::graph);

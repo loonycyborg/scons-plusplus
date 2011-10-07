@@ -27,6 +27,7 @@
 #include <boost/foreach.hpp>
 #define foreach BOOST_FOREACH
 #include <boost/filesystem/fstream.hpp>
+#include <boost/unordered_map.hpp>
 
 namespace
 {
@@ -198,8 +199,31 @@ boost::optional<Node> get_entry(const std::string& name)
 	return fs.get(canonical_path(name));
 }
 
-boost::optional<Node> find_file(const std::string& name, const std::vector<std::string>& directories)
+inline boost::optional<Node> find_file_cached(const std::string& name, const std::vector<std::string>& directories)
 {
+	typedef std::pair<
+		std::string, std::vector<std::string>
+		> FindPath;
+	typedef boost::unordered_map<
+		FindPath,
+		boost::optional<Node>
+		> FindCache;
+	static FindCache find_cache;
+	FindPath find_path(name, directories);
+	FindCache::iterator it = find_cache.find(find_path);
+	if(it != find_cache.end())
+		return it->second;
+	else {
+		boost::optional<Node> result = find_file(name, directories);
+		find_cache[find_path] = result;
+		return result;
+	}
+}
+
+boost::optional<Node> find_file(const std::string& name, const std::vector<std::string>& directories, bool cached)
+{
+	if(cached)
+		return find_file_cached(name, directories);
 	foreach(const std::string& directory, directories) {
 		path p = canonical_path(directory.empty() ? "." : directory) / name;
 		boost::optional<Node> result = fs.get(p);
