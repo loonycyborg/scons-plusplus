@@ -26,6 +26,8 @@
 #include "fs_node.hpp"
 #include "util.hpp"
 
+#define foreach BOOST_FOREACH
+
 using std::string;
 
 namespace

@@ -26,7 +26,6 @@
 #include <boost/foreach.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <boost/filesystem/path.hpp>
-#define foreach BOOST_FOREACH
 
 extern boost::python::dict main_namespace;
 

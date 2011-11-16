@@ -23,6 +23,8 @@
 
 #include "action.hpp"
 
+#define foreach BOOST_FOREACH
+
 using namespace boost::python;
 
 namespace python_interface

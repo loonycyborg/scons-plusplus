@@ -23,10 +23,11 @@
 #include <iostream>
 #include <boost/range/iterator_range.hpp>
 #include <boost/foreach.hpp>
-#define foreach BOOST_FOREACH
 
 #include "action_wrapper.hpp"
 #include "environment_wrappers.hpp"
+
+#define foreach BOOST_FOREACH
 
 using std::string;
 

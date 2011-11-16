@@ -20,10 +20,11 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/foreach.hpp>
-#define foreach BOOST_FOREACH
 
 #include "environment.hpp"
 #include "python_interface/python_interface.hpp"
+
+#define foreach BOOST_FOREACH
 
 using std::string;
 using std::vector;

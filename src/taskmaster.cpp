@@ -29,12 +29,13 @@
 #include <boost/spirit/include/phoenix_bind.hpp>
 #include <map>
 #include <iostream>
-#define foreach BOOST_FOREACH
 
 #include "taskmaster.hpp"
 #include "task.hpp"
 #include "node_properties.hpp"
 #include "log.hpp"
+
+#define foreach BOOST_FOREACH
 
 using std::vector;
 using boost::depth_first_visit;

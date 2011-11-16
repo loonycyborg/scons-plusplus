@@ -25,6 +25,8 @@
 #include <boost/variant/variant.hpp>
 #include <boost/variant/apply_visitor.hpp>
 
+#define foreach BOOST_FOREACH
+
 namespace python_interface
 {
 

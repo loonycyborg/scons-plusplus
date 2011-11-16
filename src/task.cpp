@@ -19,10 +19,11 @@
  ***************************************************************************/
 
 #include <boost/foreach.hpp>
-#define foreach BOOST_FOREACH
 
 #include "task.hpp"
 #include "util.hpp"
+
+#define foreach BOOST_FOREACH
 
 using dependency_graph::graph;
 

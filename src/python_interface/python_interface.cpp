@@ -26,7 +26,6 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/foreach.hpp>
 #include <boost/typeof/typeof.hpp>
-#define foreach BOOST_FOREACH
 
 #include "util.hpp"
 #include "python_interface/python_interface.hpp"
@@ -41,6 +40,8 @@
 #include "python_interface/directives.hpp"
 
 #include "config.hpp"
+
+#define foreach BOOST_FOREACH
 
 using std::string;
 
