@@ -1,0 +1,15 @@
+syntax: glob
+
+*.o
+*.pyc
+*.swp
+config.log
+options.cache
+graph.dot
+.sconf_temp/*
+.sconsign.dblite
+sconsppsign.sqlite
+scons++
+examples/hello/hello
+build/*
+src/config.hpp
