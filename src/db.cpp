@@ -264,22 +264,27 @@ PersistentData::PersistentData(const std::string& filename) : db_(filename)
 	db_.exec("PRAGMA journal_mode=OFF");
 
 	const int current_db_version = 1;
-	if(db_.exec<int>("PRAGMA user_version") < current_db_version) {
-		std::cout << "Signature database has older version. It will be reinitialized." << std::endl;
-		db_.exec("drop table if exists dependencies");
-		db_.exec("drop table if exists nodes");
-		db_.exec("PRAGMA user_version = " + boost::lexical_cast<std::string>(current_db_version));
-	}
+	int db_version = db_.exec<int>("PRAGMA user_version");
+	if(db_version < current_db_version) {
+		if(db_version > 0) {
+			std::cout << "Signature database has older version. It will be reinitialized." << std::endl;
+			db_.exec("drop table if exists dependencies");
+			db_.exec("drop table if exists nodes");
+		}
+		// Assume user_version == 0 means newly created db.
 
-	db_.exec("create table if not exists nodes "
-		"(id INTEGER PRIMARY KEY, type TEXT, name TEXT, existed INTEGER, timestamp INTEGER, signature BLOB, task_signature BLOB)");
-	db_.exec("create unique index if not exists node_name_index on nodes (type, name)");
-	db_.exec("create table if not exists dependencies "
-		"(target_id INTEGER, source_id INTEGER, "
-		"FOREIGN KEY(source_id) REFERENCES nodes(id), "
-		"FOREIGN KEY(target_id) REFERENCES nodes(id))");
-	db_.exec("create index if not exists source_dep_index on dependencies(source_id)");
-	db_.exec("create index if not exists target_dep_index on dependencies(target_id)");
+		db_.exec("PRAGMA user_version = " + boost::lexical_cast<std::string>(current_db_version));
+
+		db_.exec("create table if not exists nodes "
+			"(id INTEGER PRIMARY KEY, type TEXT, name TEXT, existed INTEGER, timestamp INTEGER, signature BLOB, task_signature BLOB)");
+		db_.exec("create unique index if not exists node_name_index on nodes (type, name)");
+		db_.exec("create table if not exists dependencies "
+			"(target_id INTEGER, source_id INTEGER, "
+			"FOREIGN KEY(source_id) REFERENCES nodes(id), "
+			"FOREIGN KEY(target_id) REFERENCES nodes(id))");
+		db_.exec("create index if not exists source_dep_index on dependencies(source_id)");
+		db_.exec("create index if not exists target_dep_index on dependencies(target_id)");
+	}
 }
 
 PersistentData::~PersistentData()
