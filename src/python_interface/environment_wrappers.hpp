@@ -182,6 +182,7 @@ template<UpdateType update_type, UniqueType unique_type>object Update(const tupl
 object Replace(const tuple& args, const dict& kw);
 object Detect(const Environment&, object progs);
 bool has_key(const Environment&, const string& key);
+object get_item_or_none(const Environment&, const string& key);
 object get_env_attr(object, const string& key);
 object AddMethod(object, object, object);
 object SetDefault(tuple, dict);

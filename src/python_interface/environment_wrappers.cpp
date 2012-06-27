@@ -149,6 +149,11 @@ bool has_key(const Environment& env, const string& key)
 	return env.count(key);
 }
 
+object get_item_or_none(const Environment& env, const string& key)
+{
+	return env[key] ? variable_to_python(env[key]) : object();
+}
+
 object get_env_attr(object env, const string& name)
 {
 	try {
