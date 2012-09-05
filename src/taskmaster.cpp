@@ -148,7 +148,7 @@ namespace taskmaster
 		TaskList tasks;
 		std::vector<Node> nodes;
 		build_order(end_goal, tasks, nodes);
-		db::PersistentData db("sconsppsign.sqlite");
+		db::PersistentData& db = db::get_global_db();
 
 		const int num_tasks = tasks.size();
 		int current_task = 1;

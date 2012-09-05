@@ -91,6 +91,8 @@ class PersistentData : public boost::noncopyable
 	PersistentNodeData& operator[](dependency_graph::Node);
 };
 
+PersistentData& get_global_db();
+
 }
 
 #endif

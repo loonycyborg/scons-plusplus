@@ -319,4 +319,10 @@ PersistentNodeData& PersistentData::operator[](dependency_graph::Node node)
 	return *(nodes_[node]);
 }
 
+PersistentData& get_global_db()
+{
+	static PersistentData data("sconsppsign.sqlite");
+	return data;
+}
+
 }
