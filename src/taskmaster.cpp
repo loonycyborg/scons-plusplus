@@ -168,23 +168,21 @@ namespace taskmaster
 					db::PersistentNodeData& source_data = db[build_source];
 					source_ids.insert(source_data.id());
 					bool unchanged = dependency_graph::graph[build_source]->unchanged(item.targets, source_data);
-					if(!unchanged)
+					if(!unchanged) {
 						up_to_date = false;
-					logging::debug(logging::Taskmaster) << 
-						dependency_graph::graph[build_source]->name() << (unchanged ? " is unchanged\n" : " has changed\n");
+						logging::debug(logging::Taskmaster) <<
+							dependency_graph::graph[build_source]->name() << " has changed\n";
+					}
 				}
-				if(prev_sources.size() == source_ids.size() && std::equal(source_ids.begin(), source_ids.end(), prev_sources.begin()))
-					logging::debug(logging::Taskmaster) << "Dependency relations are unchanged\n";
-				else {
+				if(prev_sources.size() != source_ids.size() || !std::equal(source_ids.begin(), source_ids.end(), prev_sources.begin())) {
 					logging::debug(logging::Taskmaster) << "Dependency relations have changed\n";
 					up_to_date = false;
 				}
 				if(db[build_target].task_signature() != item.task->signature()) {
 					up_to_date = false;
 					db[build_target].task_signature() = item.task->signature();
-					logging::debug(logging::Taskmaster) << "Task signature have changed\n";
-				} else
-					logging::debug(logging::Taskmaster) << "Task signature is unchanged\n";
+					logging::debug(logging::Taskmaster) << "Task signature has changed\n";
+				}
 			}
 			if(up_to_date)
 				logging::debug(logging::Taskmaster) << "Task is up-to-date.\n";
