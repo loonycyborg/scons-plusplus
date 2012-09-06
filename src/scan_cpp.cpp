@@ -69,6 +69,19 @@ struct cpp : grammar<Iterator, IncludeDeps() >
 
 }
 
+// HACK: need a general framework for env lookup caching.
+std::vector<std::string>& lookup_searchpath(const environment::Environment& env)
+{
+	static std::map<const environment::Environment*, std::vector<std::string> > lookup_cache;
+	if(!lookup_cache.count(&env)) {
+		lookup_cache[&env];
+		foreach(std::string dir, env["CPPPATH"]->to_string_list()) {
+			lookup_cache[&env].push_back(dir);
+		}
+	}
+	return lookup_cache[&env];
+}
+
 namespace taskmaster
 {
 	void scan_cpp(const environment::Environment& env, dependency_graph::Node target, dependency_graph::Node source)
@@ -85,13 +98,10 @@ namespace taskmaster
 			}
 
 			foreach(const IncludeDeps::value_type& item, deps) {
-				std::vector<std::string> search_paths;
+				std::vector<std::string> search_paths = lookup_searchpath(env);
 				if(!item.first) {
 					std::string source_dir(dependency_graph::properties<dependency_graph::FSEntry>(source).dir());
 					search_paths.push_back(source_dir);
-				}
-				foreach(std::string dir, env["CPPPATH"]->to_string_list()) {
-					search_paths.push_back(dir);
 				}
 				boost::optional<dependency_graph::Node> included_file = dependency_graph::find_file(item.second, search_paths, true);
 				if(included_file) {
