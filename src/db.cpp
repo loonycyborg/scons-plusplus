@@ -64,6 +64,13 @@ template<> struct sqlite3_column_impl<time_t>
 		return sqlite3_column_int64(stmt, i);
 	}
 };
+template<> struct sqlite3_column_impl<std::string>
+{
+	static std::string sqlite3_column(sqlite3_stmt* stmt, int i)
+	{
+		return std::string((const char*)sqlite3_column_text(stmt, i));
+	}
+};
 template<typename T, std::size_t n> struct sqlite3_column_impl<boost::array<T, n> >
 {
 	static boost::array<T, n> sqlite3_column(sqlite3_stmt* stmt, int i)
@@ -241,6 +248,7 @@ PersistentNodeData::~PersistentNodeData()
 		write_data.bind(6, signature_);
 		write_data.bind(7, task_signature_);
 		while(write_data.step() != SQLITE_DONE) {}
+		write_scanner_cache();
 
 	} catch(const std::exception& e) {
 		std::cout << "An exception occured when recording node " << type_ << "::" << name_ << ": " << e.what() << std::endl;
@@ -258,16 +266,51 @@ std::set<int> PersistentNodeData::dependencies()
 	return result;
 }
 
+void PersistentNodeData::read_scanner_cache()
+{
+	static SQLite::Statement get_includes(db.handle(),
+		"select include, system from scanner_cache where id == ?1");
+	get_includes.bind(1, id_.get());
+	scanner_cache_ = IncludeDeps();
+	IncludeDeps& deps = scanner_cache_.get();
+	while(get_includes.step() != SQLITE_DONE)
+		deps.insert(std::make_pair(get_includes.column<bool>(1), get_includes.column<std::string>(0)));
+	get_includes.reset();
+}
+
+void PersistentNodeData::write_scanner_cache()
+{
+	if(scanner_cache_)
+	{
+		static SQLite::Statement clear_record(db.handle(),
+			"delete from scanner_cache where id = ?1");
+		clear_record.bind(1, id_.get());
+		while(clear_record.step() != SQLITE_DONE) {}
+		clear_record.reset();
+
+		static SQLite::Statement write_record(db.handle(),
+			"insert into scanner_cache values (?1, ?2, ?3)");
+		foreach(const IncludeDep& dep, scanner_cache_.get()) {
+			write_record.bind(1, id_.get());
+			write_record.bind(2, dep.second);
+			write_record.bind(3, dep.first);
+			while(write_record.step() != SQLITE_DONE) {}
+			write_record.reset();
+		}
+	}
+}
+
 PersistentData::PersistentData(const std::string& filename) : db_(filename)
 {
 	db_.exec("PRAGMA foreign_keys=ON");
 	db_.exec("PRAGMA journal_mode=OFF");
 
-	const int current_db_version = 1;
+	const int current_db_version = 2;
 	int db_version = db_.exec<int>("PRAGMA user_version");
 	if(db_version < current_db_version) {
 		if(db_version > 0) {
 			std::cout << "Signature database has older version. It will be reinitialized." << std::endl;
+			db_.exec("drop table if exists scanner_cache");
 			db_.exec("drop table if exists dependencies");
 			db_.exec("drop table if exists nodes");
 		}
@@ -284,6 +327,10 @@ PersistentData::PersistentData(const std::string& filename) : db_(filename)
 			"FOREIGN KEY(target_id) REFERENCES nodes(id))");
 		db_.exec("create index if not exists source_dep_index on dependencies(source_id)");
 		db_.exec("create index if not exists target_dep_index on dependencies(target_id)");
+		db_.exec("create table if not exists scanner_cache "
+			"(id INTEGER, include INTEGER, system BOOLEAN, "
+			"FOREIGN KEY(id) REFERENCES nodes(id))");
+		db_.exec("create index if not exists scanner_cache_index on scanner_cache(id)");
 	}
 }
 

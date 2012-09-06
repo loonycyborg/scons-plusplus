@@ -59,6 +59,10 @@ class PersistentNodeData : public boost::noncopyable
 	boost::optional<boost::array<unsigned char, 16> > signature_;
 	boost::optional<boost::array<unsigned char, 16> > task_signature_;
 
+	typedef std::pair<bool, std::string> IncludeDep;
+	typedef std::set<IncludeDep> IncludeDeps;
+	boost::optional<IncludeDeps> scanner_cache_;
+
 	SQLite::Db& db;
 	dependency_graph::Node node;
 
@@ -78,6 +82,14 @@ class PersistentNodeData : public boost::noncopyable
 	int id() const { return id_.get(); }
 
 	std::set<int> dependencies();
+
+	IncludeDeps& scanner_cache() {
+		if(!scanner_cache_) read_scanner_cache();
+		return scanner_cache_.get();
+	}
+	private:
+	void read_scanner_cache();
+	void write_scanner_cache();
 };
 
 class PersistentData : public boost::noncopyable
