@@ -175,6 +175,7 @@ BOOST_PYTHON_MODULE(SCons)
 			.def("Entry", &Entry)
 			.def("File", &File)
 			.def("Dir", &Dir)
+			.def("Value", &Value) //
 			.def("Execute", &Execute)
 			.def("__getitem__", &get_item_from_env)
 			.def("__delitem__", &del_item_in_env)

@@ -65,6 +65,11 @@ NodeWrapper Dir(environment::Environment::pointer, std::string name)
 	return NodeWrapper(add_entry(name, false));
 }
 
+NodeWrapper Value(environment::Environment::pointer, std::string name)
+{
+	return NodeWrapper(dependency_graph::add_dummy_node(name));
+}
+
 NodeList Alias(object aliases, object sources, object actions)
 {
 	action::ActionList action_list = make_actions(flatten(actions));

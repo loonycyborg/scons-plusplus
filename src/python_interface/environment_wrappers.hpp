@@ -113,6 +113,7 @@ void Default(const environment::Environment::pointer& env, object obj);
 NodeWrapper Entry(environment::Environment::pointer, std::string name);
 NodeWrapper File(environment::Environment::pointer, std::string name);
 NodeWrapper Dir(environment::Environment::pointer, std::string name);
+NodeWrapper Value(environment::Environment::pointer, std::string name);
 NodeList Alias(object aliases, object sources, object actions);
 void Execute(environment::Environment::pointer, object obj);
 object get_item_from_env(const Environment& env, const std::string& key);

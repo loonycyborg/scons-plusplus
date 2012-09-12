@@ -55,6 +55,11 @@ class node_properties
 	virtual void record_persistent_data(db::PersistentNodeData&) {}
 };
 
+inline node_properties& properties(Node node)
+{
+	return *graph[node];
+}
+
 template<class NodeClass> inline NodeClass& properties(Node node)
 {
 	return *boost::polymorphic_cast<NodeClass*>(graph[node].get());

@@ -64,7 +64,7 @@ struct NodeWrapper
 	std::string get_contents() const {
 		try {
 			return properties<dependency_graph::FSEntry>(node).get_contents();
-		} catch(const std::bad_cast&) { return std::string(); }
+		} catch(const std::bad_cast&) { return properties(node).name(); }
 	}
 	std::string scanner_key() const {
 		try {
