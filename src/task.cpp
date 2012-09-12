@@ -22,6 +22,7 @@
 
 #include "task.hpp"
 #include "util.hpp"
+#include "node_properties.hpp"
 
 #define foreach BOOST_FOREACH
 
@@ -68,6 +69,8 @@ void Task::execute() const
 	environment::Environment::const_pointer task_env = env();
 	foreach(const action::Action::pointer& action, actions_)
 		action::execute(action, *task_env);
+	foreach(const dependency_graph::Node& target, targets_)
+		dependency_graph::properties(target).was_rebuilt();
 }
 
 }

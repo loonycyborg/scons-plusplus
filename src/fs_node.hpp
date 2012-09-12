@@ -63,6 +63,7 @@ class FSEntry : public node_properties
 
 	std::string get_contents() const;
 
+	void was_rebuilt() { unchanged_.reset(); }
 	void record_persistent_data(db::PersistentNodeData&);
 };
 
