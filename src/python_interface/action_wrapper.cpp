@@ -36,6 +36,7 @@ namespace python_interface
 
 void PythonAction::execute(const environment::Environment& env) const
 {
+	ScopedGIL lock;
 	try {
 		action_obj(
 			env["TARGETS"] ? variable_to_python(env["TARGETS"]) : object(),
@@ -59,6 +60,7 @@ object call_action_factory(tuple args, dict kw)
 
 void ActionCaller::execute(const environment::Environment& env) const
 {
+	ScopedGIL lock;
 	try {
 		list args;
 		foreach(const object& arg, make_object_iterator_range(args_))
@@ -72,6 +74,7 @@ void ActionCaller::execute(const environment::Environment& env) const
 
 std::string ActionCaller::to_string(const environment::Environment& env, bool) const
 {
+	ScopedGIL lock;
 	list args;
 	foreach(const object& arg, make_object_iterator_range(args_))
 		args.append(convert_(object(env.subst(extract<string>(str(arg))))));

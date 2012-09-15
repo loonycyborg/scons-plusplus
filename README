@@ -3,7 +3,7 @@ SCons++ - Python-scriptable build tool
 PREREQUISITES
 =============
 * Python >= 2.5, < 3.0
-* boost >= 1.39
+* boost >= 1.41
    boost::system
    boost::filesystem
    boost::python

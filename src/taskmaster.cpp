@@ -27,6 +27,7 @@
 #include <boost/spirit/include/phoenix_core.hpp>
 #include <boost/spirit/include/phoenix_stl.hpp>
 #include <boost/spirit/include/phoenix_bind.hpp>
+#include <boost/thread.hpp>
 #include <map>
 #include <iostream>
 
@@ -143,6 +144,157 @@ namespace taskmaster
 		build_order(end_goal, tasks, output);
 	}
 
+	bool is_task_up_to_date(const TaskListItem& item, db::PersistentData& db)
+	{
+		bool up_to_date = true;
+		foreach(Node build_target, item.targets) {
+			if(dependency_graph::graph[build_target]->needs_rebuild()) {
+				up_to_date = false;
+			}
+			std::set<int> 
+				source_ids,
+				prev_sources(db[build_target].dependencies());
+			foreach(Edge dependency, out_edges(build_target, dependency_graph::graph)) {
+				Node build_source = target(dependency, dependency_graph::graph);
+				db::PersistentNodeData& source_data = db[build_source];
+				source_ids.insert(source_data.id());
+				bool unchanged = dependency_graph::graph[build_source]->unchanged(item.targets, source_data);
+				if(!unchanged) {
+					up_to_date = false;
+					logging::debug(logging::Taskmaster) <<
+						dependency_graph::graph[build_source]->name() << " has changed\n";
+				}
+			}
+			if(prev_sources.size() != source_ids.size() || !std::equal(source_ids.begin(), source_ids.end(), prev_sources.begin())) {
+				logging::debug(logging::Taskmaster) << "Dependency relations have changed\n";
+				up_to_date = false;
+			}
+			if(db[build_target].task_signature() != item.task->signature()) {
+				up_to_date = false;
+				db[build_target].task_signature() = item.task->signature();
+				logging::debug(logging::Taskmaster) << "Task signature has changed\n";
+			}
+		}
+		return up_to_date;
+	}
+
+	void serial_build(TaskList& tasks, db::PersistentData& db)
+	{
+		const int num_tasks = tasks.size();
+		int current_task = 1;
+		foreach(const TaskListItem& item, tasks.get<sequence_index>()) {
+			std::cout << "[" << current_task++ << "/" << num_tasks << "] " << item.task->targets() << " <- " << item.task->sources() << "\n";
+
+			if(is_task_up_to_date(item, db))
+				logging::debug(logging::Taskmaster) << "Task is up-to-date.\n";
+			else
+				item.task->execute();
+		}
+	}
+
+	class JobServer
+	{
+		typedef std::map<Node, boost::shared_future<void> > Futures;
+		Futures futures;
+		typedef std::vector<boost::shared_future<void> > FutureVec;
+		
+		FutureVec future_vec() const
+		{
+			FutureVec vec;
+			foreach(const Futures::value_type& value, futures)
+				vec.push_back(value.second);
+			return vec;
+		}
+
+		public:
+		void schedule(Node node)
+		{
+			boost::packaged_task<void> ptask(boost::bind(
+				&Task::execute, dependency_graph::graph[node]->task().get()
+				));
+			futures[node] = boost::shared_future<void>(ptask.get_future());
+			boost::thread thread(boost::move(ptask));
+		}
+		NodeList wait_for_any()
+		{
+			FutureVec vec = future_vec();
+			boost::wait_for_any(vec.begin(), vec.end());
+			Futures new_futures;
+			NodeList result;
+			for(Futures::iterator iter = futures.begin(); iter != futures.end(); ++iter) {
+				if(iter->second.is_ready()) {
+					try {
+						iter->second.get();
+					} catch(...) {
+						wait_for_all();
+						throw;
+					}
+					result.push_back(iter->first);
+				} else {
+					new_futures.insert(*iter);
+				}
+			}
+			std::swap(futures, new_futures);
+			return result;
+		}
+		void wait_for_all()
+		{
+			if(futures.size() > 0) {
+				logging::warning(logging::Taskmaster) << "Caught exception. Waiting for the rest of tasks to finish...\n";
+				FutureVec vec = future_vec();
+				boost::wait_for_all(vec.begin(), vec.end());
+			}
+		}
+		std::size_t num_scheduled_jobs() const { return futures.size(); }
+	};
+
+	enum TaskState { SCHEDULED, BLOCKED, TO_BUILD, BUILT };
+
+	void parallel_build(TaskList& tasks, std::vector<Node>& nodes, db::PersistentData& db)
+	{
+		unsigned int num_jobs = boost::thread::hardware_concurrency();
+		logging::debug(logging::Taskmaster) << "Will execute up to " << num_jobs << " jobs in parallel.\n";
+
+		std::map<Node, TaskState> states;
+		JobServer job_server;
+
+		Node end_node = *(--nodes.end());
+		while(!states.count(end_node) || states[end_node] != BUILT) {
+			foreach(Node node, job_server.wait_for_any())
+				states[node] = BUILT;
+
+			foreach(Node node, nodes) {
+				if(states.count(node) && states[node] != BLOCKED) {
+					continue;
+				}
+				states[node] = TO_BUILD;
+				foreach(Edge e, out_edges(node, dependency_graph::graph)) {
+					if(states[target(e, dependency_graph::graph)] == SCHEDULED ||
+					   states[target(e, dependency_graph::graph)] == BLOCKED)
+						states[node] = BLOCKED;
+				}
+				if(states[node] == TO_BUILD) {
+					if(!dependency_graph::graph[node]->task() ||
+						is_task_up_to_date(*(tasks.get<task_index>().find(
+							dependency_graph::graph[node]->task())), db)
+					) {
+						states[node] = BUILT;
+					} else {
+						job_server.schedule(node);
+						logging::debug(logging::Taskmaster)
+							<< "Scheduled building target " << dependency_graph::properties(node).name() << ".\n";
+						states[node] = SCHEDULED;
+						if(job_server.num_scheduled_jobs() == num_jobs) {
+							logging::debug(logging::Taskmaster)
+								<< "All slots taken. Waiting...\n";
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+
 	void build(dependency_graph::Node end_goal)
 	{
 		TaskList tasks;
@@ -150,45 +302,7 @@ namespace taskmaster
 		build_order(end_goal, tasks, nodes);
 		db::PersistentData& db = db::get_global_db();
 
-		const int num_tasks = tasks.size();
-		int current_task = 1;
-		foreach(const TaskListItem& item, tasks.get<sequence_index>()) {
-			std::cout << "[" << current_task++ << "/" << num_tasks << "] " << item.task->targets() << " <- " << item.task->sources() << "\n";
-
-			bool up_to_date = true;
-			foreach(Node build_target, item.targets) {
-				if(dependency_graph::graph[build_target]->needs_rebuild()) {
-					up_to_date = false;
-				}
-				std::set<int> 
-					source_ids,
-					prev_sources(db[build_target].dependencies());
-				foreach(Edge dependency, out_edges(build_target, dependency_graph::graph)) {
-					Node build_source = target(dependency, dependency_graph::graph);
-					db::PersistentNodeData& source_data = db[build_source];
-					source_ids.insert(source_data.id());
-					bool unchanged = dependency_graph::graph[build_source]->unchanged(item.targets, source_data);
-					if(!unchanged) {
-						up_to_date = false;
-						logging::debug(logging::Taskmaster) <<
-							dependency_graph::graph[build_source]->name() << " has changed\n";
-					}
-				}
-				if(prev_sources.size() != source_ids.size() || !std::equal(source_ids.begin(), source_ids.end(), prev_sources.begin())) {
-					logging::debug(logging::Taskmaster) << "Dependency relations have changed\n";
-					up_to_date = false;
-				}
-				if(db[build_target].task_signature() != item.task->signature()) {
-					up_to_date = false;
-					db[build_target].task_signature() = item.task->signature();
-					logging::debug(logging::Taskmaster) << "Task signature has changed\n";
-				}
-			}
-			if(up_to_date)
-				logging::debug(logging::Taskmaster) << "Task is up-to-date.\n";
-			else
-				item.task->execute();
-		}
+		parallel_build(tasks, nodes, db);
 	}
 
 }

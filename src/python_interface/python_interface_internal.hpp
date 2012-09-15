@@ -137,6 +137,15 @@ inline void throw_python_exc(const std::string& msg)
 	throw std::runtime_error(msg + "\n" + traceback);
 }
 
+class ScopedGIL
+{
+	PyGILState_STATE state_;
+
+	public:
+	ScopedGIL() { state_ = PyGILState_Ensure(); }
+	~ScopedGIL() { PyGILState_Release(state_); }
+};
+
 }
 
 #endif

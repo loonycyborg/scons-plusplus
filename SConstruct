@@ -26,9 +26,10 @@ import metasconf
 custom_tests = metasconf.init_metasconf(env, ["boost", "python_devel"])
 conf = env.Configure(custom_tests = custom_tests, config_h = "src/config.hpp")
 conf.CheckPython() and \
-conf.CheckBoost("python", require_version = "1.39") and \
+conf.CheckBoost("python", require_version = "1.41") and \
 conf.CheckBoost("system") and \
 conf.CheckBoost("filesystem") and \
+conf.CheckBoost("thread") and \
 conf.CheckBoost("program_options") and \
 conf.CheckLibWithHeader("sqlite3", "sqlite3.h", "C") or Exit(1)
 conf.Define("PYTHON_MODULES_PATH", "\"" + Dir("python_modules").abspath + "\"")

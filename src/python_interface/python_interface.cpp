@@ -241,6 +241,8 @@ BOOST_PYTHON_MODULE(SCons)
 	{
 		PyImport_AppendInittab(const_cast<char*>("SCons"), initSCons);
 		Py_Initialize();
+		PyEval_InitThreads();
+		PyEval_ReleaseLock();
 
 		main_namespace = dict(import("__main__").attr("__dict__"));
 
@@ -270,6 +272,7 @@ BOOST_PYTHON_MODULE(SCons)
 
 	std::string eval_string(const std::string& expression, const Environment& environment)
 	{
+		ScopedGIL lock;
 		::object env(environment.override());
 		::object result;
 		result = eval(expression.c_str(), env, env);
@@ -279,6 +282,7 @@ BOOST_PYTHON_MODULE(SCons)
 
 	std::string expand_variable(const std::string& var, const environment::Environment& env)
 	{
+		ScopedGIL lock;
 		if(!env.count(var))
 			return std::string();
 
@@ -293,5 +297,11 @@ BOOST_PYTHON_MODULE(SCons)
 			return boost::join(result, " ");
 		}
 		return extract<string>(str(obj));
+	}
+
+	std::string subst_to_string(const environment::Environment& env, const std::string& input, bool for_signature)
+	{
+		ScopedGIL lock;
+		return expand_python(env, subst(env, input, for_signature));
 	}
 }

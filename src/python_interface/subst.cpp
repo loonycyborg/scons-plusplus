@@ -249,9 +249,4 @@ std::string expand_python(const environment::Environment& env, object obj)
 	return extract<std::string>(str(obj));
 }
 
-std::string subst_to_string(const environment::Environment& env, const std::string& input, bool for_signature)
-{
-	return expand_python(env, subst(env, input, for_signature));
-}
-
 }
