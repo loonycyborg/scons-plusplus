@@ -59,6 +59,7 @@ std::vector<std::string> parse(int argc, char** argv)
 			->implicit_value(optional_last_overrides<unsigned int>(), "unlimited")
 			->default_value(optional_last_overrides<unsigned int>(0), "0"),
 			"Maximun number of parallel jobs. 0 means autodetect, no arg means unlimited")
+		("always-build,B", boost::program_options::bool_switch(), "Rebuild all tasks no matter whether they're up-to-date")
 		("help,h", "Produce this message and exit")
 		("target", boost::program_options::value<std::vector<std::string> >(), "Specify a build target(equivalent to the positional arguments)");
 	boost::program_options::positional_options_description p;
@@ -77,6 +78,7 @@ std::vector<std::string> parse(int argc, char** argv)
 	}
 	optional_last_overrides<unsigned int> num_jobs = vm["jobs"].as<optional_last_overrides<unsigned int> >();
 	taskmaster::num_jobs = num_jobs.value;
+	taskmaster::always_build = vm["always-build"].as<bool>();
 
 	std::vector<std::string> targets;
 	if(vm.count("target"))

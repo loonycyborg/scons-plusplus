@@ -28,6 +28,7 @@
 namespace taskmaster
 {
 	extern boost::optional<unsigned int> num_jobs;
+	extern bool always_build;
 
 	void build(dependency_graph::Node end_goal);
 

@@ -132,6 +132,7 @@ namespace
 namespace taskmaster
 {
 	boost::optional<unsigned int> num_jobs;
+	bool always_build;
 
 	void build_order(dependency_graph::Node end_goal, TaskList& tasks, std::vector<Node>& output)
 	{
@@ -148,7 +149,7 @@ namespace taskmaster
 
 	bool is_task_up_to_date(const TaskListItem& item, db::PersistentData& db)
 	{
-		bool up_to_date = true;
+		bool up_to_date = !always_build;
 		foreach(Node build_target, item.targets) {
 			if(dependency_graph::graph[build_target]->needs_rebuild()) {
 				up_to_date = false;
