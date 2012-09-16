@@ -21,10 +21,14 @@
 #ifndef TASKMASTER_HPP
 #define TASKMASTER_HPP
 
+#include <boost/optional/optional_fwd.hpp>
+
 #include "dependency_graph.hpp"
 
 namespace taskmaster
 {
+	extern boost::optional<unsigned int> num_jobs;
+
 	void build(dependency_graph::Node end_goal);
 
 	void build_order(dependency_graph::Node end_goal, std::vector<dependency_graph::Node>& output);

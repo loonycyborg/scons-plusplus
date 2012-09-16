@@ -20,20 +20,45 @@
 
 #include <vector>
 #include <boost/program_options.hpp>
+#include <boost/optional.hpp>
 #include <boost/foreach.hpp>
 #define foreach BOOST_FOREACH
 
 #include "options.hpp"
 #include "log.hpp"
+#include "taskmaster.hpp"
 
 namespace options
 {
+
+template<typename T>
+struct optional_last_overrides
+{
+	boost::optional<T> value;
+	optional_last_overrides() {}
+	optional_last_overrides(T value) : value(value) {} 
+};
+
+template<typename T>
+static void validate(boost::any& v, 
+	const std::vector<std::string>& values,
+	optional_last_overrides<T>* target_type, int)
+{
+	const std::string& s = boost::program_options::validators::get_single_string(values);
+	optional_last_overrides<T> ret;
+	ret.value = boost::lexical_cast<T>(s);
+	v = ret;
+}
 
 std::vector<std::string> parse(int argc, char** argv)
 {
 	boost::program_options::options_description desc("Usage: scons++ [option]... [target]...\nOptions");
 	desc.add_options()
 		("debug,d", "Enable debug messages")
+		("jobs,j", boost::program_options::value<optional_last_overrides<unsigned int> >()
+			->implicit_value(optional_last_overrides<unsigned int>(), "unlimited")
+			->default_value(optional_last_overrides<unsigned int>(0), "0"),
+			"Maximun number of parallel jobs. 0 means autodetect, no arg means unlimited")
 		("help,h", "Produce this message and exit")
 		("target", boost::program_options::value<std::vector<std::string> >(), "Specify a build target(equivalent to the positional arguments)");
 	boost::program_options::positional_options_description p;
@@ -50,6 +75,8 @@ std::vector<std::string> parse(int argc, char** argv)
 	if(vm.count("debug")) {
 		logging::min_severity = 2;
 	}
+	optional_last_overrides<unsigned int> num_jobs = vm["jobs"].as<optional_last_overrides<unsigned int> >();
+	taskmaster::num_jobs = num_jobs.value;
 
 	std::vector<std::string> targets;
 	if(vm.count("target"))

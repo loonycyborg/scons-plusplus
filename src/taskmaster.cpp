@@ -131,6 +131,8 @@ namespace
 
 namespace taskmaster
 {
+	boost::optional<unsigned int> num_jobs;
+
 	void build_order(dependency_graph::Node end_goal, TaskList& tasks, std::vector<Node>& output)
 	{
 		std::map<Node, boost::default_color_type> colors;
@@ -252,8 +254,17 @@ namespace taskmaster
 
 	void parallel_build(TaskList& tasks, std::vector<Node>& nodes, db::PersistentData& db)
 	{
-		unsigned int num_jobs = boost::thread::hardware_concurrency();
-		logging::debug(logging::Taskmaster) << "Will execute up to " << num_jobs << " jobs in parallel.\n";
+		if(num_jobs) {
+			if(num_jobs.get() == 0)
+				num_jobs = boost::thread::hardware_concurrency();
+			if(num_jobs.get() == 0) {
+				logging::warning(logging::Taskmaster) << "Unknown degree of hardware concurrency."
+					"Setting the number of parallel jobs to 1\n";
+			}
+			logging::debug(logging::Taskmaster) << "Will execute up to " << num_jobs.get() << " jobs in parallel.\n";
+		} else {
+			logging::debug(logging::Taskmaster) << "Will execute unlimited number of parallel jobs.\n";
+		}
 
 		std::map<Node, TaskState> states;
 		JobServer job_server;
@@ -284,7 +295,7 @@ namespace taskmaster
 						logging::debug(logging::Taskmaster)
 							<< "Scheduled building target " << dependency_graph::properties(node).name() << ".\n";
 						states[node] = SCHEDULED;
-						if(job_server.num_scheduled_jobs() == num_jobs) {
+						if(num_jobs && job_server.num_scheduled_jobs() == *num_jobs) {
 							logging::debug(logging::Taskmaster)
 								<< "All slots taken. Waiting...\n";
 							break;
