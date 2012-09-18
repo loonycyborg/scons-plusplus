@@ -2,6 +2,7 @@
 from config_check_utils import *
 from os.path import join, dirname, basename
 from glob import glob
+import sys
 import re
 
 def find_boost(env):
@@ -11,11 +12,8 @@ def find_boost(env):
         prefix, includefile = include[0]
         env["boostdir"] = join(prefix, "include")
         env["boostlibdir"] = join(prefix, "lib")
-        if not env.get("boost_suffix"):
-            if glob(join(prefix, "lib", "libboost_*-mt.*")):
-                env["boost_suffix"] = "-mt"
-            else:
-                env["boost_suffix"] = ""
+        if(glob(join(env["boostlibdir"], "libboost_python-"+sys.version[:3]+"[.]*"))):
+            env["boostpython_suffix"] = "-"+sys.version[:3]
         return
     includes = find_include(prefixes, "boost/config.hpp", "boost-*")
     if includes:
@@ -59,7 +57,7 @@ def CheckBoost(context, boost_lib, require_version = None, header_only = False):
                       "system" : "system/error_code.hpp"}
 
     header_name = boost_headers.get(boost_lib, boost_lib + ".hpp")
-    libname = "boost_" + boost_lib + env.get("boost_suffix", "")
+    libname = "boost_" + boost_lib + env.get("boost"+boost_lib+"_suffix", "") + env.get("boost_suffix", "")
 
     if env.get("fast"):
         env.AppendUnique(CXXFLAGS = "-I" + boostdir, LIBPATH = [boostlibdir])
