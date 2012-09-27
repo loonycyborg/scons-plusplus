@@ -261,6 +261,7 @@ namespace taskmaster
 			if(num_jobs.get() == 0) {
 				logging::warning(logging::Taskmaster) << "Unknown degree of hardware concurrency."
 					"Setting the number of parallel jobs to 1\n";
+				num_jobs = 1;
 			}
 			logging::debug(logging::Taskmaster) << "Will execute up to " << num_jobs.get() << " jobs in parallel.\n";
 		} else {
