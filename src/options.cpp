@@ -22,7 +22,6 @@
 #include <boost/program_options.hpp>
 #include <boost/optional.hpp>
 #include <boost/foreach.hpp>
-#define foreach BOOST_FOREACH
 
 #include "options.hpp"
 #include "log.hpp"
