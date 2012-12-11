@@ -61,7 +61,7 @@ struct fs_trie
 			}
 			return node.get();
 		} else {
-			string elem = *iter;
+			string elem = iter->string();
 			return children[elem].add_entry(++iter, entry_path, is_file);
 		}
 	}
@@ -75,7 +75,7 @@ struct fs_trie
 		if(iter == iter_end)
 			return node;
 
-		const_child_iterator i = children.find(*iter);
+		const_child_iterator i = children.find(iter->string());
 		if(i == children.end())
 			return optional<Node>();
 		return i->second.get(++iter, iter_end);
@@ -96,7 +96,7 @@ struct fs_trie
 			return;
 		}
 
-		std::string pattern = *iter;
+		std::string pattern = iter->string();
 		path::iterator next_pattern = ++iter;
 		for(const_child_iterator i = children.begin(); i != children.end(); ++i) {
 			if(fnmatch(pattern.c_str(), i->first.c_str(), FNM_NOESCAPE) == 0) {
@@ -123,7 +123,7 @@ struct fs_trie
 			return;
 		}
 
-		std::string pattern = *iter;
+		std::string pattern = iter->string();
 		path::iterator next_pattern = ++iter;
 		using boost::filesystem::directory_iterator;
 		for(directory_iterator i(directory); i != directory_iterator(); ++i) {
@@ -284,7 +284,7 @@ bool FSEntry::unchanged(const NodeList& targets, const db::PersistentNodeData& p
 std::string FSEntry::relpath() const
 {
 	path relpath = util::to_relative(abspath_, boost::filesystem::current_path());
-	return is_file_ ? relpath.file_string() : relpath.directory_string();
+	return relpath.string();
 }
 
 std::string FSEntry::get_contents() const

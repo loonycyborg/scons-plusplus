@@ -150,11 +150,11 @@ void exec(const std::vector<string>& args)
 	boost::filesystem::path binary = where_is(args[0]);
 	if(binary.empty())
 		throw std::runtime_error("util::exec : Failed to find executable: " + args[0]);
-	throw_if_error(access(binary.file_string().c_str(), X_OK));
+	throw_if_error(access(binary.string().c_str(), X_OK));
 
 	pid_t child = throw_if_error(fork());
 	if(child == 0)
-		throw_if_error(execvp(binary.file_string().c_str(), &argv[0]));
+		throw_if_error(execvp(binary.string().c_str(), &argv[0]));
 	else {
 		int status;
 		throw_if_error(waitpid(child, &status, 0));

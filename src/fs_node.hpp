@@ -40,8 +40,8 @@ class FSEntry : public node_properties
 	mutable boost::optional<bool> unchanged_;
 	public:
 	FSEntry(path name, boost::logic::tribool is_file = boost::logic::indeterminate);
-	std::string name() const { return is_file_ ? path_.file_string() : path_.directory_string(); }
-	std::string abspath() const { return is_file_ ? abspath_.file_string() : abspath_.directory_string(); }
+	std::string name() const { return path_.string(); }
+	std::string abspath() const { return abspath_.string(); }
 	std::string relpath() const;
 	const char* type() const { return "fs"; }
 
@@ -52,9 +52,9 @@ class FSEntry : public node_properties
 	void make_file() { is_file_ = true; }
 	void make_directory() { is_file_ = false; }
 
-	std::string dir() const { return path_.parent_path().directory_string(); }
-	std::string file() const { return path_.filename(); }
-	std::string suffix() const { return path_.extension(); }
+	std::string dir() const { return path_.parent_path().string(); }
+	std::string file() const { return path_.filename().string(); }
+	std::string suffix() const { return path_.extension().string(); }
 	std::string base() const { return name().substr(0, name().length() - suffix().length()); }
 	std::string filebase() const { return file().substr(0, file().length() - suffix().length()); }
 

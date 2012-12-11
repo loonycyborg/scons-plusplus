@@ -17,7 +17,7 @@ env.AppendUnique(LIBPATH = distutils.sysconfig.get_config_var("LIBDIR") or \
                                os.path.join(distutils.sysconfig.get_config_var("prefix"), "libs") )
 env.AppendUnique(LIBS = "python" + version)
 env.AppendUnique(LIBS = ["boost_filesystem", "boost_system", "boost_thread", "boost_python-2.7", "boost_program_options", "sqlite3"])
-env.AppendUnique(CCFLAGS = Split("-Wall -O2 -march=native -Wno-deprecated -Wno-parentheses"), CPPDEFINES = ["BOOST_FILESYSTEM_VERSION=2"])
+env.AppendUnique(CCFLAGS = Split("-Wall -O2 -march=native -Wno-deprecated -Wno-parentheses"), CPPDEFINES = ["BOOST_FILESYSTEM_VERSION=3"])
 #env.Append(CCFLAGS = ["-pg"], LINKFLAGS = ["-pg"])
 
 SConscript("src/SConscript")

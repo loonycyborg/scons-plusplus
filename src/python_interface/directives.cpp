@@ -34,7 +34,7 @@ namespace python_interface
 
 object WhereIs(const std::string& name)
 {
-	std::string path = util::where_is(name).external_file_string();
+	std::string path = util::where_is(name).native();
 	if(path.empty())
 		return object();
 	else
