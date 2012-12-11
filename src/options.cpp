@@ -21,7 +21,6 @@
 #include <vector>
 #include <boost/program_options.hpp>
 #include <boost/optional.hpp>
-#include <boost/foreach.hpp>
 
 #include "options.hpp"
 #include "log.hpp"
