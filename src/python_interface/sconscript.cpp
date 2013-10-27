@@ -35,8 +35,6 @@ namespace
 	using namespace python_interface;
 	boost::filesystem::path sconstruct_file, sconstruct_dir;
 
-	dict exports;
-
 	class SConscriptFile
 	{
 		boost::filesystem::path path_, dir_;
@@ -47,10 +45,16 @@ namespace
 
 		static SConscriptFile* current_sconscript;
 
+		object exports_;
+
 		public:
 		SConscriptFile(const boost::filesystem::path& new_sconscript_file, object& ns) 
 			: path_(new_sconscript_file), dir_(path_.parent_path()), ns_(ns)
 		{
+			if(current_sconscript == NULL)
+				exports_ = dict();
+			else
+				exports_ = current_sconscript->exports_;
 			old_sconscript = current_sconscript;
 			current_sconscript = this;
 		}
@@ -65,6 +69,14 @@ namespace
 		boost::filesystem::path dir() const { return dir_; }
 		object& ns() { return ns_; }
 		list& return_value() { return return_value_; }
+
+		void export_var(const string& name) {
+			exports_[name] = ns_[name];
+		}
+
+		void import_var(const string& name) {
+			ns_[name] = exports_[name];
+		}
 	};
 
 	SConscriptFile* SConscriptFile::current_sconscript;
@@ -112,7 +124,7 @@ object Export(tuple args, dict kw)
 {
 	foreach(object var, make_object_iterator_range(flatten(args))) {
 		string name = extract<string>(var);
-		exports[name] = SConscriptFile::current().ns()[name];
+		SConscriptFile::current().export_var(name);
 	}
 	return object();
 }
@@ -121,7 +133,7 @@ object Import(tuple args, dict kw)
 {
 	foreach(object var, make_object_iterator_range(flatten(args))) {
 		string name = extract<string>(var);
-		SConscriptFile::current().ns()[name] = exports[name];
+		SConscriptFile::current().import_var(name);
 	}
 	return object();
 }
