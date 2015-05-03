@@ -27,7 +27,7 @@
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
-#include <boost/spirit/home/phoenix/container.hpp>
+#include <boost/spirit/include/phoenix_container.hpp>
 #include <boost/fusion/include/std_pair.hpp>
 
 namespace {

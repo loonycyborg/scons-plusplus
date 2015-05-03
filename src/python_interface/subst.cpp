@@ -121,7 +121,7 @@ boost::variant<std::string, object> concat_subst(const environment::Environment&
 
 struct handle_parse_error_impl
 {
-	template <class Arg1, class Arg2, class Arg3, class Arg4>
+	template <class Arg1>
 	struct result
 	{
 		typedef std::string type;
