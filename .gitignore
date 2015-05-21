@@ -1,5 +1,3 @@
-syntax: glob
-
 *.o
 *.pyc
 *.swp
@@ -11,5 +9,5 @@ graph.dot
 sconsppsign.sqlite
 scons++
 examples/hello/hello
-build/*
+build/**
 src/config.hpp
