@@ -31,25 +31,19 @@
 
 using boost::add_edge;
 
-using taskmaster::Task;
-using dependency_graph::graph;
-using dependency_graph::Node;
-using dependency_graph::NodeList;
-using dependency_graph::add_entry_indeterminate;
-
-namespace builder
+namespace sconspp
 {
 
 void Builder::create_task(
-		const environment::Environment& env,
+        const Environment& env,
 		const NodeList& targets,
 		const NodeList& sources,
-		const action::ActionList& actions,
+        const ActionList& actions,
 		Task::Scanner scanner
 		) const
 {
 	Task::pointer task(new Task(env, targets, sources, actions));
-	foreach(const dependency_graph::Node& node, targets)
+	foreach(const Node& node, targets)
 		graph[node]->set_task(task);
 	task->set_scanner(scanner);
 }
@@ -68,7 +62,7 @@ struct make_node : public boost::static_visitor<Node>
 };
 
 template <Node (*factory)(const std::string&)>
-inline NodeList make_nodes(const builder::Builder::NodeStringList& list)
+inline NodeList make_nodes(const Builder::NodeStringList& list)
 {
 	NodeList result;
 	make_node<factory> visitor;
@@ -77,13 +71,13 @@ inline NodeList make_nodes(const builder::Builder::NodeStringList& list)
 }
 
 NodeList Command::operator()(
-		const environment::Environment& env,
+        const Environment& env,
 		const NodeStringList& targets,
 		const NodeStringList& sources
 		) const
 {
-	action::ActionList action;
-	action.push_back(action::Action::pointer(new action::Command(command_)));
+	ActionList action;
+	action.push_back(Action::pointer(new ExecCommand(command_)));
 	NodeList 
 		target_nodes = make_nodes<add_entry_indeterminate>(targets),
 		source_nodes = make_nodes<add_entry_indeterminate>(sources);
@@ -92,7 +86,7 @@ NodeList Command::operator()(
 }
 
 NodeList SimpleBuilder::operator()(
-		const environment::Environment& env,
+        const Environment& env,
 		const NodeStringList& targets,
 		const NodeStringList& sources
 		) const
@@ -105,19 +99,19 @@ NodeList SimpleBuilder::operator()(
 }
 
 NodeList AliasBuilder::operator()(
-		const environment::Environment& env,
+        const Environment& env,
 		const NodeStringList& targets,
 		const NodeStringList& sources
 		) const
 {
 	NodeList
-		aliases = make_nodes<dependency_graph::add_alias>(targets),
+	    aliases = make_nodes<add_alias>(targets),
 		source_nodes = make_nodes<add_entry_indeterminate>(sources);
 	if(!actions_.empty()) {
 		create_task(env, aliases, source_nodes, actions_);
 	} else {
-		foreach(const dependency_graph::Node& alias, aliases)
-			foreach(const dependency_graph::Node& source, source_nodes)
+		foreach(const Node& alias, aliases)
+			foreach(const Node& source, source_nodes)
 				add_edge(alias, source, graph);
 	}
 	return aliases;

@@ -29,6 +29,8 @@
 
 extern boost::python::dict main_namespace;
 
+namespace sconspp
+{
 namespace python_interface
 {
 using namespace boost::python;
@@ -146,6 +148,7 @@ class ScopedGIL
 	~ScopedGIL() { PyGILState_Release(state_); }
 };
 
+}
 }
 
 #endif

@@ -37,7 +37,7 @@
 
 using std::string;
 
-namespace util
+namespace sconspp
 {
 
 boost::scoped_ptr<Environ> Environ::environ_;
@@ -175,7 +175,7 @@ void exec(const std::vector<string>& args)
 	}
 }
 
-boost::array<unsigned char, 16> util::MD5::hash_file(const std::string& filename)
+boost::array<unsigned char, 16> MD5::hash_file(const std::string& filename)
 {
 	MD5 md5;
 	FILE* file = fopen(filename.c_str(), "r");

@@ -32,59 +32,60 @@
 
 using boost::polymorphic_cast;
 
-using dependency_graph::add_entry;
 
+namespace sconspp
+{
 namespace python_interface
 {
 
-NodeList Command(const environment::Environment& env, object target, object source, object action)
+NodeList Command(const Environment& env, object target, object source, object action)
 {
-	builder::SimpleBuilder simple_builder(make_actions(action));
+	SimpleBuilder simple_builder(make_actions(action));
 	return call_builder(simple_builder, env, target, source);
 }
 
-void Default(const environment::Environment::pointer& env, object obj)
+void Default(const Environment::pointer& env, object obj)
 {
 	obj = flatten(obj);
 	NodeList nodes = extract_file_nodes(*env, obj);
 	foreach(Node node, nodes)
-		dependency_graph::default_targets.insert(node);
+		default_targets.insert(node);
 }
-NodeWrapper Entry(environment::Environment::pointer, std::string name)
+NodeWrapper Entry(Environment::pointer, std::string name)
 {
 	return NodeWrapper(add_entry(name, boost::logic::indeterminate));
 }
 
-NodeWrapper File(environment::Environment::pointer, std::string name)
+NodeWrapper File(Environment::pointer, std::string name)
 {
 	return NodeWrapper(add_entry(name, true));
 }
 
-NodeWrapper Dir(environment::Environment::pointer, std::string name)
+NodeWrapper Dir(Environment::pointer, std::string name)
 {
 	return NodeWrapper(add_entry(name, false));
 }
 
-NodeWrapper Value(environment::Environment::pointer, std::string name)
+NodeWrapper Value(Environment::pointer, std::string name)
 {
-	return NodeWrapper(dependency_graph::add_dummy_node(name));
+	return NodeWrapper(add_dummy_node(name));
 }
 
 NodeList Alias(object aliases, object sources, object actions)
 {
-	action::ActionList action_list = make_actions(flatten(actions));
-	return builder::AliasBuilder(action_list)(*default_environment(), extract_nodes(flatten(aliases)), extract_nodes(flatten(sources)));
+	ActionList action_list = make_actions(flatten(actions));
+	return AliasBuilder(action_list)(*default_environment(), extract_nodes(flatten(aliases)), extract_nodes(flatten(sources)));
 }
 
-void Execute(environment::Environment::pointer env, object obj)
+void Execute(Environment::pointer env, object obj)
 {
-	foreach(const action::Action::pointer& action, make_actions(obj))
-		action::execute(action, *env);
+	foreach(const Action::pointer& action, make_actions(obj))
+		execute(action, *env);
 }
 
 object get_item_from_env(const Environment& env, const std::string& key)
 {
-	environment::Variable::const_pointer var = env[key];
+	Variable::const_pointer var = env[key];
 	if(!var) {
 		PyErr_SetString(PyExc_KeyError, (string("No construction variable named '") + key + "'").c_str());
 		throw_error_already_set();
@@ -95,7 +96,7 @@ object get_item_from_env(const Environment& env, const std::string& key)
 
 void del_item_in_env(Environment& env, const std::string& key)
 {
-	env[key] = environment::Variable::pointer();
+	env[key] = Variable::pointer();
 }
 
 void set_item_in_env(Environment& env, const std::string& key, object val)
@@ -109,14 +110,14 @@ void set_item_in_env(Environment& env, const std::string& key, object val)
 	env[key] = extract_variable(val);
 }
 
-void Tool(environment::Environment::pointer env, object obj)
+void Tool(Environment::pointer env, object obj)
 {
 	exec("import SCons.Tool", main_namespace, main_namespace);
 	object tool = eval("SCons.Tool.Tool", main_namespace, main_namespace);
 	tool(obj)(object(env));
 }
 
-void Platform(environment::Environment::pointer env, const std::string& name)
+void Platform(Environment::pointer env, const std::string& name)
 {
 	exec("import SCons.Platform", main_namespace, main_namespace);
 	object platform = eval("SCons.Platform.Platform", main_namespace, main_namespace);
@@ -129,7 +130,7 @@ void Platform(environment::Environment::pointer env, const std::string& name)
 
 object Replace(const tuple& args, const dict& kw)
 {
-	environment::Environment& env = extract<environment::Environment&>(args[0]);
+	Environment& env = extract<Environment&>(args[0]);
 	foreach(const object& item, make_object_iterator_range(kw.items())) {
 		std::string key = extract<std::string>(item[0]);
 		env[key] = extract_variable(item[1]);
@@ -181,7 +182,7 @@ object AddMethod(object env, object method, object name)
 
 object SetDefault(tuple args, dict kw)
 {
-	environment::Environment& env = extract<environment::Environment&>(args[0]);
+	Environment& env = extract<Environment&>(args[0]);
 	foreach(object item, make_object_iterator_range(kw.items())) {
 		std::string key = extract<std::string>(item[0]);
 		if(!has_key(env, key))
@@ -213,7 +214,7 @@ object concat(const std::string& prefix, object objs, const std::string& suffix,
 object make_environment(tuple args, dict kw)
 {
 	args[0].attr("_true__init__")();
-	environment::Environment::pointer env = extract<environment::Environment::pointer>(args[0]);
+	Environment::pointer env = extract<Environment::pointer>(args[0]);
 	(*env)["BUILDERS"] = extract_variable(dict());
 
 	if(!kw.get("_no_platform")) {
@@ -244,16 +245,17 @@ object DefaultEnvironment(tuple args, dict kw)
 	return object(default_environment());
 }
 
-environment::Environment::pointer default_environment()
+Environment::pointer default_environment()
 {
 	return default_environment(tuple(), dict());
 }
 
-environment::Environment::pointer default_environment(tuple args, dict kw)
+Environment::pointer default_environment(tuple args, dict kw)
 {
-	static environment::Environment::pointer default_env 
-		= extract<environment::Environment::pointer>(call_extended(import("SCons.Environment").attr("Environment"), args, kw));
+	static Environment::pointer default_env
+	    = extract<Environment::pointer>(call_extended(import("SCons.Environment").attr("Environment"), args, kw));
 	return default_env;
 }
 
+}
 }

@@ -29,7 +29,7 @@
 using std::string;
 using std::vector;
 
-namespace environment
+namespace sconspp
 {
 
 std::string Environment::subst(const std::string& str, bool for_signature) const

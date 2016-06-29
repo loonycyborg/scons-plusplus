@@ -26,7 +26,7 @@
 
 #include "environment.hpp"
 
-namespace action
+namespace sconspp
 {
 
 class Action
@@ -35,25 +35,25 @@ class Action
 	typedef boost::shared_ptr<Action> pointer;
 
 	virtual ~Action() {}
-	virtual void execute(const environment::Environment&) const = 0;
-	virtual std::string to_string(const environment::Environment&, bool for_signature = false) const = 0;
+	virtual void execute(const Environment&) const = 0;
+	virtual std::string to_string(const Environment&, bool for_signature = false) const = 0;
 };
 
 typedef std::deque<Action::pointer> ActionList;
 
-void execute(const Action::pointer&, const environment::Environment&);
+void execute(const Action::pointer&, const Environment&);
 
-class Command : public Action
+class ExecCommand : public Action
 {
 	std::string command_;
 	std::string output_string_;
 
 	public:
-	Command(const std::string& command) : command_(command), output_string_(command) {}
-	Command(const std::string& command, const std::string& output_string) : command_(command), output_string_(output_string) {}
+	ExecCommand(const std::string& command) : command_(command), output_string_(command) {}
+	ExecCommand(const std::string& command, const std::string& output_string) : command_(command), output_string_(output_string) {}
 	
-	void execute(const environment::Environment&) const;
-	std::string to_string(const environment::Environment&, bool for_signature = false) const;
+	void execute(const Environment&) const;
+	std::string to_string(const Environment&, bool for_signature = false) const;
 };
 
 }

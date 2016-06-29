@@ -27,24 +27,26 @@
 
 #define foreach BOOST_FOREACH
 
+namespace sconspp
+{
 namespace python_interface
 {
 
-NodeList extract_file_nodes(const environment::Environment& env, object obj)
+NodeList extract_file_nodes(const Environment& env, object obj)
 {
 	NodeList result;
 	foreach(object node, make_object_iterator_range(obj))
 		if(is_string(node)) {
-			result.push_back(dependency_graph::add_entry_indeterminate(extract_string_subst(env, node)));
+			result.push_back(add_entry_indeterminate(extract_string_subst(env, node)));
 		} else {
 			result.push_back(extract_node(node));
 		}
 	return result;
 }
 
-builder::Builder::NodeStringList extract_nodes(object obj)
+Builder::NodeStringList extract_nodes(object obj)
 {
-	builder::Builder::NodeStringList result;
+	Builder::NodeStringList result;
 	foreach(object node, make_object_iterator_range(obj)) {
 		if(is_string(node))
 			result.push_back(extract<std::string>(node)());
@@ -54,9 +56,9 @@ builder::Builder::NodeStringList extract_nodes(object obj)
 	return result;
 }
 
-builder::Builder::NodeStringList extract_nodes(const environment::Environment& env, object obj)
+Builder::NodeStringList extract_nodes(const Environment& env, object obj)
 {
-	builder::Builder::NodeStringList result;
+	Builder::NodeStringList result;
 	foreach(object node, make_object_iterator_range(obj)) {
 		if(is_string(node))
 			result.push_back(extract_string_subst(env, node));
@@ -69,7 +71,7 @@ builder::Builder::NodeStringList extract_nodes(const environment::Environment& e
 struct ExtractFileVisitor : public boost::static_visitor<Node>
 {
 	Node operator()(const std::string& name) {
-		return dependency_graph::add_entry_indeterminate(name);
+		return add_entry_indeterminate(name);
 	}
 	Node operator()(Node node) {
 		return node;
@@ -79,10 +81,11 @@ struct ExtractFileVisitor : public boost::static_visitor<Node>
 NodeList extract_file_nodes(object obj)
 {
 	NodeList result;
-	builder::Builder::NodeStringList nodes = extract_nodes(obj);
+	Builder::NodeStringList nodes = extract_nodes(obj);
 	ExtractFileVisitor visitor;
 	std::transform(nodes.begin(), nodes.end(), std::back_inserter(result), boost::apply_visitor(visitor));
 	return result;
 }
 
+}
 }

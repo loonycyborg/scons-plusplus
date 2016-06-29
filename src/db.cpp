@@ -207,11 +207,11 @@ T Db::exec(const std::string& sql)
 
 }
 
-namespace db
+namespace sconspp
 {
 
-PersistentNodeData::PersistentNodeData(SQLite::Db& db, dependency_graph::Node node) 
-	: type_(dependency_graph::graph[node]->type()), name_(dependency_graph::graph[node]->name()), db(db), node(node)
+PersistentNodeData::PersistentNodeData(SQLite::Db& db, Node node)
+    : type_(graph[node]->type()), name_(graph[node]->name()), db(db), node(node)
 {
 	SQLite::Statement prepare_record(db.handle(),
 		"insert or ignore into nodes (type,name) values (?1, ?2);");
@@ -237,7 +237,7 @@ PersistentNodeData::PersistentNodeData(SQLite::Db& db, dependency_graph::Node no
 PersistentNodeData::~PersistentNodeData()
 {
 	try {
-		dependency_graph::graph[node]->record_persistent_data(*this);
+		graph[node]->record_persistent_data(*this);
 		SQLite::Statement write_data(db.handle(), 
 			"insert or replace into nodes (id, type, name, existed, timestamp, signature, task_signature) values (?1, ?2, ?3, ?4, ?5, ?6, ?7)");
 		write_data.bind(1, id_);
@@ -342,7 +342,7 @@ PersistentData::~PersistentData()
 		"insert into dependencies values (?1, ?2)");
 	foreach(Nodes::value_type& target_pair, nodes_) {
 		int target_id = target_pair.second->id();
-		dependency_graph::Node target_node = target_pair.first;
+		Node target_node = target_pair.first;
 
 		clear_dependency.bind(1, target_id);
 		while(clear_dependency.step() != SQLITE_DONE) {}
@@ -350,15 +350,15 @@ PersistentData::~PersistentData()
 
 		write_dependency.bind(1, target_pair.second->id());
 
-		foreach(const dependency_graph::Edge& dependency, out_edges(target_node, dependency_graph::graph)) {
-			write_dependency.bind(2, (*this)[target(dependency, dependency_graph::graph)].id());
+		foreach(const Edge& dependency, out_edges(target_node, graph)) {
+			write_dependency.bind(2, (*this)[target(dependency, graph)].id());
 			while(write_dependency.step() != SQLITE_DONE) {}
 			write_dependency.reset();
 		}
 	}
 }
 
-PersistentNodeData& PersistentData::operator[](dependency_graph::Node node)
+PersistentNodeData& PersistentData::operator[](Node node)
 {
 	Nodes::iterator node_iter = nodes_.find(node);
 	if(node_iter == nodes_.end())

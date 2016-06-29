@@ -26,29 +26,27 @@
 
 #define foreach BOOST_FOREACH
 
-using dependency_graph::graph;
-
-namespace taskmaster
+namespace sconspp
 {
 
-void Task::add_sources(const dependency_graph::NodeList& sources)
+void Task::add_sources(const NodeList& sources)
 {
 	std::copy(sources.begin(), sources.end(), std::back_inserter(sources_));
-	foreach(const dependency_graph::Node& target, targets_)
-		foreach(const dependency_graph::Node& source, sources)
+	foreach(const Node& target, targets_)
+		foreach(const Node& source, sources)
 			add_edge(target, source, graph);
 }
 
-environment::Environment::const_pointer Task::env() const
+Environment::const_pointer Task::env() const
 {
-	environment::Environment::pointer task_env = env_->override();
+	Environment::pointer task_env = env_->override();
 	if(targets_.size()) {
-		(*task_env)["TARGETS"] = environment::make_variable(targets_.begin(), targets_.end());
-		(*task_env)["TARGET"] = environment::make_variable(targets_[0]);
+		(*task_env)["TARGETS"] = make_variable(targets_.begin(), targets_.end());
+		(*task_env)["TARGET"] = make_variable(targets_[0]);
 	}
 	if(sources_.size()) {
-		(*task_env)["SOURCES"] = environment::make_variable(sources_.begin(), sources_.end());
-		(*task_env)["SOURCE"] = environment::make_variable(sources_[0]);
+		(*task_env)["SOURCES"] = make_variable(sources_.begin(), sources_.end());
+		(*task_env)["SOURCE"] = make_variable(sources_[0]);
 	}
 	return task_env;
 }
@@ -58,19 +56,19 @@ boost::optional<boost::array<unsigned char, 16> > Task::signature() const
 	boost::optional<boost::array<unsigned char, 16> > result;
 	if(actions_.empty())
 		return result;
-	util::MD5 md5_sum;
-	foreach(const action::Action::pointer& action, actions_)
+	MD5 md5_sum;
+	foreach(const Action::pointer& action, actions_)
 		md5_sum.append(action->to_string(*env(), true));
 	return md5_sum.finish();
 }
 
 void Task::execute() const
 {
-	environment::Environment::const_pointer task_env = env();
-	foreach(const action::Action::pointer& action, actions_)
-		action::execute(action, *task_env);
-	foreach(const dependency_graph::Node& target, targets_)
-		dependency_graph::properties(target).was_rebuilt();
+	Environment::const_pointer task_env = env();
+	foreach(const Action::pointer& action, actions_)
+		sconspp::execute(action, *task_env);
+	foreach(const Node& target, targets_)
+		properties(target).was_rebuilt();
 }
 
 }

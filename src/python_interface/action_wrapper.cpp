@@ -31,10 +31,12 @@
 
 using std::string;
 
+namespace sconspp
+{
 namespace python_interface
 {
 
-void PythonAction::execute(const environment::Environment& env) const
+void PythonAction::execute(const Environment& env) const
 {
 	ScopedGIL lock;
 	try {
@@ -47,7 +49,7 @@ void PythonAction::execute(const environment::Environment& env) const
 	}
 }
 
-std::string PythonAction::to_string(const environment::Environment& env, bool) const
+std::string PythonAction::to_string(const Environment& env, bool) const
 {
 	return string(extract<std::string>(action_obj.attr("__name__"))) + "()";
 }
@@ -55,10 +57,10 @@ std::string PythonAction::to_string(const environment::Environment& env, bool) c
 object call_action_factory(tuple args, dict kw)
 {
 	ActionFactory factory = extract<ActionFactory>(args[0]);
-	return object(action::Action::pointer(new ActionCaller(factory.actfunc_, factory.strfunc_, factory.convert_, tuple(args.slice(1, _)), kw)));
+	return object(Action::pointer(new ActionCaller(factory.actfunc_, factory.strfunc_, factory.convert_, tuple(args.slice(1, _)), kw)));
 }
 
-void ActionCaller::execute(const environment::Environment& env) const
+void ActionCaller::execute(const Environment& env) const
 {
 	ScopedGIL lock;
 	try {
@@ -72,7 +74,7 @@ void ActionCaller::execute(const environment::Environment& env) const
 	}
 }
 
-std::string ActionCaller::to_string(const environment::Environment& env, bool) const
+std::string ActionCaller::to_string(const Environment& env, bool) const
 {
 	ScopedGIL lock;
 	list args;
@@ -82,4 +84,5 @@ std::string ActionCaller::to_string(const environment::Environment& env, bool) c
 	return extract<std::string>(call_extended(strfunc_, tuple(args), kw_));
 }
 
+}
 }

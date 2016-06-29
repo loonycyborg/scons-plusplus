@@ -32,13 +32,10 @@
 #include "sconscript.hpp"
 #include "fs_node.hpp"
 
-using dependency_graph::Node;
-using dependency_graph::NodeList;
-using dependency_graph::graph;
-using dependency_graph::properties;
-
 using namespace boost::python;
 
+namespace sconspp
+{
 namespace python_interface
 {
 
@@ -48,53 +45,54 @@ struct NodeWrapper
 	explicit NodeWrapper(Node node_) : node(node_) {}
 	std::string to_string() const { return graph[node]->name(); }
 
-	dependency_graph::NodeList sources() const { return graph[node]->task()->sources(); }
+	NodeList sources() const { return graph[node]->task()->sources(); }
 	std::string path() const {
-		return properties<dependency_graph::FSEntry>(node).name();
+		return properties<FSEntry>(node).name();
 	}
 	std::string abspath() const {
-		return properties<dependency_graph::FSEntry>(node).abspath();
+		return properties<FSEntry>(node).abspath();
 	}
 	std::string name() const {
-		return properties<dependency_graph::FSEntry>(node).file();
+		return properties<FSEntry>(node).file();
 	}
 	std::string dir() const {
-		return properties<dependency_graph::FSEntry>(node).dir();
+		return properties<FSEntry>(node).dir();
 	}
 	std::string get_contents() const {
 		try {
-			return properties<dependency_graph::FSEntry>(node).get_contents();
+			return properties<FSEntry>(node).get_contents();
 		} catch(const std::bad_cast&) { return properties(node).name(); }
 	}
 	std::string scanner_key() const {
 		try {
-			dependency_graph::FSEntry& props = properties<dependency_graph::FSEntry>(node);
+			FSEntry& props = properties<FSEntry>(node);
 			return props.suffix();
 		} catch(const std::bad_cast&) {}
 		return std::string();
 	}
 	bool exists() const
 	{
-		return properties<dependency_graph::FSEntry>(node).exists();
+		return properties<FSEntry>(node).exists();
 	}
 };
 
-inline std::string extract_string_subst(const environment::Environment& env, object obj)
+inline std::string extract_string_subst(const Environment& env, object obj)
 {
 	return env.subst(extract<std::string>(obj));
 }
 
 NodeList extract_file_nodes(object obj);
-NodeList extract_file_nodes(const environment::Environment& env, object obj);
+NodeList extract_file_nodes(const Environment& env, object obj);
 
 inline Node extract_node(object obj)
 {
 	return extract<NodeWrapper>(obj)().node;
 }
 
-builder::Builder::NodeStringList extract_nodes(object obj);
-builder::Builder::NodeStringList extract_nodes(const environment::Environment& env, object obj);
+Builder::NodeStringList extract_nodes(object obj);
+Builder::NodeStringList extract_nodes(const Environment& env, object obj);
 
+}
 }
 
 #endif

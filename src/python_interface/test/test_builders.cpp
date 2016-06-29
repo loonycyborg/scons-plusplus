@@ -4,6 +4,8 @@
 
 #include <boost/test/output_test_stream.hpp>
 
+namespace sconspp
+{
 namespace python_interface
 {
 
@@ -20,4 +22,5 @@ BOOST_AUTO_TEST_CASE(builders)
 }
 BOOST_AUTO_TEST_SUITE_END()
 
+}
 }

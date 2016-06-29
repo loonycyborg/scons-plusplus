@@ -7,8 +7,8 @@
 #include "taskmaster.hpp"
 #include "fs_node.hpp"
 
-using dependency_graph::Node;
-
+namespace sconspp
+{
 namespace python_interface
 {
 
@@ -23,38 +23,39 @@ struct python_setup
 	{
 		python_interface::init_python();
 		boost::unit_test::unit_test_monitor.register_exception_translator<error_already_set>(&translate_error_already_set);
-		dependency_graph::set_fs_root(boost::filesystem::current_path());
+		set_fs_root(boost::filesystem::current_path());
 	}
 };
 
 
 struct NodeInSet
 {
-	std::set<dependency_graph::Node> nodes;
+	std::set<Node> nodes;
 	NodeInSet() {}
 	template<typename Iterator> NodeInSet(Iterator begin, Iterator end) 
 	: nodes(begin, end)
 	{
 	}
-	bool operator()(dependency_graph::Node node) const
+	bool operator()(Node node) const
 	{
 		return nodes.count(node);
 	}
 };
 
-bool all_edges(const boost::graph_traits<dependency_graph::Graph>::edge_descriptor&) { return true; }
+bool all_edges(const boost::graph_traits<Graph>::edge_descriptor&) { return true; }
 
 void write_build_graph(std::ostream& os, Node end_goal)
 {
-	std::vector<dependency_graph::Node> nodes;
-	taskmaster::build_order(end_goal, nodes);
+	std::vector<Node> nodes;
+	build_order(end_goal, nodes);
 	boost::write_graphviz(
 		os,
-		boost::make_filtered_graph(dependency_graph::graph, all_edges, NodeInSet(nodes.begin(), nodes.end())),
-		boost::default_writer(), boost::default_writer(), boost::default_writer(), dependency_graph::IdMap(dependency_graph::graph)
+		boost::make_filtered_graph(graph, all_edges, NodeInSet(nodes.begin(), nodes.end())),
+		boost::default_writer(), boost::default_writer(), boost::default_writer(), IdMap(graph)
 		);
 }
 
 BOOST_GLOBAL_FIXTURE(python_setup);
 
+}
 }

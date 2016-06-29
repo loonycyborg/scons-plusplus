@@ -24,7 +24,7 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/shared_ptr.hpp>
 
-namespace dependency_graph
+namespace sconspp
 {
 
 using boost::adjacency_list;

@@ -25,9 +25,9 @@
 
 #include <boost/graph/graphviz.hpp>
 
-namespace visualization
+namespace sconspp
 {
-	void write_dot(std::ostream& os, const dependency_graph::Graph& graph);
+    void write_dot(std::ostream& os, const Graph& graph);
 }
 
 #endif

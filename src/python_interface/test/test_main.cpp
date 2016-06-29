@@ -3,6 +3,8 @@
 #include "python_interface/node_wrapper.hpp"
 #include <boost/graph/graph_utility.hpp>
 
+namespace sconspp
+{
 namespace python_interface
 {
 
@@ -128,7 +130,7 @@ BOOST_AUTO_TEST_CASE(test_depends)
 	Node 
 		target = python_interface::extract_node(ns["target"][0]),
 		dependency = python_interface::extract_node(ns["dependency"][0]);
-	BOOST_CHECK(is_adjacent(dependency_graph::graph, target, dependency));
+	BOOST_CHECK(is_adjacent(graph, target, dependency));
 }
 
 BOOST_AUTO_TEST_CASE(test_glob)
@@ -172,4 +174,5 @@ BOOST_AUTO_TEST_CASE(test_find_file)
 
 BOOST_AUTO_TEST_SUITE_END()
 
+}
 }

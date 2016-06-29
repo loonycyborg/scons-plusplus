@@ -21,7 +21,7 @@
 #include <vector>
 #include <string>
 
-namespace options
+namespace sconspp
 {
-	std::vector<std::string> parse(int argc, char** argv);
+    std::vector<std::string> parse_command_line(int argc, char** argv);
 }

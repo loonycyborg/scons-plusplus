@@ -27,13 +27,16 @@
 
 using namespace boost::python;
 
+namespace sconspp
+{
 namespace python_interface
 {
 
-object subst(const environment::Environment& env, const std::string&, bool for_signature = false);
-object subst(const environment::Environment& env, object, bool for_signature = false);
-std::string expand_python(const environment::Environment& env, object obj);
+object subst(const Environment& env, const std::string&, bool for_signature = false);
+object subst(const Environment& env, object, bool for_signature = false);
+std::string expand_python(const Environment& env, object obj);
 
+}
 }
 
 #endif

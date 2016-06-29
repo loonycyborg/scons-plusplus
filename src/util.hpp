@@ -29,7 +29,7 @@
 #include <boost/array.hpp>
 #include "md5.h"
 
-namespace util
+namespace sconspp
 {
 
 class Environ

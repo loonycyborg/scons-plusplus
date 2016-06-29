@@ -49,6 +49,8 @@ using namespace boost::python;
 
 dict main_namespace;
 
+namespace sconspp
+{
 namespace python_interface
 {
 
@@ -97,7 +99,7 @@ object dictify(object obj)
 
 struct node_list_to_python
 {
-	static PyObject* convert(const dependency_graph::NodeList& node_list)
+	static PyObject* convert(const NodeList& node_list)
 	{
 		list result;
 		foreach(const Node& node, node_list)
@@ -108,10 +110,10 @@ struct node_list_to_python
 
 struct action_list_to_python
 {
-	static PyObject* convert(const action::ActionList& action_list)
+	static PyObject* convert(const ActionList& action_list)
 	{
 		list result;
-		foreach(const action::Action::pointer& action, action_list)
+		foreach(const Action::pointer& action, action_list)
 			result.append(object(action));
 		return incref(result.ptr());
 	}
@@ -143,8 +145,8 @@ BOOST_PYTHON_MODULE(SCons)
 	{
 	NESTED_MODULE("SCons", "Action")
 		def("Action", &make_actions, (arg("action"), arg("strfunction")=object(), arg("varlist")=list()));
-		class_<action::Action, action::Action::pointer, boost::noncopyable>("ActionWrapper", no_init)
-			.def("__call__", &action::Action::execute)
+	    class_<Action, Action::pointer, boost::noncopyable>("ActionWrapper", no_init)
+		    .def("__call__", &Action::execute)
 		;
 		class_<ActionFactory>("ActionFactory", init<object, object, object>((arg("actfunc"), arg("strfunc"), arg("convert") = eval("lambda x:x"))))
 			.def("__call__", raw_function(&call_action_factory))
@@ -153,7 +155,7 @@ BOOST_PYTHON_MODULE(SCons)
 	{
 	NESTED_MODULE("SCons", "Builder")
 		def("Builder", raw_function(&make_builder));
-		class_<builder::Builder, builder::Builder::pointer, boost::noncopyable>("BuilderWrapper", no_init)
+	    class_<Builder, Builder::pointer, boost::noncopyable>("BuilderWrapper", no_init)
 			.def("__call__", raw_function(&call_builder_interface, 2))
 			.def("add_action", &add_action)
 			.def("add_emitter", &add_emitter)
@@ -166,8 +168,8 @@ BOOST_PYTHON_MODULE(SCons)
 	object env;
 	{
 	NESTED_MODULE("SCons", "Environment")
-		env = class_<Environment, environment::Environment::pointer>("Environment", no_init)
-			.def("_true__init__", make_constructor(&environment::Environment::create))
+	    env = class_<Environment, Environment::pointer>("Environment", no_init)
+	        .def("_true__init__", make_constructor(&Environment::create))
 			.def("__init__", raw_function(&make_environment))
 			.def("subst", &Environment::subst, (arg("for_signature") = false))
 			.def("Default", &Default)
@@ -195,11 +197,11 @@ BOOST_PYTHON_MODULE(SCons)
 			.def("SetDefault", raw_function(&SetDefault))
 			.def("Dump", &Dump)
 			.def("Clone", &Environment::clone)
-			.def("SConscript", (object(*)(const environment::Environment&, const std::string&))SConscript)
+	        .def("SConscript", (object(*)(const Environment&, const std::string&))SConscript)
 		;
 	}
-	to_python_converter<dependency_graph::NodeList, node_list_to_python>();
-	to_python_converter<action::ActionList, action_list_to_python>();
+	to_python_converter<NodeList, node_list_to_python>();
+	to_python_converter<ActionList, action_list_to_python>();
 
 	{
 	NESTED_MODULE("SCons", "Script")
@@ -226,14 +228,14 @@ BOOST_PYTHON_MODULE(SCons)
 		def_directive<BOOST_TYPEOF(flatten), flatten>(env, "Flatten", (arg("arg")));
 		def_directive<BOOST_TYPEOF(Depends), Depends>(env, "Depends", (arg("target"), arg("dependency")));
 		def_directive_raw<AlwaysBuild>(env, "AlwaysBuild");
-		def_directive<BOOST_TYPEOF(dependency_graph::glob), dependency_graph::glob>(env, "Glob", (arg("pattern"), arg("ondisk") = true));
+		def_directive<BOOST_TYPEOF(glob), glob>(env, "Glob", (arg("pattern"), arg("ondisk") = true));
 		def_directive<BOOST_TYPEOF(FindFile), FindFile>(env, "FindFile", (arg("file"), arg("dirs")));
 	}
 
 	{
 	NESTED_MODULE("SCons", "SConsppExt")
-		class_<taskmaster::Task::Scanner>("Scanner");
-		s.attr("CPPScanner") = taskmaster::Task::Scanner(taskmaster::scan_cpp);
+	    class_<Task::Scanner>("Scanner");
+	    s.attr("CPPScanner") = Task::Scanner(scan_cpp);
 	}
 }
 
@@ -249,7 +251,7 @@ BOOST_PYTHON_MODULE(SCons)
 		object sys = import("sys");
 		list path(sys.attr("path"));
 		path.insert(0, PYTHON_MODULES_PATH);
-		path.insert(0, (util::readlink("/proc/self/exe").parent_path() / "python_modules").string());
+		path.insert(0, (readlink("/proc/self/exe").parent_path() / "python_modules").string());
 		sys.attr("path") = path;
 		exec("import sconspp_import", main_namespace, main_namespace);
 
@@ -280,7 +282,7 @@ BOOST_PYTHON_MODULE(SCons)
 		return result ? extract<string>(str(result))() : "";
 	}
 
-	std::string expand_variable(const std::string& var, const environment::Environment& env)
+	std::string expand_variable(const std::string& var, const Environment& env)
 	{
 		ScopedGIL lock;
 		if(!env.count(var))
@@ -299,9 +301,10 @@ BOOST_PYTHON_MODULE(SCons)
 		return extract<string>(str(obj));
 	}
 
-	std::string subst_to_string(const environment::Environment& env, const std::string& input, bool for_signature)
+	std::string subst_to_string(const Environment& env, const std::string& input, bool for_signature)
 	{
 		ScopedGIL lock;
 		return expand_python(env, subst(env, input, for_signature));
 	}
+}
 }

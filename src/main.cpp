@@ -34,13 +34,12 @@
 #include <boost/foreach.hpp>
 #define foreach BOOST_FOREACH
 
-using dependency_graph::Graph;
-using dependency_graph::Node;
+using namespace sconspp;
 
 int main(int argc, char** argv)
 {
 	try {
-		std::vector<std::string> command_line_targets = options::parse(argc, argv);
+		std::vector<std::string> command_line_targets = parse_command_line(argc, argv);
 		python_interface::init_python();
 		const char* default_script_names[] = { "SConstruct++", "SConstruct" };
 		bool script_found = false;
@@ -54,21 +53,21 @@ int main(int argc, char** argv)
 		if(!script_found)
 			throw std::runtime_error("No SConstruct file found.");
 
-		Node end_goal = dependency_graph::add_dummy_node("The end goal");
+		Node end_goal = add_dummy_node("The end goal");
 		if(!command_line_targets.empty()) {
 			foreach(std::string target, command_line_targets) {
-				boost::optional<Node> node = dependency_graph::get_alias(target);
+				boost::optional<Node> node = get_alias(target);
 				if(!node)
-					node = dependency_graph::get_entry(target);
+					node = get_entry(target);
 				if(node)
-					add_edge(end_goal, node.get(), dependency_graph::graph);
+					add_edge(end_goal, node.get(), graph);
 				else
 					throw std::runtime_error("I don't see alias or file target named '" + target + "'. That's really all there is to be said on the matter");
 			}
 		} else
-			foreach(Node node, dependency_graph::default_targets)
-				add_edge(end_goal, node, dependency_graph::graph);
-		taskmaster::build(end_goal);
+			foreach(Node node, default_targets)
+				add_edge(end_goal, node, graph);
+		build(end_goal);
 	} catch(const std::exception& e) {
 		logging::error() << e.what() << std::endl;
 		return 1;
@@ -76,6 +75,6 @@ int main(int argc, char** argv)
 
 	{
 	std::ofstream dot_file("graph.dot");
-	visualization::write_dot(dot_file, dependency_graph::graph);
+	write_dot(dot_file, graph);
 	}
 }

@@ -54,16 +54,16 @@ using boost::phoenix::arg_names::arg1;
 using boost::phoenix::push_back;
 using boost::phoenix::bind;
 
-using dependency_graph::Node;
-using dependency_graph::Edge;
-using dependency_graph::NodeList;
+namespace {
+
+using namespace sconspp;
 
 struct TaskListItem
 {
-	taskmaster::Task::pointer task;
+	Task::pointer task;
 	NodeList targets;
 
-	TaskListItem(taskmaster::Task::pointer task, Node target) : task(task) { targets.push_back(target); }
+	TaskListItem(Task::pointer task, Node target) : task(task) { targets.push_back(target); }
 };
 
 struct sequence_index;
@@ -73,7 +73,7 @@ typedef multi_index_container<
 	TaskListItem,
 	indexed_by<
 		sequenced<tag<sequence_index> >,
-		ordered_unique<tag<task_index>, BOOST_MULTI_INDEX_MEMBER(TaskListItem, taskmaster::Task::pointer, task)>
+        ordered_unique<tag<task_index>, BOOST_MULTI_INDEX_MEMBER(TaskListItem, Task::pointer, task)>
 		>
 	> TaskList;
 
@@ -86,21 +86,21 @@ class BuildVisitor : public boost::default_dfs_visitor
 	BuildVisitor(TaskList& task_list, std::vector<Node>& build_order) : task_list_(task_list), build_order_(build_order) {}
 
 	template <typename Edge>
-	void back_edge(const Edge&, const dependency_graph::Graph& graph) const { throw boost::not_a_dag(); }
-	void discover_vertex(Node node, const dependency_graph::Graph& graph) const
+	void back_edge(const Edge&, const Graph& graph) const { throw boost::not_a_dag(); }
+	void discover_vertex(Node node, const Graph& graph) const
 	{
-		const std::pair<dependency_graph::Graph::out_edge_iterator, dependency_graph::Graph::out_edge_iterator>&
+		const std::pair<Graph::out_edge_iterator, Graph::out_edge_iterator>&
 			iterators = out_edges(node, graph);
 		std::vector<Edge> edges(iterators.first, iterators.second);
 		foreach(Edge edge, edges) {
-			taskmaster::Task::pointer task = graph[source(edge, graph)]->task();
+			Task::pointer task = graph[source(edge, graph)]->task();
 			if(task)
 				task->scan(source(edge, graph), target(edge, graph));
 		}
 	}
-	void finish_vertex(Node node, const dependency_graph::Graph& graph) const
+	void finish_vertex(Node node, const Graph& graph) const
 	{
-		taskmaster::Task::pointer task = graph[node]->task();
+		Task::pointer task = graph[node]->task();
 		if(task) {
 			bool inserted;
 			TaskList::iterator iter;
@@ -112,16 +112,18 @@ class BuildVisitor : public boost::default_dfs_visitor
 	}
 };
 
+}
+
 namespace
 {
-	std::ostream& operator<<(std::ostream& os, const dependency_graph::NodeList& node_list)
+    std::ostream& operator<<(std::ostream& os, const sconspp::NodeList& node_list)
 	{
 		os << "(";
 		if(node_list.size()) {
-			dependency_graph::NodeList::const_iterator iter = node_list.begin();
-			os << dependency_graph::graph[*iter++]->name();
+			sconspp::NodeList::const_iterator iter = node_list.begin();
+			os << sconspp::graph[*iter++]->name();
 			for(;iter != node_list.end(); iter++) {
-				os << "," << dependency_graph::graph[*iter]->name();
+				os << "," << sconspp::graph[*iter]->name();
 			}
 		}
 		os << ")";
@@ -129,43 +131,43 @@ namespace
 	}
 }
 
-namespace taskmaster
+namespace sconspp
 {
 	boost::optional<unsigned int> num_jobs;
 	bool always_build;
 
-	void build_order(dependency_graph::Node end_goal, TaskList& tasks, std::vector<Node>& output)
+	void build_order(Node end_goal, TaskList& tasks, std::vector<Node>& output)
 	{
 		std::map<Node, boost::default_color_type> colors;
 		associative_property_map<std::map<Node, boost::default_color_type> > color_map(colors);
-		depth_first_visit(dependency_graph::graph, end_goal, BuildVisitor(tasks, output), color_map);
+		depth_first_visit(graph, end_goal, BuildVisitor(tasks, output), color_map);
 	}
 
-	void build_order(dependency_graph::Node end_goal, std::vector<Node>& output)
+	void build_order(Node end_goal, std::vector<Node>& output)
 	{
 		TaskList tasks;
 		build_order(end_goal, tasks, output);
 	}
 
-	bool is_task_up_to_date(const TaskListItem& item, db::PersistentData& db)
+	bool is_task_up_to_date(const TaskListItem& item, PersistentData& db)
 	{
 		bool up_to_date = !always_build;
 		foreach(Node build_target, item.targets) {
-			if(dependency_graph::graph[build_target]->needs_rebuild()) {
+			if(graph[build_target]->needs_rebuild()) {
 				up_to_date = false;
 			}
 			std::set<int> 
 				source_ids,
 				prev_sources(db[build_target].dependencies());
-			foreach(Edge dependency, out_edges(build_target, dependency_graph::graph)) {
-				Node build_source = target(dependency, dependency_graph::graph);
-				db::PersistentNodeData& source_data = db[build_source];
+			foreach(Edge dependency, out_edges(build_target, graph)) {
+				Node build_source = target(dependency, graph);
+				PersistentNodeData& source_data = db[build_source];
 				source_ids.insert(source_data.id());
-				bool unchanged = dependency_graph::graph[build_source]->unchanged(item.targets, source_data);
+				bool unchanged = graph[build_source]->unchanged(item.targets, source_data);
 				if(!unchanged) {
 					up_to_date = false;
 					logging::debug(logging::Taskmaster) <<
-						dependency_graph::graph[build_source]->name() << " has changed\n";
+					    graph[build_source]->name() << " has changed\n";
 				}
 			}
 			if(prev_sources.size() != source_ids.size() || !std::equal(source_ids.begin(), source_ids.end(), prev_sources.begin())) {
@@ -181,7 +183,7 @@ namespace taskmaster
 		return up_to_date;
 	}
 
-	void serial_build(TaskList& tasks, db::PersistentData& db)
+	void serial_build(TaskList& tasks, PersistentData& db)
 	{
 		const int num_tasks = tasks.size();
 		int current_task = 1;
@@ -213,7 +215,7 @@ namespace taskmaster
 		void schedule(Node node)
 		{
 			boost::packaged_task<void> ptask(boost::bind(
-				&Task::execute, dependency_graph::graph[node]->task().get()
+			    &Task::execute, graph[node]->task().get()
 				));
 			futures[node] = boost::shared_future<void>(ptask.get_future());
 			boost::thread thread(boost::move(ptask));
@@ -253,7 +255,7 @@ namespace taskmaster
 
 	enum TaskState { SCHEDULED, BLOCKED, TO_BUILD, BUILT };
 
-	void parallel_build(TaskList& tasks, std::vector<Node>& nodes, db::PersistentData& db)
+	void parallel_build(TaskList& tasks, std::vector<Node>& nodes, PersistentData& db)
 	{
 		if(num_jobs) {
 			if(num_jobs.get() == 0)
@@ -281,21 +283,21 @@ namespace taskmaster
 					continue;
 				}
 				states[node] = TO_BUILD;
-				foreach(Edge e, out_edges(node, dependency_graph::graph)) {
-					if(states[target(e, dependency_graph::graph)] == SCHEDULED ||
-					   states[target(e, dependency_graph::graph)] == BLOCKED)
+				foreach(Edge e, out_edges(node, graph)) {
+					if(states[target(e, graph)] == SCHEDULED ||
+					   states[target(e, graph)] == BLOCKED)
 						states[node] = BLOCKED;
 				}
 				if(states[node] == TO_BUILD) {
-					if(!dependency_graph::graph[node]->task() ||
+					if(!graph[node]->task() ||
 						is_task_up_to_date(*(tasks.get<task_index>().find(
-							dependency_graph::graph[node]->task())), db)
+					        graph[node]->task())), db)
 					) {
 						states[node] = BUILT;
 					} else {
 						job_server.schedule(node);
 						logging::debug(logging::Taskmaster)
-							<< "Scheduled building target " << dependency_graph::properties(node).name() << ".\n";
+						    << "Scheduled building target " << properties(node).name() << ".\n";
 						states[node] = SCHEDULED;
 						if(num_jobs && job_server.num_scheduled_jobs() == *num_jobs) {
 							logging::debug(logging::Taskmaster)
@@ -308,12 +310,12 @@ namespace taskmaster
 		}
 	}
 
-	void build(dependency_graph::Node end_goal)
+	void build(Node end_goal)
 	{
 		TaskList tasks;
 		std::vector<Node> nodes;
 		build_order(end_goal, tasks, nodes);
-		db::PersistentData& db = db::get_global_db();
+		PersistentData& db = get_global_db();
 
 		parallel_build(tasks, nodes, db);
 	}

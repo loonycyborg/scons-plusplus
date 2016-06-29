@@ -30,27 +30,27 @@
 #include "action.hpp"
 #include "task.hpp"
 
-namespace builder
+namespace sconspp
 {
 
 class Builder
 {
 	protected:
 	void create_task(
-		const environment::Environment& env,
-		const dependency_graph::NodeList& targets,
-		const dependency_graph::NodeList& sources,
-		const action::ActionList& actions,
-		taskmaster::Task::Scanner scanner = taskmaster::Task::Scanner()
+	    const Environment& env,
+	    const NodeList& targets,
+	    const NodeList& sources,
+	    const ActionList& actions,
+	    Task::Scanner scanner = Task::Scanner()
 		) const;
 	public:
 	typedef boost::shared_ptr<Builder> pointer;
 
 	virtual ~Builder() {}
 
-	typedef std::vector<boost::variant<dependency_graph::Node, std::string> > NodeStringList;
-	virtual dependency_graph::NodeList operator()(
-		const environment::Environment& env,
+	typedef std::vector<boost::variant<Node, std::string> > NodeStringList;
+	virtual NodeList operator()(
+	    const Environment& env,
 		const NodeStringList& targets,
 		const NodeStringList& sources
 		) const = 0;
@@ -61,8 +61,8 @@ class Command : public Builder
 	std::string command_;
 
 	public:
-	dependency_graph::NodeList operator()(
-		const environment::Environment& env,
+	NodeList operator()(
+	    const Environment& env,
 		const NodeStringList& targets,
 		const NodeStringList& sources
 		) const;
@@ -72,30 +72,30 @@ class Command : public Builder
 
 class SimpleBuilder : public Builder
 {
-	action::ActionList actions_;
+	ActionList actions_;
 
 	public:
-	dependency_graph::NodeList operator()(
-		const environment::Environment& env,
+	NodeList operator()(
+	    const Environment& env,
 		const NodeStringList& targets,
 		const NodeStringList& sources
 		) const;
 
-	SimpleBuilder(const action::ActionList& actions) : actions_(actions) {}
+	SimpleBuilder(const ActionList& actions) : actions_(actions) {}
 };
 
 class AliasBuilder : public Builder
 {
-	action::ActionList actions_;
+	ActionList actions_;
 
 	public:
-	dependency_graph::NodeList operator()(
-		const environment::Environment& env,
+	NodeList operator()(
+	    const Environment& env,
 		const NodeStringList& targets,
 		const NodeStringList& sources
 		) const;
 
-	AliasBuilder(const action::ActionList& actions) : actions_(actions) {}
+	AliasBuilder(const ActionList& actions) : actions_(actions) {}
 };
 
 }

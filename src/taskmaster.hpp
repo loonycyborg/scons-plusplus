@@ -25,14 +25,14 @@
 
 #include "dependency_graph.hpp"
 
-namespace taskmaster
+namespace sconspp
 {
 	extern boost::optional<unsigned int> num_jobs;
 	extern bool always_build;
 
-	void build(dependency_graph::Node end_goal);
+	void build(Node end_goal);
 
-	void build_order(dependency_graph::Node end_goal, std::vector<dependency_graph::Node>& output);
+	void build_order(Node end_goal, std::vector<Node>& output);
 }
 
 #endif

@@ -27,14 +27,14 @@
 
 #include <boost/cast.hpp>
 
-namespace dependency_graph
+namespace sconspp
 {
 
 class node_properties
 {
-	boost::shared_ptr<taskmaster::Task> task_;
-	friend class builder::Builder;
-	void set_task(taskmaster::Task::pointer task) { task_ = task; }
+	boost::shared_ptr<Task> task_;
+	friend class Builder;
+	void set_task(Task::pointer task) { task_ = task; }
 
 	protected:
 	bool always_build_;
@@ -46,14 +46,14 @@ class node_properties
 	virtual std::string name() const = 0;
 	virtual const char* type() const = 0;
 
-	virtual bool unchanged(const NodeList& targets, const db::PersistentNodeData&) const = 0;
+	virtual bool unchanged(const NodeList& targets, const PersistentNodeData&) const = 0;
 	virtual bool needs_rebuild() const { return always_build_; }
 
 	void always_build() { always_build_ = true; }
-	taskmaster::Task::pointer task() const { return task_; }
+	Task::pointer task() const { return task_; }
 
 	virtual void was_rebuilt() {}
-	virtual void record_persistent_data(db::PersistentNodeData&) {}
+	virtual void record_persistent_data(PersistentNodeData&) {}
 };
 
 inline node_properties& properties(Node node)
@@ -88,7 +88,7 @@ class dummy_node : public node_properties
 	dummy_node(const std::string& name) : name_(name) {}
 	std::string name() const { return name_; }
 	const char* type() const { return "dummy"; }
-	bool unchanged(const NodeList& targets, const db::PersistentNodeData&) const { return true; }
+	bool unchanged(const NodeList& targets, const PersistentNodeData&) const { return true; }
 };
 
 inline Node add_dummy_node(const std::string& name)

@@ -23,16 +23,19 @@
 
 #include "environment.hpp"
 
+namespace sconspp
+{
 namespace python_interface
 {
 
 object SConscript(const std::string& script);
-object SConscript(const environment::Environment&, const std::string& script);
+object SConscript(const Environment&, const std::string& script);
 
 object Export(tuple args, dict kw);
 object Import(tuple args, dict kw);
 object Return(tuple args, dict kw);
 
+}
 }
 
 #endif

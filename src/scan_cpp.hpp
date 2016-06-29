@@ -18,7 +18,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 #include "environment.hpp"
-namespace taskmaster
+namespace sconspp
 {
-	void scan_cpp(const environment::Environment&, dependency_graph::Node, dependency_graph::Node);
+    void scan_cpp(const Environment&, Node, Node);
 }

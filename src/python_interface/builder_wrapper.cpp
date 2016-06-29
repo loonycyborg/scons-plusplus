@@ -35,13 +35,15 @@
 using std::string;
 using boost::polymorphic_cast;
 
+namespace sconspp
+{
 namespace python_interface
 {
 
 NodeList call_builder_interface(tuple args, dict kw)
 {
-	const builder::Builder& builder = extract<const builder::Builder&>(args[0]);
-	const environment::Environment& env = extract<const environment::Environment&>(args[1]);
+	const Builder& builder = extract<const Builder&>(args[0]);
+	const Environment& env = extract<const Environment&>(args[1]);
 	object target, source;
 	if(len(args) >= 3) {
 		if(kw.has_key("target")) {
@@ -70,12 +72,12 @@ NodeList call_builder_interface(tuple args, dict kw)
 	return call_builder(builder, env, target, source);
 }
 
-inline NodeList extract_file_nodes(const environment::Environment& env, object obj)
+inline NodeList extract_file_nodes(const Environment& env, object obj)
 {
 	NodeList result;
 	foreach(object node, make_object_iterator_range(obj))
 		if(is_string(node)) {
-			result.push_back(dependency_graph::add_entry_indeterminate(extract_string_subst(env, node)));
+			result.push_back(add_entry_indeterminate(extract_string_subst(env, node)));
 		} else {
 			result.push_back(extract_node(node));
 		}
@@ -86,11 +88,11 @@ class PythonScanner
 {
 	object target_scanner_, source_scanner_;
 
-	void scan(const environment::Environment& env, object& scanner, dependency_graph::Node node, std::set<dependency_graph::Node>& deps, object path) {
+	void scan(const Environment& env, object& scanner, Node node, std::set<Node>& deps, object path) {
 		if(scanner) {
 			object result = scanner(NodeWrapper(node), env, path);
 			foreach(object node, make_object_iterator_range(result)) {
-				dependency_graph::Node dep = extract_node(node);
+				Node dep = extract_node(node);
 				if(!deps.count(dep)) {
 					deps.insert(dep);
 					scan(env, scanner, dep, deps, path);
@@ -98,7 +100,7 @@ class PythonScanner
 			}
 		}
 	}
-	object get_path(const environment::Environment& env, object& scanner, dependency_graph::Node node, object cwd, dependency_graph::Node target, dependency_graph::Node source)
+	object get_path(const Environment& env, object& scanner, Node node, object cwd, Node target, Node source)
 	{
 		if(!scanner)
 			return tuple();
@@ -112,21 +114,21 @@ class PythonScanner
 	: target_scanner_(target_scanner), source_scanner_(source_scanner)
 	{
 	}
-	void operator()(const environment::Environment& env, dependency_graph::Node target, dependency_graph::Node source)
+	void operator()(const Environment& env, Node target, Node source)
 	{
-		std::set<dependency_graph::Node> deps;
+		std::set<Node> deps;
 		try {
 			scan(env, source_scanner_, source, deps, get_path(env, source_scanner_, source, object(), target, source));
 			scan(env, target_scanner_, target, deps, get_path(env, target_scanner_, target, object(), target, source));
-			foreach(dependency_graph::Node node, deps)
-				add_edge(target, node, dependency_graph::graph);
+			foreach(Node node, deps)
+				add_edge(target, node, graph);
 		} catch(const error_already_set&) {
 			throw_python_exc("Exception while running a python scanner: ");
 		}
 	}
 };
 
-class PythonBuilder : public builder::Builder
+class PythonBuilder : public Builder
 {
 	object actions_;
 
@@ -146,7 +148,7 @@ class PythonBuilder : public builder::Builder
 
 	bool multi_;
 
-	taskmaster::Task::Scanner scanner_;
+	Task::Scanner scanner_;
 
 	public:
 	PythonBuilder(
@@ -167,11 +169,11 @@ class PythonBuilder : public builder::Builder
 		src_builder_(src_builder),
 		single_source_(single_source),
 		multi_(multi),
-		scanner_(scanner ? extract<taskmaster::Task::Scanner>(scanner)() : PythonScanner(target_scanner, source_scanner))
+	    scanner_(scanner ? extract<Task::Scanner>(scanner)() : PythonScanner(target_scanner, source_scanner))
 	{}
 
-	dependency_graph::NodeList operator()(
-		const environment::Environment& env,
+	NodeList operator()(
+	    const Environment& env,
 		const NodeStringList& targets,
 		const NodeStringList& sources
 		) const
@@ -192,11 +194,11 @@ class PythonBuilder : public builder::Builder
 			}
 		}
 
-		action::ActionList actions;
+		ActionList actions;
 		object actions_obj = list();
 
-		dependency_graph::NodeList target_nodes;
-		dependency_graph::NodeList source_nodes;
+		NodeList target_nodes;
+		NodeList source_nodes;
 
 		if(targets.empty() && !sources.empty()) {
 			const std::string* name = boost::get<const std::string>(&sources[0]);
@@ -205,11 +207,11 @@ class PythonBuilder : public builder::Builder
 				implicit_target.push_back(split_ext(*name));
 				return (*this)(env, implicit_target, sources);
 			}
-			const dependency_graph::Node* node = boost::get<const dependency_graph::Node>(&sources[0]);
+			const Node* node = boost::get<const Node>(&sources[0]);
 			if(node) {
 				NodeStringList implicit_target;
 				try {
-					std::string name = properties<dependency_graph::FSEntry>(*node).relpath();
+					std::string name = properties<FSEntry>(*node).relpath();
 					implicit_target.push_back(split_ext(name));
 					return (*this)(env, implicit_target, sources);
 				} catch(const std::bad_cast&) {}
@@ -224,8 +226,8 @@ class PythonBuilder : public builder::Builder
 
 		object emitter = emitter_;
 		if(emitter_) {
-			if(is_dict(emitter_)) {
-				emitter = dict(emitter_)[properties<dependency_graph::FSEntry>(source_nodes[0]).suffix()];
+			if(is_dict(emitter_) && !source_nodes.empty()) {
+				emitter = dict(emitter_)[properties<FSEntry>(source_nodes[0]).suffix()];
 			}
 			if(is_string(emitter)) {
 				emitter = subst(env, emitter);
@@ -245,7 +247,7 @@ class PythonBuilder : public builder::Builder
 
 			if(is_dict(actions_)) {
 				if(!sources.empty()) {
-					actions_obj = dict(actions_)[properties<dependency_graph::FSEntry>(source_nodes[0]).suffix()];
+					actions_obj = dict(actions_)[properties<FSEntry>(source_nodes[0]).suffix()];
 				}
 			} else {
 				actions_obj = actions_;
@@ -258,16 +260,16 @@ class PythonBuilder : public builder::Builder
 		return target_nodes;
 	}
 
-	template<void (PythonBuilder::*make_node)(const std::string&, const environment::Environment&, NodeList&) const>
+	template<void (PythonBuilder::*make_node)(const std::string&, const Environment&, NodeList&) const>
 	struct make_node_visitor : public boost::static_visitor<>
 	{
-		const environment::Environment& env_;
+		const Environment& env_;
 		const PythonBuilder* builder_;
 		NodeList& result_;
 		make_node_visitor(
-			const environment::Environment& env, const PythonBuilder* builder, NodeList& result
+		    const Environment& env, const PythonBuilder* builder, NodeList& result
 			) : env_(env), builder_(builder), result_(result) {}
-		void operator()(const dependency_graph::Node& node) const
+		void operator()(const Node& node) const
 		{
 			result_.push_back(node);
 		}
@@ -277,16 +279,16 @@ class PythonBuilder : public builder::Builder
 		}
 	};
 
-	void make_target_node(const std::string& name, const environment::Environment& env, NodeList& result) const
+	void make_target_node(const std::string& name, const Environment& env, NodeList& result) const
 	{
 		std::string full_name = adjust_target_name(env, name);
 		if(target_factory_)
 			result.push_back(extract_node(target_factory_(full_name)));
 		else
-			result.push_back(dependency_graph::add_entry_indeterminate(full_name));
+			result.push_back(add_entry_indeterminate(full_name));
 	}
 
-	void make_source_node(const std::string& name, const environment::Environment& env, NodeList& result) const
+	void make_source_node(const std::string& name, const Environment& env, NodeList& result) const
 	{
 		if(src_builder_) {
 			if(!source_ext_match(env, name)) {
@@ -305,10 +307,10 @@ class PythonBuilder : public builder::Builder
 		if(source_factory_)
 			result.push_back(extract_node(source_factory_(full_name)));
 		else
-			result.push_back(dependency_graph::add_entry_indeterminate(full_name));
+			result.push_back(add_entry_indeterminate(full_name));
 	}
 
-	std::string adjust_target_name(const environment::Environment& env, const std::string& name) const
+	std::string adjust_target_name(const Environment& env, const std::string& name) const
 	{
 		std::string result,
 			prefix = prefix_ ? extract_string_subst(env, prefix_) : std::string(),
@@ -317,7 +319,7 @@ class PythonBuilder : public builder::Builder
 		return result;
 	}
 
-	std::string adjust_source_name(const environment::Environment& env, const std::string& name) const
+	std::string adjust_source_name(const Environment& env, const std::string& name) const
 	{
 		if(name.find('.') == std::string::npos) {
 			std::string suffix = src_suffix_ ? extract_string_subst(env, flatten(src_suffix_)[0]) : std::string();
@@ -339,7 +341,7 @@ class PythonBuilder : public builder::Builder
 		result = prefix + result;
 		return result;
 	}
-	bool source_ext_match(const environment::Environment& env, const std::string& name) const
+	bool source_ext_match(const Environment& env, const std::string& name) const
 	{
 		std::set<std::string> suffixes;
 		foreach(object suffix, make_object_iterator_range(flatten(src_suffix_))) {
@@ -353,8 +355,8 @@ class PythonBuilder : public builder::Builder
 		return (name.parent_path() / name.stem()).string();
 	}
 
-	friend object add_action(builder::Builder* builder, object, object);
-	friend object add_emitter(builder::Builder* builder, object, object);
+	friend object add_action(Builder* builder, object, object);
+	friend object add_emitter(Builder* builder, object, object);
 
 	object suffix() const { return suffix_; }
 	object prefix() const { return prefix_; }
@@ -365,7 +367,7 @@ class PythonBuilder : public builder::Builder
 
 object make_builder(const tuple&, const dict& kw)
 {
-	return object(builder::Builder::pointer(new
+	return object(Builder::pointer(new
 				PythonBuilder(
 					kw.get("action"),
 					kw.get("target_factory"),
@@ -384,12 +386,12 @@ object make_builder(const tuple&, const dict& kw)
 	)));
 }
 
-NodeList call_builder(const builder::Builder& builder, const environment::Environment& env, object target, object source)
+NodeList call_builder(const Builder& builder, const Environment& env, object target, object source)
 {
 	return builder(env, extract_nodes(env, flatten(target)), extract_nodes(env, flatten(source)));
 }
 
-object add_action(builder::Builder* builder, object suffix, object action)
+object add_action(Builder* builder, object suffix, object action)
 {
 	PythonBuilder* python_builder = boost::polymorphic_cast<PythonBuilder*>(builder);
 	python_builder->actions_[suffix] = action;
@@ -397,25 +399,26 @@ object add_action(builder::Builder* builder, object suffix, object action)
 	return object();
 }
 
-object add_emitter(builder::Builder* builder, object suffix, object emitter)
+object add_emitter(Builder* builder, object suffix, object emitter)
 {
 	boost::polymorphic_cast<PythonBuilder*>(builder)->emitter_[suffix] = emitter;
 	return object();
 }
 
-object get_builder_suffix(builder::Builder* builder)
+object get_builder_suffix(Builder* builder)
 {
 	return boost::polymorphic_cast<PythonBuilder*>(builder)->suffix();
 }
 
-object get_builder_prefix(builder::Builder* builder)
+object get_builder_prefix(Builder* builder)
 {
 	return boost::polymorphic_cast<PythonBuilder*>(builder)->prefix();
 }
 
-object get_builder_src_suffix(builder::Builder* builder)
+object get_builder_src_suffix(Builder* builder)
 {
 	return boost::polymorphic_cast<PythonBuilder*>(builder)->src_suffix();
 }
 
+}
 }

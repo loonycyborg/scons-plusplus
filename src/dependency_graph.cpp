@@ -20,7 +20,7 @@
 
 #include "dependency_graph.hpp"
 
-namespace dependency_graph
+namespace sconspp
 {
 
 Graph graph;

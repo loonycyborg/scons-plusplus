@@ -46,7 +46,7 @@ class Db : public boost::noncopyable
 
 }
 
-namespace db
+namespace sconspp
 {
 
 class PersistentNodeData : public boost::noncopyable
@@ -64,11 +64,11 @@ class PersistentNodeData : public boost::noncopyable
 	boost::optional<IncludeDeps> scanner_cache_;
 
 	SQLite::Db& db;
-	dependency_graph::Node node;
+	Node node;
 
 	public:
 	PersistentNodeData();
-	PersistentNodeData(SQLite::Db& db, dependency_graph::Node node);
+	PersistentNodeData(SQLite::Db& db, Node node);
 	~PersistentNodeData();
 
 	boost::optional<bool> existed() const { return existed_; }
@@ -95,12 +95,12 @@ class PersistentNodeData : public boost::noncopyable
 class PersistentData : public boost::noncopyable
 {
 	SQLite::Db db_;
-	typedef std::map<dependency_graph::Node, boost::shared_ptr<PersistentNodeData> > Nodes;
+	typedef std::map<Node, boost::shared_ptr<PersistentNodeData> > Nodes;
 	Nodes nodes_;
 	public:
 	explicit PersistentData(const std::string& filename);
 	~PersistentData();
-	PersistentNodeData& operator[](dependency_graph::Node);
+	PersistentNodeData& operator[](Node);
 };
 
 PersistentData& get_global_db();

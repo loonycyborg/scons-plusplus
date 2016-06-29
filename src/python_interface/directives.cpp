@@ -29,12 +29,14 @@
 #include "python_interface/node_wrapper.hpp"
 #include "python_interface/subst.hpp"
 
+namespace sconspp
+{
 namespace python_interface
 {
 
 object WhereIs(const std::string& name)
 {
-	std::string path = util::where_is(name).native();
+	std::string path = where_is(name).native();
 	if(path.empty())
 		return object();
 	else
@@ -51,7 +53,7 @@ class DirectiveWrapper
 	object operator()(tuple args, dict kw)
 	{
 		static object directive = import("SCons").attr("Script").attr(name_);
-		const environment::Environment& env = extract<const environment::Environment&>(args[0]);
+		const Environment& env = extract<const Environment&>(args[0]);
 		return call_extended(directive, tuple(subst(env, args.slice(1, _))), kw);
 	}
 };
@@ -64,16 +66,16 @@ object subst_directive_args(const char* name)
 template<template<class Container> class insert_iterator>
 inline void AddFooAction(const object& target, const object& action)
 {
-	action::ActionList actions = make_actions(flatten(action));
+	ActionList actions = make_actions(flatten(action));
 	NodeList targets = extract_file_nodes(flatten(target));
-	std::set<taskmaster::Task::pointer> tasks;
+	std::set<Task::pointer> tasks;
 	foreach(Node node, targets) {
-		taskmaster::Task::pointer task = graph[node]->task();;
+		Task::pointer task = graph[node]->task();;
 		if(task)
 			tasks.insert(task);
 	}
-	foreach(taskmaster::Task::pointer task, tasks)
-		std::copy(actions.begin(), actions.end(), insert_iterator<action::ActionList>(task->actions()));
+	foreach(Task::pointer task, tasks)
+		std::copy(actions.begin(), actions.end(), insert_iterator<ActionList>(task->actions()));
 }
 
 void AddPreAction(object target, object action)
@@ -93,7 +95,7 @@ void Depends(object target, object dependency)
 		dependencies = extract_file_nodes(flatten(dependency));
 	foreach(Node t, targets) {
 		foreach(Node d, dependencies) {
-			add_edge(t, d, dependency_graph::graph);
+			add_edge(t, d, graph);
 		}
 	}
 }
@@ -102,7 +104,7 @@ object AlwaysBuild(tuple args, dict keywords)
 {
 	NodeList nodes = extract_file_nodes(flatten(args));
 	foreach(Node node, nodes)
-		dependency_graph::graph[node]->always_build();
+		graph[node]->always_build();
 	return object();
 }
 
@@ -111,10 +113,11 @@ object FindFile(const std::string& name, object dir_objs)
 	std::vector<std::string> directories;
 	foreach(object dir, make_object_iterator_range(flatten(dir_objs)))
 		directories.push_back(extract<std::string>(dir)());
-	boost::optional<Node> file = dependency_graph::find_file(name, directories);
+	boost::optional<Node> file = find_file(name, directories);
 	if(file)
 		return object(NodeWrapper(file.get()));
 	return object();
 }
 
+}
 }

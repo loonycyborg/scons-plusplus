@@ -70,9 +70,9 @@ struct cpp : grammar<Iterator, IncludeDeps() >
 }
 
 // HACK: need a general framework for env lookup caching.
-std::vector<std::string>& lookup_searchpath(const environment::Environment& env)
+std::vector<std::string>& lookup_searchpath(const sconspp::Environment& env)
 {
-	static std::map<const environment::Environment*, std::vector<std::string> > lookup_cache;
+	static std::map<const sconspp::Environment*, std::vector<std::string> > lookup_cache;
 	if(!lookup_cache.count(&env)) {
 		lookup_cache[&env];
 		foreach(std::string dir, env["CPPPATH"]->to_string_list()) {
@@ -82,16 +82,16 @@ std::vector<std::string>& lookup_searchpath(const environment::Environment& env)
 	return lookup_cache[&env];
 }
 
-namespace taskmaster
+namespace sconspp
 {
-	void scan_cpp(const environment::Environment& env, dependency_graph::Node target, dependency_graph::Node source)
+    void scan_cpp(const Environment& env, Node target, Node source)
 	{
 		try {
-			db::PersistentData& db = db::get_global_db();
+			PersistentData& db = get_global_db();
 			IncludeDeps& deps = db[source].scanner_cache();
-			if(!dependency_graph::graph[source]->unchanged(dependency_graph::NodeList(), db[source])) {
+			if(!graph[source]->unchanged(NodeList(), db[source])) {
 				deps.clear();
-				std::string contents = dependency_graph::properties<dependency_graph::FSEntry>(source).get_contents();
+				std::string contents = properties<FSEntry>(source).get_contents();
 				std::string::iterator iter(contents.begin()), iend(contents.end());
 				cpp<std::string::iterator> preprocessor;
 				parse(iter, iend, preprocessor, deps);
@@ -100,13 +100,13 @@ namespace taskmaster
 			foreach(const IncludeDeps::value_type& item, deps) {
 				std::vector<std::string> search_paths = lookup_searchpath(env);
 				if(!item.first) {
-					std::string source_dir(dependency_graph::properties<dependency_graph::FSEntry>(source).dir());
+					std::string source_dir(properties<FSEntry>(source).dir());
 					search_paths.push_back(source_dir);
 				}
-				boost::optional<dependency_graph::Node> included_file = dependency_graph::find_file(item.second, search_paths, true);
+				boost::optional<Node> included_file = find_file(item.second, search_paths, true);
 				if(included_file) {
 					bool added;
-					boost::tie(boost::tuples::ignore, added) = add_edge(target, *included_file, dependency_graph::graph);
+					boost::tie(boost::tuples::ignore, added) = add_edge(target, *included_file, graph);
 					if(added) // Only recurse into newly added edges to prevent infinite recursion in case of circular includes
 						scan_cpp(env, target, *included_file);
 				}

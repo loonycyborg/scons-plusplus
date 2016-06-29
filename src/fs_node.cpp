@@ -33,12 +33,12 @@ namespace
 {
 
 using boost::optional;
-using boost::filesystem::path;
 using std::map;
 using std::string;
-using dependency_graph::Node;
-using dependency_graph::NodeList;
-using dependency_graph::graph;
+using boost::filesystem::path;
+using sconspp::Node;
+using sconspp::NodeList;
+using sconspp::graph;
 
 struct fs_trie
 {
@@ -57,7 +57,7 @@ struct fs_trie
 		if(iter == entry_path.end()) {
 			if(!node) {
 				node = add_vertex(graph);
-				graph[node.get()].reset(new dependency_graph::FSEntry(entry_path.string(), is_file));
+				graph[node.get()].reset(new sconspp::FSEntry(entry_path.string(), is_file));
 			}
 			return node.get();
 		} else {
@@ -119,7 +119,7 @@ struct fs_trie
 	void glob_on_disk(path::const_iterator& iter, const path::const_iterator& iter_end, const path& directory)
 	{
 		if(iter == iter_end) {
-			dependency_graph::add_entry(directory.string(),  boost::logic::indeterminate);
+			sconspp::add_entry(directory.string(),  boost::logic::indeterminate);
 			return;
 		}
 
@@ -156,7 +156,7 @@ fs_trie fs;
 
 }
 
-namespace dependency_graph
+namespace sconspp
 {
 
 void set_fs_root(const path& path)
@@ -174,9 +174,9 @@ void set_fs_root(const path& path)
 
 path canonical_path(const path& name)
 {
-	path result = util::canonicalize(name);
+	path result = canonicalize(name);
 	if(!fs_root.empty())
-		result = util::to_relative(result, fs_root);
+		result = to_relative(result, fs_root);
 	return result;
 }
 
@@ -252,7 +252,7 @@ FSEntry::FSEntry(path name, boost::logic::tribool is_file) : path_(name), is_fil
 		abspath_ = fs_root / path_;
 }
 
-bool FSEntry::unchanged(const NodeList& targets, const db::PersistentNodeData& prev_data) const
+bool FSEntry::unchanged(const NodeList& targets, const PersistentNodeData& prev_data) const
 {
 #if 0
 	std::time_t source_timestamp = timestamp();
@@ -274,7 +274,7 @@ bool FSEntry::unchanged(const NodeList& targets, const db::PersistentNodeData& p
 		if(exists())
 			unchanged_ = (prev_data.existed() == boost::optional<bool>(true)) &&
 				(timestamp() == prev_data.timestamp() ||
-				util::MD5::hash_file(abspath_.string()) == prev_data.signature());
+				MD5::hash_file(abspath_.string()) == prev_data.signature());
 		else
 			unchanged_ = (prev_data.existed() == boost::optional<bool>(false));
 	}
@@ -283,7 +283,7 @@ bool FSEntry::unchanged(const NodeList& targets, const db::PersistentNodeData& p
 
 std::string FSEntry::relpath() const
 {
-	path relpath = util::to_relative(abspath_, boost::filesystem::current_path());
+	path relpath = to_relative(abspath_, boost::filesystem::current_path());
 	return relpath.string();
 }
 
@@ -295,14 +295,14 @@ std::string FSEntry::get_contents() const
 	return os.str();
 }
 
-void FSEntry::record_persistent_data(db::PersistentNodeData& data)
+void FSEntry::record_persistent_data(PersistentNodeData& data)
 {
 	bool entry_exists = exists();
 	data.existed() = entry_exists;
 	data.timestamp() = entry_exists ? timestamp() : boost::optional<time_t>();
 	if(unchanged(NodeList(), data))
 		return;
-	data.signature() = entry_exists ? util::MD5::hash_file(abspath_.string()) : boost::optional<boost::array<unsigned char, 16> >();
+	data.signature() = entry_exists ? MD5::hash_file(abspath_.string()) : boost::optional<boost::array<unsigned char, 16> >();
 }
 
 }

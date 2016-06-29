@@ -30,22 +30,23 @@
 
 using namespace boost::python;
 
-using dependency_graph::NodeList;
-
+namespace sconspp
+{
 namespace python_interface
 {
 
-NodeList call_builder(const builder::Builder&, const environment::Environment&, object, object);
+NodeList call_builder(const Builder&, const Environment&, object, object);
 NodeList call_builder_interface(tuple args, dict kw);
 
 object make_builder(const tuple&, const dict&);
 
-object add_action(builder::Builder* builder, object, object);
-object add_emitter(builder::Builder* builder, object, object);
+object add_action(Builder* builder, object, object);
+object add_emitter(Builder* builder, object, object);
 
-object get_builder_suffix(builder::Builder* builder);
-object get_builder_prefix(builder::Builder* builder);
-object get_builder_src_suffix(builder::Builder* builder);
+object get_builder_suffix(Builder* builder);
+object get_builder_prefix(Builder* builder);
+object get_builder_src_suffix(Builder* builder);
+}
 }
 
 #endif

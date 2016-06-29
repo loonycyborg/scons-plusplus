@@ -27,39 +27,42 @@
 
 using namespace boost::python;
 
+namespace sconspp
+{
+
 namespace python_interface
 {
 
-class PythonAction : public action::Action
+class PythonAction : public Action
 {
 	const object action_obj;
 	const object action_str;
 	public:
 
 	PythonAction(object callable, object action_str_) : action_obj(callable), action_str(action_str_) {}
-	void execute(const environment::Environment&) const;
-	std::string to_string(const environment::Environment&, bool for_signature = false) const;
+	void execute(const Environment&) const;
+	std::string to_string(const Environment&, bool for_signature = false) const;
 };
 
-inline action::Action::pointer make_action(object obj, object action_str = object())
+inline Action::pointer make_action(object obj, object action_str = object())
 {
 	static object action_type = import("SCons.Action").attr("ActionWrapper");
 	if(is_string(obj)) {
 		if(action_str)
-			return action::Action::pointer(new action::Command(extract<std::string>(obj), extract<std::string>(action_str)));
+			return Action::pointer(new ExecCommand(extract<std::string>(obj), extract<std::string>(action_str)));
 		else
-			return action::Action::pointer(new action::Command(extract<std::string>(obj)));
+			return Action::pointer(new ExecCommand(extract<std::string>(obj)));
 	} else if(is_instance(obj, action_type)) {
-		return extract<action::Action::pointer>(obj);
+		return extract<Action::pointer>(obj);
 	} else if(is_callable(obj)) {
-		return action::Action::pointer(new PythonAction(obj, action_str));
+		return Action::pointer(new PythonAction(obj, action_str));
 	} else
 		throw std::runtime_error("Cannot make an action from object of type '" + type(obj) + "'");
 }
 
-inline action::ActionList make_actions(object act, object action_str = object(), list varlist = list())
+inline ActionList make_actions(object act, object action_str = object(), list varlist = list())
 {
-	action::ActionList result;
+	ActionList result;
 	foreach(const object& obj, make_object_iterator_range(flatten(act)))
 		result.push_back(make_action(obj, action_str));
 	return result;
@@ -78,7 +81,7 @@ class ActionFactory
 
 object call_action_factory(tuple args, dict kw);
 
-class ActionCaller : public action::Action
+class ActionCaller : public Action
 {
 	object actfunc_;
 	object strfunc_;
@@ -89,9 +92,11 @@ class ActionCaller : public action::Action
 	public:
 	ActionCaller(object actfunc, object strfunc, object convert, tuple args, dict kw) : actfunc_(actfunc), strfunc_(strfunc), convert_(convert), args_(args), kw_(kw) {}
 
-	void execute(const environment::Environment&) const;
-	std::string to_string(const environment::Environment&, bool for_signature = false) const;
+	void execute(const Environment&) const;
+	std::string to_string(const Environment&, bool for_signature = false) const;
 };
+
+}
 
 }
 

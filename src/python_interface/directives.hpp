@@ -34,6 +34,8 @@
 
 using namespace boost::python;
 
+namespace sconspp
+{
 namespace python_interface
 {
 	object WhereIs(const std::string& name);
@@ -47,14 +49,14 @@ namespace python_interface
 	object FindFile(const std::string& name, object dir_objs);
 
 	template<typename T>
-	inline T subst_arg(const environment::Environment&, const T& val) { return val; }
+	inline T subst_arg(const Environment&, const T& val) { return val; }
 	template<>
-	inline object subst_arg(const environment::Environment& env, const object& obj)
+	inline object subst_arg(const Environment& env, const object& obj)
 	{
 		return subst(env, obj);
 	}
 	template<>
-	inline std::string subst_arg(const environment::Environment& env, const std::string& str)
+	inline std::string subst_arg(const Environment& env, const std::string& str)
 	{
 		return expand_python(env, subst(env, str));
 	}
@@ -65,7 +67,7 @@ namespace python_interface
 	#define DEFINE_SUBST_WAPPER(z, n, data) \
 		template <typename F, F* f, typename NoSubstArgs> \
 		typename boost::function_traits<F>::result_type subst_wrap_directive( \
-			const environment::Environment& env, \
+	        const Environment& env, \
 			BOOST_PP_ENUM_SHIFTED(n, ARG_DECL, unused) \
 			) \
 		{ \
@@ -81,7 +83,7 @@ namespace python_interface
 		typedef typename
 			boost::function_types::function_type<
 				typename boost::mpl::push_front<
-					typename boost::mpl::push_front<boost::function_types::parameter_types<F>, const environment::Environment&>::type,
+			        typename boost::mpl::push_front<boost::function_types::parameter_types<F>, const Environment&>::type,
 						typename boost::function_types::result_type<F>::type >::type
 			>::type* wrapper_type;
 		def(name, (wrapper_type)subst_wrap_directive<F, f, NoSubstArgs>, (arg("env"), keywords));
@@ -94,7 +96,7 @@ namespace python_interface
 	template <object (*directive)(tuple, dict)>
 	object subst_wrap_directive_raw(tuple args, dict keywords)
 	{
-		return directive(tuple(subst(extract<const environment::Environment&>(args[0]), args.slice(1, _))), keywords);
+		return directive(tuple(subst(extract<const Environment&>(args[0]), args.slice(1, _))), keywords);
 	}
 	template <object (*directive)(tuple, dict)>
 	inline void def_directive_raw(object env_object, const char* name)
@@ -103,6 +105,7 @@ namespace python_interface
 		scope s(env_object);
 		def(name, raw_function(subst_wrap_directive_raw<directive>));
 	}
+}
 }
 
 #endif

@@ -26,7 +26,7 @@
 #include "log.hpp"
 #include "taskmaster.hpp"
 
-namespace options
+namespace sconspp
 {
 
 template<typename T>
@@ -48,7 +48,7 @@ static void validate(boost::any& v,
 	v = ret;
 }
 
-std::vector<std::string> parse(int argc, char** argv)
+std::vector<std::string> parse_command_line(int argc, char** argv)
 {
 	boost::program_options::options_description desc("Usage: scons++ [option]... [target]...\nOptions");
 	desc.add_options()
@@ -75,8 +75,8 @@ std::vector<std::string> parse(int argc, char** argv)
 		logging::min_severity = 2;
 	}
 	optional_last_overrides<unsigned int> num_jobs = vm["jobs"].as<optional_last_overrides<unsigned int> >();
-	taskmaster::num_jobs = num_jobs.value;
-	taskmaster::always_build = vm["always-build"].as<bool>();
+	sconspp::num_jobs = num_jobs.value;
+	always_build = vm["always-build"].as<bool>();
 
 	std::vector<std::string> targets;
 	if(vm.count("target"))

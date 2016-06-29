@@ -24,7 +24,7 @@
 #include "dependency_graph.hpp"
 #include "node_properties.hpp"
 
-namespace dependency_graph
+namespace sconspp
 {
 
 class Alias : public node_properties
@@ -35,7 +35,7 @@ class Alias : public node_properties
 	~Alias();
 	std::string name() const { return name_; }
 	const char* type() const { return "alias"; }
-	bool unchanged(const NodeList&, const db::PersistentNodeData&) const { return false; }
+	bool unchanged(const NodeList&, const PersistentNodeData&) const { return false; }
 };
 
 Node add_alias(const std::string& name);

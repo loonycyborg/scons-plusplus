@@ -27,7 +27,7 @@
 #include "dependency_graph.hpp"
 #include "node_properties.hpp"
 
-namespace dependency_graph
+namespace sconspp
 {
 
 using boost::filesystem::path;
@@ -45,7 +45,7 @@ class FSEntry : public node_properties
 	std::string relpath() const;
 	const char* type() const { return "fs"; }
 
-	bool unchanged(const NodeList&, const db::PersistentNodeData&) const;
+	bool unchanged(const NodeList&, const PersistentNodeData&) const;
 	bool needs_rebuild() const { return always_build_ || !exists(); }
 
 	boost::logic::tribool is_file() const { return is_file_; }
@@ -64,7 +64,7 @@ class FSEntry : public node_properties
 	std::string get_contents() const;
 
 	void was_rebuilt() { unchanged_.reset(); }
-	void record_persistent_data(db::PersistentNodeData&);
+	void record_persistent_data(PersistentNodeData&);
 };
 
 void set_fs_root(const path& path);

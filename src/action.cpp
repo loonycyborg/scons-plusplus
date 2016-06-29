@@ -26,26 +26,26 @@
 #include "action.hpp"
 #include "util.hpp"
 
-namespace action
+namespace sconspp
 {
 
-void execute(const action::Action::pointer& action, const environment::Environment& env)
+void execute(const Action::pointer& action, const Environment& env)
 {
 	std::cout << action->to_string(env) << std::endl;
 	action->execute(env);
 }
 
-void Command::execute(const environment::Environment& env) const
+void ExecCommand::execute(const Environment& env) const
 {
 	std::vector<std::string> command;
 	std::string command_str = env.subst(command_);
 	boost::algorithm::trim(command_str);
 	boost::algorithm::split(command, command_str, boost::is_any_of(" "), boost::token_compress_on);
 
-	util::exec(command);
+	exec(command);
 }
 
-std::string Command::to_string(const environment::Environment& env, bool for_signature) const
+std::string ExecCommand::to_string(const Environment& env, bool for_signature) const
 {
 	return env.subst(command_, for_signature);
 }

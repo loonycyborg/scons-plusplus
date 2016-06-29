@@ -32,7 +32,7 @@ using std::string;
 
 namespace
 {
-	using namespace python_interface;
+    using namespace sconspp::python_interface;
 	boost::filesystem::path sconstruct_file, sconstruct_dir;
 
 	class SConscriptFile
@@ -88,6 +88,8 @@ namespace
 	}
 }
 
+namespace sconspp
+{
 namespace python_interface
 {
 
@@ -98,11 +100,11 @@ object SConscript(const std::string& script)
 	if(sconstruct_file.empty()) {
 		sconstruct_file = system_complete(boost::filesystem::path(script));
 		sconstruct_dir = boost::filesystem::current_path();
-		dependency_graph::set_fs_root(sconstruct_dir);
+		set_fs_root(sconstruct_dir);
 	}
 	SConscriptFile sconscript_file(system_complete(boost::filesystem::path(script)), ns);
 
-	util::scoped_chdir chdir(SConscriptFile::current().dir());
+	scoped_chdir chdir(SConscriptFile::current().dir());
 
 	try {
 		exec_file(SConscriptFile::current().path().string().c_str(), ns, ns);
@@ -115,7 +117,7 @@ object SConscript(const std::string& script)
 	return SConscriptFile::current().return_value();
 }
 
-object SConscript(const environment::Environment&, const std::string& script)
+object SConscript(const Environment&, const std::string& script)
 {
 	return SConscript(script);
 }
@@ -152,4 +154,5 @@ object Return(tuple args, dict kw)
 	return object();
 }
 
+}
 }

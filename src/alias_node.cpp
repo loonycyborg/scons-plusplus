@@ -24,12 +24,12 @@
 
 namespace
 {
-	typedef std::map<std::string, dependency_graph::Node> AliasNamespace;
+    typedef std::map<std::string, sconspp::Node> AliasNamespace;
 	AliasNamespace alias_namespace;
 }
 
 
-namespace dependency_graph
+namespace sconspp
 {
 
 Alias::Alias(const std::string& name) : name_(name)

@@ -30,7 +30,7 @@
 
 #include "dependency_graph.hpp"
 
-namespace environment
+namespace sconspp
 {
 
 class Variable

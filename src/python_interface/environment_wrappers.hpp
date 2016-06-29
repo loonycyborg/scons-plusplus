@@ -33,14 +33,12 @@
 using std::string;
 using namespace boost::python;
 
-using dependency_graph::Node;
-using dependency_graph::NodeList;
-using environment::Environment;
-
+namespace sconspp
+{
 namespace python_interface
 {
 
-class PythonVariable : public environment::Variable
+class PythonVariable : public Variable
 {
 	object obj_;
 	public:
@@ -61,12 +59,12 @@ class PythonVariable : public environment::Variable
 		return pointer(new PythonVariable(result));
 	}
 };
-inline environment::Variable::pointer make_variable(object obj)
+inline Variable::pointer make_variable(object obj)
 {
-	return environment::Variable::pointer(new PythonVariable(obj));
+	return Variable::pointer(new PythonVariable(obj));
 }
 
-inline environment::Variable::pointer extract_variable(object obj)
+inline Variable::pointer extract_variable(object obj)
 {
 	/*
 	if(is_dict(obj))
@@ -84,12 +82,12 @@ inline environment::Variable::pointer extract_variable(object obj)
 	return make_variable(obj);
 }
 
-inline object variable_to_python(environment::Variable::const_pointer var)
+inline object variable_to_python(Variable::const_pointer var)
 {
 	try {
-		const environment::CompositeVariable* variables = boost::polymorphic_cast<const environment::CompositeVariable*>(var.get());
+		const CompositeVariable* variables = boost::polymorphic_cast<const CompositeVariable*>(var.get());
 		list result;
-		foreach(const environment::Variable::pointer& item, *variables)
+		foreach(const Variable::pointer& item, *variables)
 			result.append(variable_to_python(item));
 		return result;
 	} catch(const std::bad_cast&) {
@@ -100,27 +98,27 @@ inline object variable_to_python(environment::Variable::const_pointer var)
 	} catch(const std::bad_cast&) {
 	}
 	try {
-		const environment::SimpleVariable<Node>* variable = boost::polymorphic_cast<const environment::SimpleVariable<Node>*>(var.get());
+		const SimpleVariable<Node>* variable = boost::polymorphic_cast<const SimpleVariable<Node>*>(var.get());
 		return object(NodeWrapper(variable->get()));
 	} catch(const std::bad_cast&) {
 	}
 	return str(var->to_string());
 }
 
-NodeList Command(const environment::Environment& env, object target, object source, object action);
-void Default(const environment::Environment::pointer& env, object obj);
+NodeList Command(const Environment& env, object target, object source, object action);
+void Default(const Environment::pointer& env, object obj);
 
-NodeWrapper Entry(environment::Environment::pointer, std::string name);
-NodeWrapper File(environment::Environment::pointer, std::string name);
-NodeWrapper Dir(environment::Environment::pointer, std::string name);
-NodeWrapper Value(environment::Environment::pointer, std::string name);
+NodeWrapper Entry(Environment::pointer, std::string name);
+NodeWrapper File(Environment::pointer, std::string name);
+NodeWrapper Dir(Environment::pointer, std::string name);
+NodeWrapper Value(Environment::pointer, std::string name);
 NodeList Alias(object aliases, object sources, object actions);
-void Execute(environment::Environment::pointer, object obj);
+void Execute(Environment::pointer, object obj);
 object get_item_from_env(const Environment& env, const std::string& key);
 void del_item_in_env(Environment& env, const std::string& key);
 void set_item_in_env(Environment& env, const std::string& key, object val);
-void Tool(environment::Environment::pointer, object obj);
-void Platform(environment::Environment::pointer, const std::string& name);
+void Tool(Environment::pointer, object obj);
+void Platform(Environment::pointer, const std::string& name);
 
 enum UpdateType { Append, Prepend };
 enum UniqueType { Unique, NonUnique };
@@ -166,8 +164,8 @@ template<UpdateType update, UniqueType unique> object update_list(object old_val
 
 template<UpdateType update_type, UniqueType unique_type>object Update(const tuple& args, const dict& kw)
 {
-	environment::Environment::pointer env_ptr = extract<environment::Environment::pointer>(args[0]);
-	environment::Environment& env = *env_ptr;
+	Environment::pointer env_ptr = extract<Environment::pointer>(args[0]);
+	Environment& env = *env_ptr;
 	foreach(const object& item, make_object_iterator_range(kw.items())) {
 		std::string key = extract<std::string>(item[0]);
 		object old_val = env[key] ? variable_to_python(env[key]) : object();
@@ -189,10 +187,11 @@ object AddMethod(object, object, object);
 object SetDefault(tuple, dict);
 std::string Dump(const Environment& env);
 object make_environment(tuple, dict);
-environment::Environment::pointer default_environment(tuple, dict);
-environment::Environment::pointer default_environment();
+Environment::pointer default_environment(tuple, dict);
+Environment::pointer default_environment();
 object DefaultEnvironment(tuple args, dict kw);
 
+}
 }
 
 #endif
