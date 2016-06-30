@@ -97,7 +97,7 @@ inline void sqlite3_bind(sqlite3_stmt* stmt, int i, time_t val)
 }
 inline void sqlite3_bind(sqlite3_stmt* stmt, int i, const std::string& val)
 {
-	sqlite3_bind_text(stmt, i, val.c_str(), val.size()+1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, i, val.c_str(), val.size(), SQLITE_TRANSIENT);
 }
 template<typename T, std::size_t n> void sqlite3_bind(sqlite3_stmt* stmt, int i, boost::array<T, n> val)
 {
@@ -305,7 +305,7 @@ PersistentData::PersistentData(const std::string& filename) : db_(filename)
 	db_.exec("PRAGMA foreign_keys=ON");
 	db_.exec("PRAGMA journal_mode=OFF");
 
-	const int current_db_version = 2;
+	const int current_db_version = 3;
 	int db_version = db_.exec<int>("PRAGMA user_version");
 	if(db_version < current_db_version) {
 		if(db_version > 0) {
