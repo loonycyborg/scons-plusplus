@@ -153,9 +153,10 @@ void exec(const std::vector<string>& args)
 	throw_if_error(access(binary.string().c_str(), X_OK));
 
 	pid_t child = throw_if_error(fork());
-	if(child == 0)
-		throw_if_error(execvp(binary.string().c_str(), &argv[0]));
-	else {
+	if(child == 0) {
+		execvp(binary.string().c_str(), &argv[0]);
+		std::terminate();
+	} else {
 		int status;
 		throw_if_error(waitpid(child, &status, 0));
 		if(WIFEXITED(status)) {
