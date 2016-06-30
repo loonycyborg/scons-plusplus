@@ -221,7 +221,7 @@ PersistentNodeData::PersistentNodeData(SQLite::Db& db, Node node)
 	assert(prepare_result == SQLITE_DONE);
 
 	SQLite::Statement read_data(db.handle(), 
-		"select id, existed, timestamp, signature, task_signature from nodes where type == ?1 and name == ?2;");
+	    "select id, existed, timestamp, signature, task_signature, task_status from nodes where type == ?1 and name == ?2;");
 	read_data.bind(1, type_);
 	read_data.bind(2, name_);
 	int read_data_result = read_data.step();
@@ -232,6 +232,7 @@ PersistentNodeData::PersistentNodeData(SQLite::Db& db, Node node)
 	timestamp_ = read_data.column<boost::optional<int> >(2);
 	signature_ = read_data.column<boost::optional<boost::array<unsigned char, 16> > >(3);
 	task_signature_ = read_data.column<boost::optional<boost::array<unsigned char, 16> > >(4);
+	task_status_ = read_data.column<boost::optional<int> >(5);
 }
 
 PersistentNodeData::~PersistentNodeData()
@@ -239,7 +240,7 @@ PersistentNodeData::~PersistentNodeData()
 	try {
 		graph[node]->record_persistent_data(*this);
 		SQLite::Statement write_data(db.handle(), 
-			"insert or replace into nodes (id, type, name, existed, timestamp, signature, task_signature) values (?1, ?2, ?3, ?4, ?5, ?6, ?7)");
+		    "insert or replace into nodes (id, type, name, existed, timestamp, signature, task_signature, task_status) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)");
 		write_data.bind(1, id_);
 		write_data.bind(2, type_);
 		write_data.bind(3, name_);
@@ -247,6 +248,7 @@ PersistentNodeData::~PersistentNodeData()
 		write_data.bind(5, timestamp_);
 		write_data.bind(6, signature_);
 		write_data.bind(7, task_signature_);
+		write_data.bind(8, task_status_);
 		while(write_data.step() != SQLITE_DONE) {}
 		write_scanner_cache();
 
@@ -305,7 +307,7 @@ PersistentData::PersistentData(const std::string& filename) : db_(filename)
 	db_.exec("PRAGMA foreign_keys=ON");
 	db_.exec("PRAGMA journal_mode=OFF");
 
-	const int current_db_version = 3;
+	const int current_db_version = 4;
 	int db_version = db_.exec<int>("PRAGMA user_version");
 	if(db_version < current_db_version) {
 		if(db_version > 0) {
@@ -319,7 +321,7 @@ PersistentData::PersistentData(const std::string& filename) : db_(filename)
 		db_.exec("PRAGMA user_version = " + boost::lexical_cast<std::string>(current_db_version));
 
 		db_.exec("create table if not exists nodes "
-			"(id INTEGER PRIMARY KEY, type TEXT, name TEXT, existed INTEGER, timestamp INTEGER, signature BLOB, task_signature BLOB)");
+		    "(id INTEGER PRIMARY KEY, type TEXT, name TEXT, existed INTEGER, timestamp INTEGER, signature BLOB, task_signature BLOB, task_status INTEGER)");
 		db_.exec("create unique index if not exists node_name_index on nodes (type, name)");
 		db_.exec("create table if not exists dependencies "
 			"(target_id INTEGER, source_id INTEGER, "

@@ -153,7 +153,14 @@ namespace sconspp
 	{
 		bool up_to_date = !always_build;
 		foreach(Node build_target, item.targets) {
+
+			// let node check if it has an inherent need to be rebuilt, such as a file not existing
 			if(graph[build_target]->needs_rebuild()) {
+				up_to_date = false;
+			}
+			// check if building node failed last run, or if it never was built yet
+			if(!db[build_target].task_status() || db[build_target].task_status().get() != 0) {
+				logging::debug(logging::Taskmaster) << graph[build_target]->name() << " wasn't built before or failed\n";
 				up_to_date = false;
 			}
 			std::set<int> 
@@ -179,29 +186,20 @@ namespace sconspp
 				db[build_target].task_signature() = item.task->signature();
 				logging::debug(logging::Taskmaster) << "Task signature has changed\n";
 			}
+
+			// mark node as unbuilt, in case build is interrupted
+			if(!up_to_date)
+				db[build_target].task_status().reset();
 		}
+
 		return up_to_date;
-	}
-
-	void serial_build(TaskList& tasks, PersistentData& db)
-	{
-		const int num_tasks = tasks.size();
-		int current_task = 1;
-		foreach(const TaskListItem& item, tasks.get<sequence_index>()) {
-			std::cout << "[" << current_task++ << "/" << num_tasks << "] " << item.task->targets() << " <- " << item.task->sources() << "\n";
-
-			if(is_task_up_to_date(item, db))
-				logging::debug(logging::Taskmaster) << "Task is up-to-date.\n";
-			else
-				item.task->execute();
-		}
 	}
 
 	class JobServer
 	{
-		typedef std::map<Node, boost::shared_future<void> > Futures;
+		typedef std::map<Node, boost::shared_future<int> > Futures;
 		Futures futures;
-		typedef std::vector<boost::shared_future<void> > FutureVec;
+		typedef std::vector<boost::shared_future<int> > FutureVec;
 		
 		FutureVec future_vec() const
 		{
@@ -214,10 +212,10 @@ namespace sconspp
 		public:
 		void schedule(Node node)
 		{
-			boost::packaged_task<void> ptask(boost::bind(
+			boost::packaged_task<int> ptask(boost::bind(
 			    &Task::execute, graph[node]->task().get()
 				));
-			futures[node] = boost::shared_future<void>(ptask.get_future());
+			futures[node] = boost::shared_future<int>(ptask.get_future());
 			boost::thread thread(boost::move(ptask));
 		}
 		NodeList wait_for_any()
@@ -229,7 +227,9 @@ namespace sconspp
 			for(Futures::iterator iter = futures.begin(); iter != futures.end(); ++iter) {
 				if(iter->second.is_ready()) {
 					try {
-						iter->second.get();
+						int status = iter->second.get();
+						if(status != 0)
+							throw std::runtime_error("Task failed");
 					} catch(...) {
 						wait_for_all();
 						throw;
@@ -275,8 +275,10 @@ namespace sconspp
 
 		Node end_node = *(--nodes.end());
 		while(!states.count(end_node) || states[end_node] != BUILT) {
-			foreach(Node node, job_server.wait_for_any())
+			foreach(Node node, job_server.wait_for_any()) {
 				states[node] = BUILT;
+				db[node].task_status() = 0;
+			}
 
 			foreach(Node node, nodes) {
 				if(states.count(node) && states[node] != BLOCKED) {

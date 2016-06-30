@@ -33,6 +33,7 @@
 #include <boost/foreach.hpp>
 #define foreach BOOST_FOREACH
 
+#include "log.hpp"
 #include "util.hpp"
 
 using std::string;
@@ -140,7 +141,7 @@ scoped_chdir::~scoped_chdir()
 	boost::filesystem::current_path(old_current_dir);
 }
 
-void exec(const std::vector<string>& args)
+int exec(const std::vector<string>& args)
 {
 	std::vector<char*> argv;
 	foreach(const string& arg, args)
@@ -161,18 +162,16 @@ void exec(const std::vector<string>& args)
 		throw_if_error(waitpid(child, &status, 0));
 		if(WIFEXITED(status)) {
 			if(WEXITSTATUS(status) != 0) {
-				throw std::runtime_error(
-					"util::exec : " + args[0] + " exited with status " + boost::lexical_cast<std::string>(WEXITSTATUS(status))
-				);
-			} else {
-				return;
+				logging::error(logging::System) << args[0] << " exited with status " << boost::lexical_cast<std::string>(WEXITSTATUS(status)) << "\n";
 			}
+		} else {
+			if(WIFSIGNALED(status))
+				logging::error(logging::System) << args[0] << " terminated by signal: " << strsignal(WTERMSIG(status)) << "\n";
+			else
+				logging::error(logging::System) << args[0] << " exited abnormally\n";
 		}
-		if(WIFSIGNALED(status))
-			throw std::runtime_error(
-				"util::exec : " + args[0] + " terminated by signal: " + strsignal(WTERMSIG(status))
-			);
-		throw std::runtime_error("util::exec : " + args[0] + " exited abnormally");
+
+		return status;
 	}
 }
 

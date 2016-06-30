@@ -43,9 +43,10 @@ extern unsigned int min_severity;
 enum Domain
 {
 	General,
-	Taskmaster
+	Taskmaster,
+	System
 };
-const char* const domain_msgs[] = { "", "taskmaster:" } ;
+const char* const domain_msgs[] = { "", "taskmaster:", "system:" } ;
 
 template<Severity severity>
 class log

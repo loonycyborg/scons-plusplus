@@ -63,7 +63,7 @@ class Task
 
 	boost::optional<boost::array<unsigned char, 16> > signature() const;
 
-	void execute() const;
+	int execute() const;
 
 	private:
 

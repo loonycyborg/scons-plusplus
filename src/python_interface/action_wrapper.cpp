@@ -36,7 +36,7 @@ namespace sconspp
 namespace python_interface
 {
 
-void PythonAction::execute(const Environment& env) const
+int PythonAction::execute(const Environment& env) const
 {
 	ScopedGIL lock;
 	try {
@@ -45,8 +45,10 @@ void PythonAction::execute(const Environment& env) const
 			env["SOURCES"] ? variable_to_python(env["SOURCES"]) : object(), 
 		env);
 	} catch(const error_already_set&) {
-		throw_python_exc("A python exception was raised when executing action.");
+		//throw_python_exc("A python exception was raised when executing action.");
+		return -1;
 	}
+	return 0;
 }
 
 std::string PythonAction::to_string(const Environment& env, bool) const
@@ -60,7 +62,7 @@ object call_action_factory(tuple args, dict kw)
 	return object(Action::pointer(new ActionCaller(factory.actfunc_, factory.strfunc_, factory.convert_, tuple(args.slice(1, _)), kw)));
 }
 
-void ActionCaller::execute(const Environment& env) const
+int ActionCaller::execute(const Environment& env) const
 {
 	ScopedGIL lock;
 	try {
@@ -70,8 +72,10 @@ void ActionCaller::execute(const Environment& env) const
 
 		call_extended(actfunc_, tuple(args), kw_);
 	} catch(const error_already_set&) {
-		throw_python_exc("A python exception was raised when executing action.");
+		//throw_python_exc("A python exception was raised when executing action.");
+		return -1;
 	}
+	return 0;
 }
 
 std::string ActionCaller::to_string(const Environment& env, bool) const

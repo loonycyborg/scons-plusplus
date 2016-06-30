@@ -58,6 +58,7 @@ class PersistentNodeData : public boost::noncopyable
 	boost::optional<time_t> timestamp_;
 	boost::optional<boost::array<unsigned char, 16> > signature_;
 	boost::optional<boost::array<unsigned char, 16> > task_signature_;
+	boost::optional<int> task_status_;
 
 	typedef std::pair<bool, std::string> IncludeDep;
 	typedef std::set<IncludeDep> IncludeDeps;
@@ -78,6 +79,8 @@ class PersistentNodeData : public boost::noncopyable
 	boost::optional<time_t>& timestamp() { return timestamp_; }
 	boost::optional<boost::array<unsigned char, 16> >& signature() { return signature_; }
 	boost::optional<boost::array<unsigned char, 16> >& task_signature() { return task_signature_; }
+	boost::optional<int> task_status() const { return task_status_; }
+	boost::optional<int>& task_status() { return task_status_; }
 
 	int id() const { return id_.get(); }
 

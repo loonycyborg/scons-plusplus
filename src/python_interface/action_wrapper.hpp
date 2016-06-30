@@ -40,7 +40,7 @@ class PythonAction : public Action
 	public:
 
 	PythonAction(object callable, object action_str_) : action_obj(callable), action_str(action_str_) {}
-	void execute(const Environment&) const;
+	int execute(const Environment&) const;
 	std::string to_string(const Environment&, bool for_signature = false) const;
 };
 
@@ -92,7 +92,7 @@ class ActionCaller : public Action
 	public:
 	ActionCaller(object actfunc, object strfunc, object convert, tuple args, dict kw) : actfunc_(actfunc), strfunc_(strfunc), convert_(convert), args_(args), kw_(kw) {}
 
-	void execute(const Environment&) const;
+	int execute(const Environment&) const;
 	std::string to_string(const Environment&, bool for_signature = false) const;
 };
 

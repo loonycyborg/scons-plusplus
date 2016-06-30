@@ -29,20 +29,20 @@
 namespace sconspp
 {
 
-void execute(const Action::pointer& action, const Environment& env)
+int execute(const Action::pointer& action, const Environment& env)
 {
 	std::cout << action->to_string(env) << std::endl;
-	action->execute(env);
+	return action->execute(env);
 }
 
-void ExecCommand::execute(const Environment& env) const
+int ExecCommand::execute(const Environment& env) const
 {
 	std::vector<std::string> command;
 	std::string command_str = env.subst(command_);
 	boost::algorithm::trim(command_str);
 	boost::algorithm::split(command, command_str, boost::is_any_of(" "), boost::token_compress_on);
 
-	exec(command);
+	return exec(command);
 }
 
 std::string ExecCommand::to_string(const Environment& env, bool for_signature) const

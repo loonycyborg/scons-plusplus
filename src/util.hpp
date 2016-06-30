@@ -78,7 +78,7 @@ class scoped_chdir
 	~scoped_chdir();
 };
 
-void exec(const std::vector<std::string>&);
+int exec(const std::vector<std::string>&);
 
 class MD5
 {

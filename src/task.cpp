@@ -62,13 +62,17 @@ boost::optional<boost::array<unsigned char, 16> > Task::signature() const
 	return md5_sum.finish();
 }
 
-void Task::execute() const
+int Task::execute() const
 {
 	Environment::const_pointer task_env = env();
-	foreach(const Action::pointer& action, actions_)
-		sconspp::execute(action, *task_env);
+	foreach(const Action::pointer& action, actions_) {
+		int status = sconspp::execute(action, *task_env);
+		if(status != 0)
+			return status;
+	}
 	foreach(const Node& target, targets_)
 		properties(target).was_rebuilt();
+	return 0;
 }
 
 }
