@@ -29,6 +29,7 @@ namespace sconspp
 {
 	extern boost::optional<unsigned int> num_jobs;
 	extern bool always_build;
+	extern bool keep_going;
 
 	void build(Node end_goal);
 

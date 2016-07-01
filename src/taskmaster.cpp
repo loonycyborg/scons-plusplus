@@ -132,6 +132,7 @@ namespace sconspp
 {
 	boost::optional<unsigned int> num_jobs;
 	bool always_build;
+	bool keep_going;
 
 	void build_order(Node end_goal, TaskList& tasks, std::vector<Node>& output)
 	{
@@ -197,6 +198,7 @@ namespace sconspp
 		typedef std::map<Node, boost::shared_future<int> > Futures;
 		Futures futures;
 		typedef std::vector<boost::shared_future<int> > FutureVec;
+		typedef std::vector<std::pair<Node,int>> ResultVec;
 		
 		FutureVec future_vec() const
 		{
@@ -215,25 +217,18 @@ namespace sconspp
 			futures[node] = boost::shared_future<int>(ptask.get_future());
 			boost::thread thread(boost::move(ptask));
 		}
-		NodeList wait_for_any()
+		ResultVec wait_for_any()
 		{
 			FutureVec vec = future_vec();
 			boost::wait_for_any(vec.begin(), vec.end());
 			Futures new_futures;
-			NodeList result;
-			for(Futures::iterator iter = futures.begin(); iter != futures.end(); ++iter) {
-				if(iter->second.is_ready()) {
-					try {
-						int status = iter->second.get();
-						if(status != 0)
-							throw std::runtime_error("Task failed");
-					} catch(...) {
-						wait_for_all();
-						throw;
-					}
-					result.push_back(iter->first);
+			ResultVec result;
+			for(const auto& fut : futures) {
+				if(fut.second.is_ready()) {
+					int status = fut.second.get();
+					result.push_back(std::make_pair(fut.first, status));
 				} else {
-					new_futures.insert(*iter);
+					new_futures.insert(fut);
 				}
 			}
 			std::swap(futures, new_futures);
@@ -242,7 +237,6 @@ namespace sconspp
 		void wait_for_all()
 		{
 			if(futures.size() > 0) {
-				logging::warning(logging::Taskmaster) << "Caught exception. Waiting for the rest of tasks to finish...\n";
 				FutureVec vec = future_vec();
 				boost::wait_for_all(vec.begin(), vec.end());
 			}
@@ -250,7 +244,7 @@ namespace sconspp
 		std::size_t num_scheduled_jobs() const { return futures.size(); }
 	};
 
-	enum TaskState { SCHEDULED, BLOCKED, TO_BUILD, BUILT };
+	enum TaskState { SCHEDULED, BLOCKED, TO_BUILD, BUILT, FAILED };
 
 	void parallel_build(TaskList& tasks, std::vector<Node>& nodes, PersistentData& db)
 	{
@@ -271,10 +265,19 @@ namespace sconspp
 		JobServer job_server;
 
 		Node end_node = *(--nodes.end());
-		while(!states.count(end_node) || states[end_node] != BUILT) {
-			for(Node node : job_server.wait_for_any()) {
-				states[node] = BUILT;
-				db[node].task_status() = 0;
+		while(!states.count(end_node) || (states[end_node] != BUILT && states[end_node] != FAILED)) {
+			for(const auto& result : job_server.wait_for_any()) {
+				db[result.first].task_status() = result.second;
+				if(result.second == 0)
+					states[result.first] = BUILT;
+				else {
+					states[result.first] = FAILED;
+					if(!keep_going) {
+						logging::warning(logging::Taskmaster) << "Task failed. Waiting for the rest of active tasks to finish...\n";
+						job_server.wait_for_all();
+						throw std::runtime_error("Task failed");
+					}
+				}
 			}
 
 			for(Node node : nodes) {
@@ -286,6 +289,8 @@ namespace sconspp
 					if(states[target(e, graph)] == SCHEDULED ||
 					   states[target(e, graph)] == BLOCKED)
 						states[node] = BLOCKED;
+					if(states[target(e, graph)] == FAILED)
+						states[node] = FAILED;
 				}
 				if(states[node] == TO_BUILD) {
 					if(!graph[node]->task() ||

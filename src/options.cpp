@@ -58,6 +58,7 @@ std::vector<std::string> parse_command_line(int argc, char** argv)
 			->default_value(optional_last_overrides<unsigned int>(0), "0"),
 			"Maximun number of parallel jobs. 0 means autodetect, no arg means unlimited")
 		("always-build,B", boost::program_options::bool_switch(), "Rebuild all tasks no matter whether they're up-to-date")
+		("keep-going,k", boost::program_options::bool_switch(), "Continue building after a task fails and build all targets that don't depend on failed targets")
 		("help,h", "Produce this message and exit")
 		("target", boost::program_options::value<std::vector<std::string> >(), "Specify a build target(equivalent to the positional arguments)");
 	boost::program_options::positional_options_description p;
@@ -77,6 +78,7 @@ std::vector<std::string> parse_command_line(int argc, char** argv)
 	optional_last_overrides<unsigned int> num_jobs = vm["jobs"].as<optional_last_overrides<unsigned int> >();
 	sconspp::num_jobs = num_jobs.value;
 	always_build = vm["always-build"].as<bool>();
+	keep_going = vm["keep-going"].as<bool>();
 
 	std::vector<std::string> targets;
 	if(vm.count("target"))
