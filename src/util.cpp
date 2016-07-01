@@ -30,8 +30,6 @@
 #include <boost/system/system_error.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/scope_exit.hpp>
-#include <boost/foreach.hpp>
-#define foreach BOOST_FOREACH
 
 #include "log.hpp"
 #include "util.hpp"
@@ -62,7 +60,7 @@ boost::filesystem::path where_is(const std::string& name)
 	std::vector<string> env_path;
 	string path_str = Environ::instance().get("PATH");
 	boost::algorithm::split(env_path, path_str, boost::is_any_of(":"));
-	foreach(const string& path_item, env_path) {
+	for(const string& path_item : env_path) {
 		boost::filesystem::path path = boost::filesystem::path(path_item) / name;
 		if(boost::filesystem::exists(path))
 			return path;
@@ -115,7 +113,7 @@ boost::filesystem::path canonicalize(const boost::filesystem::path& p)
 		canonicalized_path.push_back(i);
 	}
 	boost::filesystem::path result;
-	foreach(const boost::filesystem::path::iterator& elem, canonicalized_path)
+	for(const boost::filesystem::path::iterator& elem : canonicalized_path)
 		result /= *elem;
 	return result;
 }
@@ -144,7 +142,7 @@ scoped_chdir::~scoped_chdir()
 int exec(const std::vector<string>& args)
 {
 	std::vector<char*> argv;
-	foreach(const string& arg, args)
+	for(const string& arg : args)
 		argv.push_back(const_cast<char*>(arg.c_str()));
 	argv.push_back(NULL);
 

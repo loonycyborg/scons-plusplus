@@ -23,8 +23,6 @@
 
 #include "action.hpp"
 
-#define foreach BOOST_FOREACH
-
 using namespace boost::python;
 
 namespace sconspp
@@ -63,7 +61,7 @@ inline Action::pointer make_action(object obj, object action_str = object())
 inline ActionList make_actions(object act, object action_str = object(), list varlist = list())
 {
 	ActionList result;
-	foreach(const object& obj, make_object_iterator_range(flatten(act)))
+	for(const object& obj : make_object_iterator_range(flatten(act)))
 		result.push_back(make_action(obj, action_str));
 	return result;
 }

@@ -18,13 +18,9 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <boost/foreach.hpp>
-
 #include "task.hpp"
 #include "util.hpp"
 #include "node_properties.hpp"
-
-#define foreach BOOST_FOREACH
 
 namespace sconspp
 {
@@ -32,8 +28,8 @@ namespace sconspp
 void Task::add_sources(const NodeList& sources)
 {
 	std::copy(sources.begin(), sources.end(), std::back_inserter(sources_));
-	foreach(const Node& target, targets_)
-		foreach(const Node& source, sources)
+	for(const Node& target : targets_)
+		for(const Node& source : sources)
 			add_edge(target, source, graph);
 }
 
@@ -57,7 +53,7 @@ boost::optional<boost::array<unsigned char, 16> > Task::signature() const
 	if(actions_.empty())
 		return result;
 	MD5 md5_sum;
-	foreach(const Action::pointer& action, actions_)
+	for(const Action::pointer& action : actions_)
 		md5_sum.append(action->to_string(*env(), true));
 	return md5_sum.finish();
 }
@@ -65,12 +61,12 @@ boost::optional<boost::array<unsigned char, 16> > Task::signature() const
 int Task::execute() const
 {
 	Environment::const_pointer task_env = env();
-	foreach(const Action::pointer& action, actions_) {
+	for(const Action::pointer& action : actions_) {
 		int status = sconspp::execute(action, *task_env);
 		if(status != 0)
 			return status;
 	}
-	foreach(const Node& target, targets_)
+	for(const Node& target : targets_)
 		properties(target).was_rebuilt();
 	return 0;
 }

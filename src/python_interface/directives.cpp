@@ -69,12 +69,12 @@ inline void AddFooAction(const object& target, const object& action)
 	ActionList actions = make_actions(flatten(action));
 	NodeList targets = extract_file_nodes(flatten(target));
 	std::set<Task::pointer> tasks;
-	foreach(Node node, targets) {
+	for(Node node : targets) {
 		Task::pointer task = graph[node]->task();;
 		if(task)
 			tasks.insert(task);
 	}
-	foreach(Task::pointer task, tasks)
+	for(Task::pointer task : tasks)
 		std::copy(actions.begin(), actions.end(), insert_iterator<ActionList>(task->actions()));
 }
 
@@ -93,8 +93,8 @@ void Depends(object target, object dependency)
 	NodeList
 		targets = extract_file_nodes(flatten(target)),
 		dependencies = extract_file_nodes(flatten(dependency));
-	foreach(Node t, targets) {
-		foreach(Node d, dependencies) {
+	for(Node t : targets) {
+		for(Node d : dependencies) {
 			add_edge(t, d, graph);
 		}
 	}
@@ -103,7 +103,7 @@ void Depends(object target, object dependency)
 object AlwaysBuild(tuple args, dict keywords)
 {
 	NodeList nodes = extract_file_nodes(flatten(args));
-	foreach(Node node, nodes)
+	for(Node node : nodes)
 		graph[node]->always_build();
 	return object();
 }
@@ -111,7 +111,7 @@ object AlwaysBuild(tuple args, dict keywords)
 object FindFile(const std::string& name, object dir_objs)
 {
 	std::vector<std::string> directories;
-	foreach(object dir, make_object_iterator_range(flatten(dir_objs)))
+	for(object dir : make_object_iterator_range(flatten(dir_objs)))
 		directories.push_back(extract<std::string>(dir)());
 	boost::optional<Node> file = find_file(name, directories);
 	if(file)

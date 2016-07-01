@@ -24,7 +24,6 @@
 #include <boost/python.hpp>
 #include <boost/python/raw_function.hpp>
 #include <boost/algorithm/string/join.hpp>
-#include <boost/foreach.hpp>
 #include <boost/typeof/typeof.hpp>
 
 #include "util.hpp"
@@ -40,8 +39,6 @@
 #include "python_interface/directives.hpp"
 
 #include "config.hpp"
-
-#define foreach BOOST_FOREACH
 
 using std::string;
 
@@ -62,7 +59,7 @@ object flatten(object obj)
 		return result;
 
 	if(is_list(obj) || is_tuple(obj)) {
-		foreach(const object& item, make_object_iterator_range(obj))
+		for(const object& item : make_object_iterator_range(obj))
 			result.extend(flatten(item));
 		return result;
 	}
@@ -92,7 +89,7 @@ object dictify(object obj)
 
 	obj = flatten(obj);
 	dict result;
-	foreach(object item, make_object_iterator_range(obj))
+	for(object item : make_object_iterator_range(obj))
 		result[item] = object();
 	return result;
 }
@@ -102,7 +99,7 @@ struct node_list_to_python
 	static PyObject* convert(const NodeList& node_list)
 	{
 		list result;
-		foreach(const Node& node, node_list)
+		for(const Node& node : node_list)
 			result.append(NodeWrapper(node));
 		return incref(result.ptr());
 	}
@@ -113,7 +110,7 @@ struct action_list_to_python
 	static PyObject* convert(const ActionList& action_list)
 	{
 		list result;
-		foreach(const Action::pointer& action, action_list)
+		for(const Action::pointer& action : action_list)
 			result.append(object(action));
 		return incref(result.ptr());
 	}
@@ -294,7 +291,7 @@ BOOST_PYTHON_MODULE(SCons)
 
 		if(is_list(obj)) {
 			std::vector<string> result;
-			foreach(const object& item, make_object_iterator_range(obj))
+			for(const object& item : make_object_iterator_range(obj))
 				result.push_back(extract<string>(str(item)));
 			return boost::join(result, " ");
 		}

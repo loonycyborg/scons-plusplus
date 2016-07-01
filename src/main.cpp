@@ -31,8 +31,6 @@
 #include <fstream>
 
 #include <boost/filesystem/operations.hpp>
-#include <boost/foreach.hpp>
-#define foreach BOOST_FOREACH
 
 using namespace sconspp;
 
@@ -43,7 +41,7 @@ int main(int argc, char** argv)
 		python_interface::init_python();
 		const char* default_script_names[] = { "SConstruct++", "SConstruct" };
 		bool script_found = false;
-		foreach(const char* name, default_script_names) {
+		for(const char* name : default_script_names) {
 			if(boost::filesystem::exists(name)) {
 				script_found = true;
 				python_interface::run_script(name, argc, argv);
@@ -55,7 +53,7 @@ int main(int argc, char** argv)
 
 		Node end_goal = add_dummy_node("The end goal");
 		if(!command_line_targets.empty()) {
-			foreach(std::string target, command_line_targets) {
+			for(std::string target : command_line_targets) {
 				boost::optional<Node> node = get_alias(target);
 				if(!node)
 					node = get_entry(target);
@@ -65,7 +63,7 @@ int main(int argc, char** argv)
 					throw std::runtime_error("I don't see alias or file target named '" + target + "'. That's really all there is to be said on the matter");
 			}
 		} else
-			foreach(Node node, default_targets)
+			for(Node node : default_targets)
 				add_edge(end_goal, node, graph);
 		build(end_goal);
 	} catch(const std::exception& e) {

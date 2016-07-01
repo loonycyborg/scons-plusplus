@@ -25,8 +25,6 @@
 #include <boost/variant/variant.hpp>
 #include <boost/variant/apply_visitor.hpp>
 
-#define foreach BOOST_FOREACH
-
 namespace sconspp
 {
 namespace python_interface
@@ -35,7 +33,7 @@ namespace python_interface
 NodeList extract_file_nodes(const Environment& env, object obj)
 {
 	NodeList result;
-	foreach(object node, make_object_iterator_range(obj))
+	for(object node : make_object_iterator_range(obj))
 		if(is_string(node)) {
 			result.push_back(add_entry_indeterminate(extract_string_subst(env, node)));
 		} else {
@@ -47,7 +45,7 @@ NodeList extract_file_nodes(const Environment& env, object obj)
 Builder::NodeStringList extract_nodes(object obj)
 {
 	Builder::NodeStringList result;
-	foreach(object node, make_object_iterator_range(obj)) {
+	for(object node : make_object_iterator_range(obj)) {
 		if(is_string(node))
 			result.push_back(extract<std::string>(node)());
 		else
@@ -59,7 +57,7 @@ Builder::NodeStringList extract_nodes(object obj)
 Builder::NodeStringList extract_nodes(const Environment& env, object obj)
 {
 	Builder::NodeStringList result;
-	foreach(object node, make_object_iterator_range(obj)) {
+	for(object node : make_object_iterator_range(obj)) {
 		if(is_string(node))
 			result.push_back(extract_string_subst(env, node));
 		else

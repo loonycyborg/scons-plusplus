@@ -18,7 +18,6 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <boost/foreach.hpp>
 #include <boost/variant/variant.hpp>
 #include <boost/variant/apply_visitor.hpp>
 #include <boost/variant/static_visitor.hpp>
@@ -26,8 +25,6 @@
 #include "builder.hpp"
 #include "fs_node.hpp"
 #include "alias_node.hpp"
-
-#define foreach BOOST_FOREACH
 
 using boost::add_edge;
 
@@ -43,7 +40,7 @@ void Builder::create_task(
 		) const
 {
 	Task::pointer task(new Task(env, targets, sources, actions));
-	foreach(const Node& node, targets)
+	for(const Node& node : targets)
 		graph[node]->set_task(task);
 	task->set_scanner(scanner);
 }
@@ -110,8 +107,8 @@ NodeList AliasBuilder::operator()(
 	if(!actions_.empty()) {
 		create_task(env, aliases, source_nodes, actions_);
 	} else {
-		foreach(const Node& alias, aliases)
-			foreach(const Node& source, source_nodes)
+		for(const Node& alias : aliases)
+			for(const Node& source : source_nodes)
 				add_edge(alias, source, graph);
 	}
 	return aliases;

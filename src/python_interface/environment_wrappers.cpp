@@ -48,7 +48,7 @@ void Default(const Environment::pointer& env, object obj)
 {
 	obj = flatten(obj);
 	NodeList nodes = extract_file_nodes(*env, obj);
-	foreach(Node node, nodes)
+	for(Node node : nodes)
 		default_targets.insert(node);
 }
 NodeWrapper Entry(Environment::pointer, std::string name)
@@ -79,7 +79,7 @@ NodeList Alias(object aliases, object sources, object actions)
 
 void Execute(Environment::pointer env, object obj)
 {
-	foreach(const Action::pointer& action, make_actions(obj))
+	for(const Action::pointer& action : make_actions(obj))
 		execute(action, *env);
 }
 
@@ -131,7 +131,7 @@ void Platform(Environment::pointer env, const std::string& name)
 object Replace(const tuple& args, const dict& kw)
 {
 	Environment& env = extract<Environment&>(args[0]);
-	foreach(const object& item, make_object_iterator_range(kw.items())) {
+	for(const object& item : make_object_iterator_range(kw.items())) {
 		std::string key = extract<std::string>(item[0]);
 		env[key] = extract_variable(item[1]);
 	}
@@ -141,7 +141,7 @@ object Replace(const tuple& args, const dict& kw)
 object Detect(const Environment& env, object progs)
 {
 	progs = flatten(progs);
-	foreach(const object& prog, make_object_iterator_range(progs))
+	for(const object& prog : make_object_iterator_range(progs))
 	{
 		object path = WhereIs(extract<string>(prog));
 		if(path)
@@ -183,7 +183,7 @@ object AddMethod(object env, object method, object name)
 object SetDefault(tuple args, dict kw)
 {
 	Environment& env = extract<Environment&>(args[0]);
-	foreach(object item, make_object_iterator_range(kw.items())) {
+	for(object item : make_object_iterator_range(kw.items())) {
 		std::string key = extract<std::string>(item[0]);
 		if(!has_key(env, key))
 			env[key] = extract_variable(item[1]);
@@ -195,7 +195,7 @@ std::string Dump(const Environment& env)
 {
 	std::ostringstream os;
 	os << "{\n";
-	foreach(const Environment::value_type& var, env) {
+	for(const Environment::value_type& var : env) {
 		os << "'" << var.first << "' : " << var.second->to_string() << "\n";
 	}
 	os << "}\n";
@@ -206,7 +206,7 @@ object concat(const std::string& prefix, object objs, const std::string& suffix,
 {
 	objs = flatten(subst(env, objs));
 	list result;
-	foreach(object obj, make_object_iterator_range(objs))
+	for(object obj : make_object_iterator_range(objs))
 		result.append(str(prefix + expand_python(env, obj) + suffix));
 	return result;
 }

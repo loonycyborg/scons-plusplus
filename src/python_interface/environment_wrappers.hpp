@@ -47,7 +47,7 @@ class PythonVariable : public Variable
 	std::list<std::string> to_string_list() const
 	{
 		std::list<std::string> result;
-		foreach(const object& item, make_object_iterator_range(flatten(obj_)))
+		for(const object& item : make_object_iterator_range(flatten(obj_)))
 			result.push_back(extract<string>(str(item)));
 		return result;
 	}
@@ -87,7 +87,7 @@ inline object variable_to_python(Variable::const_pointer var)
 	try {
 		const CompositeVariable* variables = boost::polymorphic_cast<const CompositeVariable*>(var.get());
 		list result;
-		foreach(const Variable::pointer& item, *variables)
+		for(const Variable::pointer& item : *variables)
 			result.append(variable_to_python(item));
 		return result;
 	} catch(const std::bad_cast&) {
@@ -157,7 +157,7 @@ template<UpdateType update, UniqueType unique> object update_list(object old_val
 	new_val = flatten(new_val);
 	if(update == Prepend)
 		new_val = reversed(new_val);
-	foreach(const object& item, make_object_iterator_range(new_val))
+	for(const object& item : make_object_iterator_range(new_val))
 		update_item<update, unique>(result, item);
 	return result;
 }
@@ -166,7 +166,7 @@ template<UpdateType update_type, UniqueType unique_type>object Update(const tupl
 {
 	Environment::pointer env_ptr = extract<Environment::pointer>(args[0]);
 	Environment& env = *env_ptr;
-	foreach(const object& item, make_object_iterator_range(kw.items())) {
+	for(const object& item : make_object_iterator_range(kw.items())) {
 		std::string key = extract<std::string>(item[0]);
 		object old_val = env[key] ? variable_to_python(env[key]) : object();
 		object new_val(item[1]);

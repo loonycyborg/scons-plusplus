@@ -23,7 +23,6 @@
 
 #include <boost/python.hpp>
 #include <boost/python/stl_iterator.hpp>
-#include <boost/foreach.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <boost/filesystem/path.hpp>
 

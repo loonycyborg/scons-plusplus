@@ -228,7 +228,7 @@ object subst(const Environment& env, object obj, bool for_signature)
 {
 	if(is_list(obj) || is_tuple(obj)) {
 		list result;
-		foreach(object item, make_object_iterator_range(obj)) {
+		for(object item : make_object_iterator_range(obj)) {
 			result.append(subst(env, item, for_signature));
 		}
 		return result;
@@ -245,7 +245,7 @@ std::string expand_python(const Environment& env, object obj)
 		return std::string();
 	try {
 		std::vector<std::string> words;
-		foreach(object item, make_object_iterator_range(obj))
+		for(object item : make_object_iterator_range(obj))
 			words.push_back(expand_python(env, item));
 		return boost::algorithm::join(words, std::string(" "));
 	} catch(const error_already_set&) {

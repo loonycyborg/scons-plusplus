@@ -68,8 +68,8 @@ BOOST_AUTO_TEST_CASE(test_update)
 
 	const char* updates[] = { "Prepend", "Append" };
 	const char* uniques[] = { "Unique", "" };
-	BOOST_FOREACH(const char* update, boost::make_iterator_range(updates, updates + 2)) {
-		BOOST_FOREACH(const char* unique, boost::make_iterator_range(uniques, uniques + 2)) {
+	for(const char* update : boost::make_iterator_range(updates, updates + 2)) {
+		for(const char* unique : boost::make_iterator_range(uniques, uniques + 2)) {
 			std::string method = std::string(update) + unique;
 			SCONSPP_EXEC("method = '" + method + "'");
 			std::string var = method + "Var";

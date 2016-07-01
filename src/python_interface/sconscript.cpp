@@ -26,8 +26,6 @@
 #include "fs_node.hpp"
 #include "util.hpp"
 
-#define foreach BOOST_FOREACH
-
 using std::string;
 
 namespace
@@ -124,7 +122,7 @@ object SConscript(const Environment&, const std::string& script)
 
 object Export(tuple args, dict kw)
 {
-	foreach(object var, make_object_iterator_range(flatten(args))) {
+	for(object var : make_object_iterator_range(flatten(args))) {
 		string name = extract<string>(var);
 		SConscriptFile::current().export_var(name);
 	}
@@ -133,7 +131,7 @@ object Export(tuple args, dict kw)
 
 object Import(tuple args, dict kw)
 {
-	foreach(object var, make_object_iterator_range(flatten(args))) {
+	for(object var : make_object_iterator_range(flatten(args))) {
 		string name = extract<string>(var);
 		SConscriptFile::current().import_var(name);
 	}
@@ -143,7 +141,7 @@ object Import(tuple args, dict kw)
 object Return(tuple args, dict kw)
 {
 	list& return_value = SConscriptFile::current().return_value();
-	foreach(object var, make_object_iterator_range(flatten(args))) {
+	for(object var : make_object_iterator_range(flatten(args))) {
 		string name = extract<string>(var);
 		return_value.append(SConscriptFile::current().ns()[name]);
 	}

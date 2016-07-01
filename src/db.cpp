@@ -26,8 +26,6 @@
 #include <sqlite3.h>
 
 #include <boost/lexical_cast.hpp>
-#include <boost/foreach.hpp>
-#define foreach BOOST_FOREACH
 
 namespace SQLite
 {
@@ -292,7 +290,7 @@ void PersistentNodeData::write_scanner_cache()
 
 		static SQLite::Statement write_record(db.handle(),
 			"insert into scanner_cache values (?1, ?2, ?3)");
-		foreach(const IncludeDep& dep, scanner_cache_.get()) {
+		for(const IncludeDep& dep : scanner_cache_.get()) {
 			write_record.bind(1, id_.get());
 			write_record.bind(2, dep.second);
 			write_record.bind(3, dep.first);
@@ -342,7 +340,7 @@ PersistentData::~PersistentData()
 		"delete from dependencies where target_id = ?1");
 	SQLite::Statement write_dependency(db_.handle(), 
 		"insert into dependencies values (?1, ?2)");
-	foreach(Nodes::value_type& target_pair, nodes_) {
+	for(Nodes::value_type& target_pair : nodes_) {
 		int target_id = target_pair.second->id();
 		Node target_node = target_pair.first;
 
@@ -352,7 +350,7 @@ PersistentData::~PersistentData()
 
 		write_dependency.bind(1, target_pair.second->id());
 
-		foreach(const Edge& dependency, out_edges(target_node, graph)) {
+		for(const Edge& dependency : boost::make_iterator_range(out_edges(target_node, graph))) {
 			write_dependency.bind(2, (*this)[target(dependency, graph)].id());
 			while(write_dependency.step() != SQLITE_DONE) {}
 			write_dependency.reset();

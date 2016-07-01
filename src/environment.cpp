@@ -19,12 +19,9 @@
  ***************************************************************************/
 
 #include <boost/algorithm/string/join.hpp>
-#include <boost/foreach.hpp>
 
 #include "environment.hpp"
 #include "python_interface/python_interface.hpp"
-
-#define foreach BOOST_FOREACH
 
 using std::string;
 using std::vector;
@@ -40,7 +37,7 @@ std::string Environment::subst(const std::string& str, bool for_signature) const
 Environment::pointer Environment::clone() const
 {
 	pointer new_env(new Environment);
-	foreach(const Variables::value_type& val, variables_)
+	for(const Variables::value_type& val : variables_)
 		(*new_env)[val.first] = val.second->clone();
 	return new_env;
 }
@@ -48,7 +45,7 @@ Environment::pointer Environment::clone() const
 string CompositeVariable::to_string() const
 {
 	vector<string> strings;
-	foreach(const Variable::pointer& variable, variables_)
+	for(const Variable::pointer& variable : variables_)
 		strings.push_back(variable->to_string());
 	return boost::join(strings, " ");
 }
@@ -56,7 +53,7 @@ string CompositeVariable::to_string() const
 std::list<string> CompositeVariable::to_string_list() const
 {
 	std::list<string> result;
-	foreach(const Variable::pointer& variable, variables_) {
+	for(const Variable::pointer& variable : variables_) {
 		std::list<string> strings = variable->to_string_list();
 		result.splice(result.end(), strings, strings.begin(), strings.end());
 	}
@@ -66,7 +63,7 @@ std::list<string> CompositeVariable::to_string_list() const
 CompositeVariable::pointer CompositeVariable::clone() const
 {
 	boost::shared_ptr<CompositeVariable> result(new CompositeVariable);
-	foreach(const Variable::pointer& variable, variables_)
+	for(const Variable::pointer& variable : variables_)
 		result->push_back(variable->clone());
 	return result;
 }

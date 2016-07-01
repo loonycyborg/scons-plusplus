@@ -24,8 +24,6 @@
 
 #include <fnmatch.h>
 #include <boost/optional.hpp>
-#include <boost/foreach.hpp>
-#define foreach BOOST_FOREACH
 #include <boost/filesystem/fstream.hpp>
 #include <boost/unordered_map.hpp>
 
@@ -224,7 +222,7 @@ boost::optional<Node> find_file(const std::string& name, const std::vector<std::
 {
 	if(cached)
 		return find_file_cached(name, directories);
-	foreach(const std::string& directory, directories) {
+	for(const std::string& directory : directories) {
 		path p = canonical_path(directory.empty() ? "." : directory) / name;
 		boost::optional<Node> result = fs.get(p);
 		if(result) return result;

@@ -22,12 +22,9 @@
 
 #include <iostream>
 #include <boost/range/iterator_range.hpp>
-#include <boost/foreach.hpp>
 
 #include "action_wrapper.hpp"
 #include "environment_wrappers.hpp"
-
-#define foreach BOOST_FOREACH
 
 using std::string;
 
@@ -67,7 +64,7 @@ int ActionCaller::execute(const Environment& env) const
 	ScopedGIL lock;
 	try {
 		list args;
-		foreach(const object& arg, make_object_iterator_range(args_))
+		for(const object& arg : make_object_iterator_range(args_))
 			args.append(convert_(object(env.subst(extract<string>(str(arg))))));
 
 		call_extended(actfunc_, tuple(args), kw_);
@@ -82,7 +79,7 @@ std::string ActionCaller::to_string(const Environment& env, bool) const
 {
 	ScopedGIL lock;
 	list args;
-	foreach(const object& arg, make_object_iterator_range(args_))
+	for(const object& arg : make_object_iterator_range(args_))
 		args.append(convert_(object(env.subst(extract<string>(str(arg))))));
 
 	return extract<std::string>(call_extended(strfunc_, tuple(args), kw_));

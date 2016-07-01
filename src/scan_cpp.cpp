@@ -21,9 +21,6 @@
 #include "fs_node.hpp"
 #include <iostream>
 
-#include <boost/foreach.hpp>
-#define foreach BOOST_FOREACH
-
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
@@ -75,7 +72,7 @@ std::vector<std::string>& lookup_searchpath(const sconspp::Environment& env)
 	static std::map<const sconspp::Environment*, std::vector<std::string> > lookup_cache;
 	if(!lookup_cache.count(&env)) {
 		lookup_cache[&env];
-		foreach(std::string dir, env["CPPPATH"]->to_string_list()) {
+		for(std::string dir : env["CPPPATH"]->to_string_list()) {
 			lookup_cache[&env].push_back(dir);
 		}
 	}
@@ -97,7 +94,7 @@ namespace sconspp
 				parse(iter, iend, preprocessor, deps);
 			}
 
-			foreach(const IncludeDeps::value_type& item, deps) {
+			for(const IncludeDeps::value_type& item : deps) {
 				std::vector<std::string> search_paths = lookup_searchpath(env);
 				if(!item.first) {
 					std::string source_dir(properties<FSEntry>(source).dir());

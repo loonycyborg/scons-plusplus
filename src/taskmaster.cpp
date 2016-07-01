@@ -19,7 +19,6 @@
  ***************************************************************************/
 
 #include <boost/graph/topological_sort.hpp>
-#include <boost/foreach.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
@@ -35,8 +34,6 @@
 #include "task.hpp"
 #include "node_properties.hpp"
 #include "log.hpp"
-
-#define foreach BOOST_FOREACH
 
 using std::vector;
 using boost::depth_first_visit;
@@ -92,7 +89,7 @@ class BuildVisitor : public boost::default_dfs_visitor
 		const std::pair<Graph::out_edge_iterator, Graph::out_edge_iterator>&
 			iterators = out_edges(node, graph);
 		std::vector<Edge> edges(iterators.first, iterators.second);
-		foreach(Edge edge, edges) {
+		for(Edge edge : edges) {
 			Task::pointer task = graph[source(edge, graph)]->task();
 			if(task)
 				task->scan(source(edge, graph), target(edge, graph));
@@ -152,7 +149,7 @@ namespace sconspp
 	bool is_task_up_to_date(const TaskListItem& item, PersistentData& db)
 	{
 		bool up_to_date = !always_build;
-		foreach(Node build_target, item.targets) {
+		for(Node build_target : item.targets) {
 
 			// let node check if it has an inherent need to be rebuilt, such as a file not existing
 			if(graph[build_target]->needs_rebuild()) {
@@ -166,7 +163,7 @@ namespace sconspp
 			std::set<int> 
 				source_ids,
 				prev_sources(db[build_target].dependencies());
-			foreach(Edge dependency, out_edges(build_target, graph)) {
+			for(Edge dependency : boost::make_iterator_range(out_edges(build_target, graph))) {
 				Node build_source = target(dependency, graph);
 				PersistentNodeData& source_data = db[build_source];
 				source_ids.insert(source_data.id());
@@ -204,7 +201,7 @@ namespace sconspp
 		FutureVec future_vec() const
 		{
 			FutureVec vec;
-			foreach(const Futures::value_type& value, futures)
+			for(const Futures::value_type& value : futures)
 				vec.push_back(value.second);
 			return vec;
 		}
@@ -275,17 +272,17 @@ namespace sconspp
 
 		Node end_node = *(--nodes.end());
 		while(!states.count(end_node) || states[end_node] != BUILT) {
-			foreach(Node node, job_server.wait_for_any()) {
+			for(Node node : job_server.wait_for_any()) {
 				states[node] = BUILT;
 				db[node].task_status() = 0;
 			}
 
-			foreach(Node node, nodes) {
+			for(Node node : nodes) {
 				if(states.count(node) && states[node] != BLOCKED) {
 					continue;
 				}
 				states[node] = TO_BUILD;
-				foreach(Edge e, out_edges(node, graph)) {
+				for(Edge e : boost::make_iterator_range(out_edges(node, graph))) {
 					if(states[target(e, graph)] == SCHEDULED ||
 					   states[target(e, graph)] == BLOCKED)
 						states[node] = BLOCKED;

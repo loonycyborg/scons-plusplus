@@ -75,7 +75,7 @@ NodeList call_builder_interface(tuple args, dict kw)
 inline NodeList extract_file_nodes(const Environment& env, object obj)
 {
 	NodeList result;
-	foreach(object node, make_object_iterator_range(obj))
+	for(object node : make_object_iterator_range(obj))
 		if(is_string(node)) {
 			result.push_back(add_entry_indeterminate(extract_string_subst(env, node)));
 		} else {
@@ -91,7 +91,7 @@ class PythonScanner
 	void scan(const Environment& env, object& scanner, Node node, std::set<Node>& deps, object path) {
 		if(scanner) {
 			object result = scanner(NodeWrapper(node), env, path);
-			foreach(object node, make_object_iterator_range(result)) {
+			for(object node : make_object_iterator_range(result)) {
 				Node dep = extract_node(node);
 				if(!deps.count(dep)) {
 					deps.insert(dep);
@@ -120,7 +120,7 @@ class PythonScanner
 		try {
 			scan(env, source_scanner_, source, deps, get_path(env, source_scanner_, source, object(), target, source));
 			scan(env, target_scanner_, target, deps, get_path(env, target_scanner_, target, object(), target, source));
-			foreach(Node node, deps)
+			for(Node node : deps)
 				add_edge(target, node, graph);
 		} catch(const error_already_set&) {
 			throw_python_exc("Exception while running a python scanner: ");
@@ -181,7 +181,7 @@ class PythonBuilder : public Builder
 		if(single_source_ && (sources.size() > 1)) {
 			if(targets.empty()) {
 				NodeList result;
-				foreach(const NodeStringList::value_type& source, sources) {
+				for(const NodeStringList::value_type& source : sources) {
 					NodeStringList single_source;
 					NodeList target;
 					single_source.push_back(source);
@@ -298,7 +298,7 @@ class PythonBuilder : public Builder
 				} else {
 					sources = src_builder_(env, str(name.substr(0, name.rfind('.'))), str(name));
 				}
-				foreach(object node, make_object_iterator_range(sources))
+				for(object node : make_object_iterator_range(sources))
 					result.push_back(extract_node(node));
 				return;
 			}
@@ -344,7 +344,7 @@ class PythonBuilder : public Builder
 	bool source_ext_match(const Environment& env, const std::string& name) const
 	{
 		std::set<std::string> suffixes;
-		foreach(object suffix, make_object_iterator_range(flatten(src_suffix_))) {
+		for(object suffix : make_object_iterator_range(flatten(src_suffix_))) {
 			suffixes.insert(extract_string_subst(env, suffix));
 		}
 		std::string suffix = boost::filesystem::extension(name);
