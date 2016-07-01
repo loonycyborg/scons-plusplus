@@ -38,6 +38,8 @@ conf.Finish()
 env.Append(CPPDEFINES = ["BOOST_FILESYSTEM_VERSION=3"])
 
 env.Append(CCFLAGS = Split("-O0 -ggdb"), CXXFLAGS = Split("-Wall -ansi -Wno-deprecated -Wno-parentheses"))
+if "gcc" in env["TOOLS"]:
+    env.Append(CXXFLAGS = ["-std=c++11"])
 env.Append(CPPPATH = ["#/src"])
 
 env.Decider("MD5-timestamp")
