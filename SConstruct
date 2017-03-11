@@ -26,8 +26,7 @@ import metasconf
 custom_tests = metasconf.init_metasconf(env, ["boost", "python_devel"])
 conf = env.Configure(custom_tests = custom_tests, config_h = "src/config.hpp")
 conf.CheckPython() and \
-conf.CheckBoost("python", require_version = "1.44") and \
-conf.CheckBoost("system") and \
+conf.CheckBoost("system", require_version = "1.44") and \
 conf.CheckBoost("filesystem") and \
 conf.CheckBoost("thread") and \
 conf.CheckBoost("program_options") and \
@@ -38,8 +37,9 @@ conf.Finish()
 env.Append(CPPDEFINES = ["BOOST_FILESYSTEM_VERSION=3"])
 
 env.Append(CCFLAGS = Split("-O0 -ggdb"), CXXFLAGS = Split("-Wall -ansi -Wno-deprecated -Wno-parentheses"))
+env.Append(CPPPATH = ["#thirdparty/pybind11/include"])
 if "gcc" in env["TOOLS"]:
-    env.Append(CXXFLAGS = ["-std=c++11"])
+    env.Append(CXXFLAGS = ["-std=c++14"])
 env.Append(CPPPATH = ["#/src"])
 
 env.Decider("MD5-timestamp")
@@ -51,10 +51,11 @@ def test(name, dir):
 test("general", "test")
 test("hello", "examples/hello")
 test("builders", "test/builders")
-
 test_env = env.Clone()
 conf = test_env.Configure(custom_tests = custom_tests)
-test_env["have_boost_test"] = conf.CheckBoost("unit_test_framework")
+test_env["have_boost_test"] = conf.CheckBoost("unit_test_framework") and \
+conf.CheckBoost("graph")
+
 conf.Finish()
 test_env.Append(CPPDEFINES = ["BOOST_TEST_DYN_LINK"])
 

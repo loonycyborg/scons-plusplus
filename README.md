@@ -7,7 +7,6 @@ PREREQUISITES
 * boost >= 1.44
    boost::system
    boost::filesystem
-   boost::python
    boost::program_options
    Boost Graph Library
 * SQLite 3

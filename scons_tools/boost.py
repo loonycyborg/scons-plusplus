@@ -54,7 +54,8 @@ def CheckBoost(context, boost_lib, require_version = None, header_only = False):
     boost_headers = { "regex" : "regex/config.hpp",
                       "iostreams" : "iostreams/constants.hpp",
                       "unit_test_framework" : "test/unit_test.hpp",
-                      "system" : "system/error_code.hpp"}
+                      "system" : "system/error_code.hpp",
+                      "graph" : "graph/adjacency_list.hpp"}
 
     header_name = boost_headers.get(boost_lib, boost_lib + ".hpp")
     libname = "boost_" + boost_lib + env.get("boost"+boost_lib+"_suffix", "") + env.get("boost_suffix", "")

@@ -22,7 +22,7 @@
 #define DEPENDENCY_GRAPH_HPP
 
 #include <boost/graph/adjacency_list.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 namespace sconspp
 {
@@ -37,7 +37,7 @@ using boost::add_vertex;
 using boost::add_edge;
 
 class node_properties;
-typedef boost::adjacency_list<setS, listS, directedS, boost::shared_ptr<node_properties> > Graph;
+typedef boost::adjacency_list<setS, listS, directedS, std::shared_ptr<node_properties> > Graph;
 typedef graph_traits<Graph>::vertex_descriptor Node;
 typedef graph_traits<Graph>::edge_descriptor Edge;
 typedef std::vector<Node> NodeList;

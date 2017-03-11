@@ -18,12 +18,11 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include "python_interface_internal.hpp"
+#include "action_wrapper.hpp"
 
 #include <iostream>
 #include <boost/range/iterator_range.hpp>
 
-#include "action_wrapper.hpp"
 #include "environment_wrappers.hpp"
 
 using std::string;
@@ -38,10 +37,10 @@ int PythonAction::execute(const Environment& env) const
 	ScopedGIL lock;
 	try {
 		action_obj(
-			env["TARGETS"] ? variable_to_python(env["TARGETS"]) : object(),
-			env["SOURCES"] ? variable_to_python(env["SOURCES"]) : object(), 
+			env["TARGETS"] ? variable_to_python(env["TARGETS"]) : py::none(),
+			env["SOURCES"] ? variable_to_python(env["SOURCES"]) : py::none(),
 		env);
-	} catch(const error_already_set&) {
+	} catch(const py::error_already_set&) {
 		//throw_python_exc("A python exception was raised when executing action.");
 		return -1;
 	}
@@ -50,25 +49,25 @@ int PythonAction::execute(const Environment& env) const
 
 std::string PythonAction::to_string(const Environment& env, bool) const
 {
-	return string(extract<std::string>(action_obj.attr("__name__"))) + "()";
+	ScopedGIL lock;
+	return string(action_obj.attr("__name__").cast<std::string>()) + "()";
 }
 
-object call_action_factory(tuple args, dict kw)
+py::object call_action_factory(ActionFactory& factory, py::args args, py::kwargs kw)
 {
-	ActionFactory factory = extract<ActionFactory>(args[0]);
-	return object(Action::pointer(new ActionCaller(factory.actfunc_, factory.strfunc_, factory.convert_, tuple(args.slice(1, _)), kw)));
+	return py::cast(Action::pointer(new ActionCaller(factory.actfunc_, factory.strfunc_, factory.convert_, args, kw)));
 }
 
 int ActionCaller::execute(const Environment& env) const
 {
 	ScopedGIL lock;
 	try {
-		list args;
-		for(const object& arg : make_object_iterator_range(args_))
-			args.append(convert_(object(env.subst(extract<string>(str(arg))))));
+		py::list args;
+		for(auto arg : args_)
+			args.append(convert_(env.subst(py::str(arg).cast<std::string>())));
 
-		call_extended(actfunc_, tuple(args), kw_);
-	} catch(const error_already_set&) {
+		actfunc_(*args, **kw_);
+	} catch(const py::error_already_set&) {
 		//throw_python_exc("A python exception was raised when executing action.");
 		return -1;
 	}
@@ -78,11 +77,11 @@ int ActionCaller::execute(const Environment& env) const
 std::string ActionCaller::to_string(const Environment& env, bool) const
 {
 	ScopedGIL lock;
-	list args;
-	for(const object& arg : make_object_iterator_range(args_))
-		args.append(convert_(object(env.subst(extract<string>(str(arg))))));
+	py::list args;
+	for(auto arg : args_)
+		args.append(convert_(env.subst(py::str(arg).cast<string>())));
 
-	return extract<std::string>(call_extended(strfunc_, tuple(args), kw_));
+	return strfunc_(*args, **kw_).cast<string>();
 }
 
 }

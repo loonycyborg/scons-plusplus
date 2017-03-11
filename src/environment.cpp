@@ -62,7 +62,7 @@ std::list<string> CompositeVariable::to_string_list() const
 
 CompositeVariable::pointer CompositeVariable::clone() const
 {
-	boost::shared_ptr<CompositeVariable> result(new CompositeVariable);
+	auto result = std::make_shared<CompositeVariable>();
 	for(const Variable::pointer& variable : variables_)
 		result->push_back(variable->clone());
 	return result;

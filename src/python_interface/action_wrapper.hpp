@@ -21,9 +21,9 @@
 #ifndef ACTION_WRAPPER_HPP
 #define ACTION_WRAPPER_HPP
 
-#include "action.hpp"
+#include "python_interface_internal.hpp"
 
-using namespace boost::python;
+#include "action.hpp"
 
 namespace sconspp
 {
@@ -33,62 +33,62 @@ namespace python_interface
 
 class PythonAction : public Action
 {
-	const object action_obj;
-	const object action_str;
+	const py::object action_obj;
+	const py::object action_str;
 	public:
 
-	PythonAction(object callable, object action_str_) : action_obj(callable), action_str(action_str_) {}
+	PythonAction(py::object callable, py::object action_str_) : action_obj(callable), action_str(action_str_) {}
 	int execute(const Environment&) const;
 	std::string to_string(const Environment&, bool for_signature = false) const;
 };
 
-inline Action::pointer make_action(object obj, object action_str = object())
+inline Action::pointer make_action(py::object obj, py::object action_str = py::none())
 {
-	static object action_type = import("SCons.Action").attr("ActionWrapper");
-	if(is_string(obj)) {
-		if(action_str)
-			return Action::pointer(new ExecCommand(extract<std::string>(obj), extract<std::string>(action_str)));
+	static py::object action_type = py::module::import("SCons.Action").attr("ActionWrapper");
+	if(py::isinstance<py::str>(obj)) {
+		if(!action_str.is_none())
+			return Action::pointer(new ExecCommand(obj.cast<std::string>(), action_str.cast<std::string>()));
 		else
-			return Action::pointer(new ExecCommand(extract<std::string>(obj)));
-	} else if(is_instance(obj, action_type)) {
-		return extract<Action::pointer>(obj);
-	} else if(is_callable(obj)) {
+			return Action::pointer(new ExecCommand(obj.cast<std::string>()));
+	} else if(py::isinstance(obj, action_type)) {
+		return obj.cast<Action::pointer>();
+	} else if(PyCallable_Check(obj.ptr())) {
 		return Action::pointer(new PythonAction(obj, action_str));
 	} else
-		throw std::runtime_error("Cannot make an action from object of type '" + type(obj) + "'");
+		throw std::runtime_error("Cannot make an action from object of type '" + py::str(obj.get_type()).cast<std::string>() + "'");
 }
 
-inline ActionList make_actions(object act, object action_str = object(), list varlist = list())
+inline ActionList make_actions(py::object act, py::object action_str = py::none(), py::list varlist = py::list())
 {
 	ActionList result;
-	for(const object& obj : make_object_iterator_range(flatten(act)))
-		result.push_back(make_action(obj, action_str));
+	for(auto obj : flatten(act))
+		result.push_back(make_action(py::reinterpret_borrow<py::object>(obj), action_str));
 	return result;
 }
 
 class ActionFactory
 {
-	object actfunc_;
-	object strfunc_;
-	object convert_;
-	friend object call_action_factory(tuple args, dict kw);
+	py::object actfunc_;
+	py::object strfunc_;
+	py::object convert_;
+	friend py::object call_action_factory(ActionFactory&, py::args args, py::kwargs kw);
 	public:
 	
-	ActionFactory(object actfunc, object strfunc, object convert) : actfunc_(actfunc), strfunc_(strfunc), convert_(convert) {}
+	ActionFactory(py::object actfunc, py::object strfunc, py::object convert) : actfunc_(actfunc), strfunc_(strfunc), convert_(convert) {}
 };
 
-object call_action_factory(tuple args, dict kw);
+py::object call_action_factory(ActionFactory& factory, py::args args, py::kwargs kw);
 
 class ActionCaller : public Action
 {
-	object actfunc_;
-	object strfunc_;
-	object convert_;
-	tuple args_;
-	dict kw_;
+	py::object actfunc_;
+	py::object strfunc_;
+	py::object convert_;
+	py::tuple args_;
+	py::dict kw_;
 
 	public:
-	ActionCaller(object actfunc, object strfunc, object convert, tuple args, dict kw) : actfunc_(actfunc), strfunc_(strfunc), convert_(convert), args_(args), kw_(kw) {}
+	ActionCaller(py::object actfunc, py::object strfunc, py::object convert, py::tuple args, py::dict kw) : actfunc_(actfunc), strfunc_(strfunc), convert_(convert), args_(args), kw_(kw) {}
 
 	int execute(const Environment&) const;
 	std::string to_string(const Environment&, bool for_signature = false) const;

@@ -18,11 +18,10 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include "python_interface_internal.hpp"
+#include <pybind11/pybind11.h>
+#include <pybind11/eval.h>
 
 #include <iostream>
-#include <boost/python.hpp>
-#include <boost/python/raw_function.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/typeof/typeof.hpp>
 
@@ -32,6 +31,7 @@
 #include "builder.hpp"
 #include "scan_cpp.hpp"
 
+#include "python_interface/python_interface_internal.hpp"
 #include "python_interface/sconscript.hpp"
 #include "python_interface/node_wrapper.hpp"
 #include "python_interface/builder_wrapper.hpp"
@@ -42,25 +42,24 @@
 
 using std::string;
 
-using namespace boost::python;
-
-dict main_namespace;
+py::dict main_namespace;
 
 namespace sconspp
 {
 namespace python_interface
 {
 
-object flatten(object obj)
+py::list flatten(py::object obj)
 {
-	list result;
+	py::list result;
 
-	if(is_none(obj))
+	if(obj.is_none())
 		return result;
 
-	if(is_list(obj) || is_tuple(obj)) {
-		for(const object& item : make_object_iterator_range(obj))
-			result.extend(flatten(item));
+	if(py::isinstance<py::list>(obj) || py::isinstance<py::tuple>(obj)) {
+		for(auto item : obj)
+			for(auto subitem : flatten(py::reinterpret_borrow<py::object>(item)))
+				result.append(subitem);
 		return result;
 	}
 
@@ -68,172 +67,131 @@ object flatten(object obj)
 	return result;
 }
 
-object split(object obj)
+py::list split(py::object obj)
 {
-	if(is_none(obj))
-		return list();
-	if(is_list(obj))
+	if(obj.is_none())
+		return py::list();
+	if(py::isinstance<py::list>(obj))
 		return obj;
-	if(is_string(obj)) {
-		static object string_split = import("string").attr("split");
+	if(py::isinstance<py::str>(obj)) {
+		py::object string_split = py::module::import("string").attr("split");
 		return string_split(obj);
 	}
-	list result;
+	py::list result;
 	result.append(obj);
 	return result;
 }
 
-object dictify(object obj)
+py::dict dictify(py::object obj)
 {
-	if(is_dict(obj)) return obj;
+	if(py::isinstance<py::dict>(obj)) return obj;
 
 	obj = flatten(obj);
-	dict result;
-	for(object item : make_object_iterator_range(obj))
-		result[item] = object();
+	py::dict result;
+	for(auto item : obj)
+		result[item] = py::none();
 	return result;
 }
 
-struct node_list_to_python
+using namespace pybind11::literals;
+
+PYBIND11_PLUGIN(SCons)
 {
-	static PyObject* convert(const NodeList& node_list)
-	{
-		list result;
-		for(const Node& node : node_list)
-			result.append(NodeWrapper(node));
-		return incref(result.ptr());
-	}
-};
+	py::module m_scons("SCons");
 
-struct action_list_to_python
-{
-	static PyObject* convert(const ActionList& action_list)
-	{
-		list result;
-		for(const Action::pointer& action : action_list)
-			result.append(object(action));
-		return incref(result.ptr());
-	}
-};
-
-#define NESTED_MODULE(parent, name) \
-handle<PyObject> h(borrowed(Py_InitModule((std::string(parent) + "." + name).c_str(), NULL))); \
-scope parent_scope = import(parent); \
-scope().attr(name) = h; \
-scope s = object(h);
-
-BOOST_PYTHON_MODULE(SCons)
-{
-	{
-	NESTED_MODULE("SCons", "Node")
-		class_<NodeWrapper>("Node", init<NodeWrapper>())
-			.def("__str__", &NodeWrapper::to_string)
-			.def("__repr__", &NodeWrapper::to_string)
-			.def_readonly("sources", &NodeWrapper::sources)
-			.def_readonly("path", &NodeWrapper::path)
-			.def_readonly("abspath", &NodeWrapper::abspath)
-			.def_readonly("name", &NodeWrapper::name)
-			.def_readonly("dir", &NodeWrapper::dir)
-			.def("get_contents", &NodeWrapper::get_contents)
-			.def("scanner_key", &NodeWrapper::scanner_key)
-			.def("exists", &NodeWrapper::exists)
+	py::module m_node = m_scons.def_submodule("Node");
+	py::class_<NodeWrapper>(m_node, "Node")
+		.def("__str__", &NodeWrapper::to_string)
+		.def("__repr__", &NodeWrapper::to_string)
+		.def_property_readonly("sources", &NodeWrapper::sources)
+		.def_property_readonly("path", &NodeWrapper::path)
+		.def_property_readonly("abspath", &NodeWrapper::abspath)
+		.def_property_readonly("name", &NodeWrapper::name)
+		.def_property_readonly("dir", &NodeWrapper::dir)
+		.def("get_contents", &NodeWrapper::get_contents)
+		.def("scanner_key", &NodeWrapper::scanner_key)
+		.def("exists", &NodeWrapper::exists)
 		;
-	}
-	{
-	NESTED_MODULE("SCons", "Action")
-		def("Action", &make_actions, (arg("action"), arg("strfunction")=object(), arg("varlist")=list()));
-	    class_<Action, Action::pointer, boost::noncopyable>("ActionWrapper", no_init)
-		    .def("__call__", &Action::execute)
-		;
-		class_<ActionFactory>("ActionFactory", init<object, object, object>((arg("actfunc"), arg("strfunc"), arg("convert") = eval("lambda x:x"))))
-			.def("__call__", raw_function(&call_action_factory))
-		;
-	}
-	{
-	NESTED_MODULE("SCons", "Builder")
-		def("Builder", raw_function(&make_builder));
-	    class_<Builder, Builder::pointer, boost::noncopyable>("BuilderWrapper", no_init)
-			.def("__call__", raw_function(&call_builder_interface, 2))
-			.def("add_action", &add_action)
-			.def("add_emitter", &add_emitter)
-			.def("get_suffix", &get_builder_suffix)
-			.def("get_prefix", &get_builder_prefix)
-			.def("get_src_suffix", &get_builder_src_suffix)
-			.add_property("suffix", make_function(&get_builder_suffix))
-		;
-	}
-	object env;
-	{
-	NESTED_MODULE("SCons", "Environment")
-	    env = class_<Environment, Environment::pointer>("Environment", no_init)
-	        .def("_true__init__", make_constructor(&Environment::create))
-			.def("__init__", raw_function(&make_environment))
-			.def("subst", &Environment::subst, (arg("for_signature") = false))
-			.def("Default", &Default)
-			.def("Command", &Command)
-			.def("Entry", &Entry)
-			.def("File", &File)
-			.def("Dir", &Dir)
-			.def("Value", &Value) //
-			.def("Execute", &Execute)
-			.def("__getitem__", &get_item_from_env)
-			.def("__delitem__", &del_item_in_env)
-			.def("__setitem__", &set_item_in_env)
-			.def("Tool", &Tool)
-			.def("Platform", &Platform)
-			.def("Append", raw_function(&Update<Append, NonUnique>))
-			.def("Prepend", raw_function(&Update<Prepend, NonUnique>))
-			.def("AppendUnique", raw_function(&Update<Append, Unique>))
-			.def("PrependUnique", raw_function(&Update<Prepend, Unique>))
-			.def("Replace", raw_function(&Replace))
-			.def("Detect", &Detect)
-			.def("has_key", &has_key)
-			.def("get", &get_item_or_none)
-			.def("__getattr__", &get_env_attr)
-			.def("AddMethod", &AddMethod, (arg("function"), arg("name") = object()))
-			.def("SetDefault", raw_function(&SetDefault))
-			.def("Dump", &Dump)
-			.def("Clone", &Environment::clone)
-	        .def("SConscript", (object(*)(const Environment&, const std::string&))SConscript)
-		;
-	}
-	to_python_converter<NodeList, node_list_to_python>();
-	to_python_converter<ActionList, action_list_to_python>();
+	py::implicitly_convertible<Node, NodeWrapper>();
 
-	{
-	NESTED_MODULE("SCons", "Script")
-		s.attr("ARGUMENTS") = dict();
-		s.attr("ARGLIST") = list();
-		s.attr("BUILD_TARGETS") = list();
-		s.attr("COMMAND_LINE_TARGETS") = list();
-		s.attr("DEFAULT_TARGETS") = list();
+	py::module m_action = m_scons.def_submodule("Action");
+	m_action.def("Action", &make_actions, "action"_a, "strfunction"_a=py::str(), "varlist"_a=py::list());
+	py::class_<Action, Action::pointer>(m_action, "ActionWrapper")
+		.def("__call__", &Action::execute)
+		;
+	py::class_<ActionFactory>(m_action, "ActionFactory")
+		.def(py::init<py::object, py::object, py::object>(),  "actfunc"_a, "strfunc"_a, "convert"_a = py::none())
+		.def("__call__", &call_action_factory)
+		;
 
-		s.attr("Action") = import("SCons.Action").attr("Action");
-		s.attr("Builder") = import("SCons.Builder").attr("Builder");
-		s.attr("Environment") = import("SCons.Environment").attr("Environment");
+	py::module m_builder = m_scons.def_submodule("Builder");
+	def_builder(m_builder);
 
-		def("DefaultEnvironment", raw_function(&DefaultEnvironment));
-		def("SConscript", (object(*)(const std::string&))SConscript);
-		def("Export", raw_function(&Export));
-		def("Import", raw_function(&Import));
-		def("Return", raw_function(&Return));
-		def_directive<BOOST_TYPEOF(WhereIs), WhereIs>(env, "WhereIs", (arg("program")));
-		def_directive<BOOST_TYPEOF(Alias), Alias, boost::mpl::set_c<int, 3> >(env, "Alias", (arg("alias"), arg("targets") = object(), arg("action") = object()));
-		def_directive<BOOST_TYPEOF(AddPreAction), AddPreAction, boost::mpl::set_c<int, 2> >(env, "AddPreAction", (arg("target"), arg("action")));
-		def_directive<BOOST_TYPEOF(AddPostAction), AddPostAction, boost::mpl::set_c<int, 2> >(env, "AddPostAction", (arg("target"), arg("action")));
-		def_directive<BOOST_TYPEOF(split), split>(env, "Split", (arg("arg")));
-		def_directive<BOOST_TYPEOF(flatten), flatten>(env, "Flatten", (arg("arg")));
-		def_directive<BOOST_TYPEOF(Depends), Depends>(env, "Depends", (arg("target"), arg("dependency")));
-		def_directive_raw<AlwaysBuild>(env, "AlwaysBuild");
-		def_directive<BOOST_TYPEOF(glob), glob>(env, "Glob", (arg("pattern"), arg("ondisk") = true));
-		def_directive<BOOST_TYPEOF(FindFile), FindFile>(env, "FindFile", (arg("file"), arg("dirs")));
-	}
+	py::module m_environment = m_scons.def_submodule("Environment");
+	py::class_<Environment, Environment::pointer> env{m_environment, "Environment", py::dynamic_attr()};
+	env
+		.def("__init__", &make_environment)
+		.def("subst", &Environment::subst, "input"_a, "for_signature"_a = false)
+		.def("Default", &Default)
+		.def("Command", &Command)
+		.def("Entry", &Entry)
+		.def("File", &File)
+		.def("Dir", &Dir)
+		.def("Value", &Value) //
+		.def("Execute", &Execute)
+		.def("__getitem__", &get_item_from_env)
+		.def("__delitem__", &del_item_in_env)
+		.def("__setitem__", &set_item_in_env)
+		.def("Tool", &Tool)
+		.def("Platform", &Platform)
+		.def("Append", &Update<Append, NonUnique>)
+		.def("Prepend", &Update<Prepend, NonUnique>)
+		.def("AppendUnique", &Update<Append, Unique>)
+		.def("PrependUnique", &Update<Prepend, Unique>)
+		.def("Replace", &Replace)
+		.def("Detect", &Detect)
+		.def("has_key", &has_key)
+		.def("get", &get_item_or_none)
+		.def("__getattr__", &get_env_attr)
+		.def("AddMethod", &AddMethod, "function"_a, "name"_a = ""_s)
+		.def("SetDefault", &SetDefault)
+		.def("Dump", &Dump)
+		.def("Clone", &Environment::clone)
+		.def("SConscript", (py::object(*)(const Environment&, const std::string&))SConscript)
+		;
 
-	{
-	NESTED_MODULE("SCons", "SConsppExt")
-	    class_<Task::Scanner>("Scanner");
-	    s.attr("CPPScanner") = Task::Scanner(scan_cpp);
-	}
+	py::module m_script = m_scons.def_submodule("Script");
+	m_script.attr("ARGUMENTS") = py::dict();
+	m_script.attr("ARGLIST") = py::list();
+	m_script.attr("BUILD_TARGETS") = py::list();
+	m_script.attr("COMMAND_LINE_TARGETS") = py::list();
+	m_script.attr("DEFAULT_TARGETS") = py::list();
+
+	m_script.attr("Action") = py::module::import("SCons.Action").attr("Action");
+	m_script.attr("Builder") = py::module::import("SCons.Builder").attr("Builder");
+	m_script.attr("Environment") = py::module::import("SCons.Environment").attr("Environment");
+
+	m_script.def("DefaultEnvironment", &DefaultEnvironment);
+	m_script.def("SConscript", (py::object(*)(const std::string&))SConscript);
+	m_script.def("Export", &Export);
+	m_script.def("Import", &Import);
+	m_script.def("Return", &Return);
+	def_directive(m_script, env, "WhereIs", &WhereIs, "program"_a);
+	def_directive<boost::mpl::set_c<int, 2>>(m_script, env, "Alias", &Alias, "alias"_a, "targets"_a = py::none(), "action"_a = py::none());
+	def_directive<boost::mpl::set_c<int, 1>>(m_script, env, "AddPreAction", &AddPreAction, "target"_a, "action"_a);
+	def_directive<boost::mpl::set_c<int, 1>>(m_script, env, "AddPostAction", &AddPostAction, "target"_a, "action"_a);
+	def_directive(m_script, env, "Split", &split, "arg"_a);
+	def_directive(m_script, env, "Flatten", &flatten, "arg"_a);
+	def_directive(m_script, env, "Depends", &Depends, "target"_a, "dependency"_a);
+	def_directive(m_script, env, "AlwaysBuild", &AlwaysBuild);
+	def_directive(m_script, env, "Glob", &glob, "pattern"_a, "ondisk"_a = true);
+	def_directive(m_script, env, "FindFile", &FindFile, "file"_a, "dirs"_a);
+
+	py::module m_sconspp_ext = m_scons.def_submodule("SConsppExt");
+	py::class_<Task::Scanner>(m_sconspp_ext, "Scanner");
+	m_sconspp_ext.attr("CPPScanner") = Task::Scanner(scan_cpp);
+
+	return m_scons.ptr();
 }
 
 	void init_python()
@@ -243,16 +201,16 @@ BOOST_PYTHON_MODULE(SCons)
 		PyEval_InitThreads();
 		PyEval_ReleaseLock();
 
-		main_namespace = dict(import("__main__").attr("__dict__"));
+		main_namespace = py::dict(py::module::import("__main__").attr("__dict__"));
 
-		object sys = import("sys");
-		list path(sys.attr("path"));
-		path.insert(0, PYTHON_MODULES_PATH);
-		path.insert(0, (readlink("/proc/self/exe").parent_path() / "python_modules").string());
+		py::object sys = py::module::import("sys");
+		py::list path(sys.attr("path"));
+		PyList_Insert(path.ptr(), 0, py::str(PYTHON_MODULES_PATH).ptr());
+		PyList_Insert(path.ptr(), 0, py::str((readlink("/proc/self/exe").parent_path() / "python_modules").string()).ptr());
 		sys.attr("path") = path;
-		exec("import sconspp_import", main_namespace, main_namespace);
+		py::eval<py::eval_single_statement>("import sconspp_import", main_namespace, main_namespace);
 
-		main_namespace.update(import("SCons.Script").attr("__dict__"));
+		PyDict_Update(main_namespace.ptr(), py::module::import("SCons.Script").attr("__dict__").ptr());
 	}
 
 	void run_script(const std::string& filename, int argc, char** argv)
@@ -262,40 +220,37 @@ BOOST_PYTHON_MODULE(SCons)
 		try {
 			SConscript(filename);
 		}
-		catch(error_already_set const &) {
+		catch(py::error_already_set const & e) {
 			std::cerr << "scons++: *** Unhandled python exception when parsing SConscript files." << std::endl;
-			PyErr_Print();
-			PyErr_Clear();
+			throw;
 		}
 	}
 
 	std::string eval_string(const std::string& expression, const Environment& environment)
 	{
-		ScopedGIL lock;
-		::object env(environment.override());
-		::object result;
-		result = eval(expression.c_str(), env, env);
+		py::object env{py::cast(environment.override())};
+		py::object result;
+		result = py::eval(expression.c_str(), env, env);
 
-		return result ? extract<string>(str(result))() : "";
+		return result ? py::str(result).cast<std::string>() : "";
 	}
 
 	std::string expand_variable(const std::string& var, const Environment& env)
 	{
-		ScopedGIL lock;
 		if(!env.count(var))
 			return std::string();
 
-		object obj = variable_to_python(env[var]);
-		if(is_callable(obj))
-			return extract<string>(str(obj(get_item_from_env(env, "SOURCES"), get_item_from_env(env, "TARGETS"), env, false)));
+		py::object obj = variable_to_python(env[var]);
+		if(PyCallable_Check(obj.ptr()))
+			return py::str(obj(get_item_from_env(env, "SOURCES"), get_item_from_env(env, "TARGETS"), env, false)).cast<std::string>();
 
-		if(is_list(obj)) {
+		if(py::isinstance<py::list>(obj)) {
 			std::vector<string> result;
-			for(const object& item : make_object_iterator_range(obj))
-				result.push_back(extract<string>(str(item)));
+			for(auto item : obj)
+				result.push_back(py::str(item).cast<std::string>());
 			return boost::join(result, " ");
 		}
-		return extract<string>(str(obj));
+		return py::str(obj).cast<std::string>();
 	}
 
 	std::string subst_to_string(const Environment& env, const std::string& input, bool for_signature)

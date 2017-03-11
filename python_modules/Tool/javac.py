@@ -205,7 +205,7 @@ def generate(env):
     java_class_dir = SCons.Tool.CreateJavaClassDirBuilder(env)
     java_class.add_emitter(None, emit_java_classes)
     java_class.add_emitter(env.subst('$JAVASUFFIX'), emit_java_classes)
-    java_class_dir.emitter = emit_java_classes
+    java_class_dir.add_emitter(None, emit_java_classes)
 
     env.AddMethod(Java)
 

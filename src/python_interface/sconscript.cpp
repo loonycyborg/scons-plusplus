@@ -23,6 +23,8 @@
 
 #include <boost/filesystem/operations.hpp>
 
+#include <pybind11/eval.h>
+
 #include "fs_node.hpp"
 #include "util.hpp"
 
@@ -38,19 +40,19 @@ namespace
 		boost::filesystem::path path_, dir_;
 		SConscriptFile* old_sconscript;
 
-		object& ns_;
-		list return_value_;
+		py::object& ns_;
+		py::list return_value_;
 
 		static SConscriptFile* current_sconscript;
 
-		object exports_;
+		py::object exports_;
 
 		public:
-		SConscriptFile(const boost::filesystem::path& new_sconscript_file, object& ns) 
+		SConscriptFile(const boost::filesystem::path& new_sconscript_file, py::object& ns)
 			: path_(new_sconscript_file), dir_(path_.parent_path()), ns_(ns)
 		{
 			if(current_sconscript == NULL)
-				exports_ = dict();
+				exports_ = py::dict();
 			else
 				exports_ = current_sconscript->exports_;
 			old_sconscript = current_sconscript;
@@ -65,23 +67,23 @@ namespace
 
 		boost::filesystem::path path() const { return path_; }
 		boost::filesystem::path dir() const { return dir_; }
-		object& ns() { return ns_; }
-		list& return_value() { return return_value_; }
+		py::object& ns() { return ns_; }
+		py::list& return_value() { return return_value_; }
 
 		void export_var(const string& name) {
-			exports_[name] = ns_[name];
+			exports_[name.c_str()] = ns_[name.c_str()];
 		}
 
 		void import_var(const string& name) {
-			ns_[name] = exports_[name];
+			ns_[name.c_str()] = exports_[name.c_str()];
 		}
 	};
 
 	SConscriptFile* SConscriptFile::current_sconscript;
 
-	object SConscriptReturnException()
+	py::object SConscriptReturnException()
 	{
-		static object exception = object(handle<>(PyErr_NewException((char*)"SConspp.SConscriptReturn", NULL, NULL)));
+		static py::object exception = py::reinterpret_steal<py::object>(PyErr_NewException((char*)"SConspp.SConscriptReturn", NULL, NULL));
 		return exception;
 	}
 }
@@ -91,9 +93,9 @@ namespace sconspp
 namespace python_interface
 {
 
-object SConscript(const std::string& script)
+py::object SConscript(const std::string& script)
 {
-	object ns = copy(main_namespace);
+	py::object ns = copy(main_namespace);
 
 	if(sconstruct_file.empty()) {
 		sconstruct_file = system_complete(boost::filesystem::path(script));
@@ -105,51 +107,50 @@ object SConscript(const std::string& script)
 	scoped_chdir chdir(SConscriptFile::current().dir());
 
 	try {
-		exec_file(SConscriptFile::current().path().string().c_str(), ns, ns);
-	} catch(const error_already_set&) {
+		py::eval_file(SConscriptFile::current().path().string().c_str(), ns, ns);
+	} catch(py::error_already_set& err) {
+		err.restore();
 		if(PyErr_ExceptionMatches(SConscriptReturnException().ptr()))
-			PyErr_Clear();
-		else
+			err.clear();
+		else {
 			throw;
+		}
 	}
 	return SConscriptFile::current().return_value();
 }
 
-object SConscript(const Environment&, const std::string& script)
+py::object SConscript(const Environment&, const std::string& script)
 {
 	return SConscript(script);
 }
 
-object Export(tuple args, dict kw)
+void Export(py::args args)
 {
-	for(object var : make_object_iterator_range(flatten(args))) {
-		string name = extract<string>(var);
+	for(auto var : flatten(args)) {
+		string name = var.cast<string>();
 		SConscriptFile::current().export_var(name);
 	}
-	return object();
 }
 
-object Import(tuple args, dict kw)
+void Import(py::args args)
 {
-	for(object var : make_object_iterator_range(flatten(args))) {
-		string name = extract<string>(var);
+	for(auto var : flatten(args)) {
+		string name = var.cast<string>();
 		SConscriptFile::current().import_var(name);
 	}
-	return object();
 }
 
-object Return(tuple args, dict kw)
+void Return(py::args args, py::kwargs kw)
 {
-	list& return_value = SConscriptFile::current().return_value();
-	for(object var : make_object_iterator_range(flatten(args))) {
-		string name = extract<string>(var);
-		return_value.append(SConscriptFile::current().ns()[name]);
+	py::list& return_value = SConscriptFile::current().return_value();
+	for(auto var : flatten(args)) {
+		string name = var.cast<string>();
+		return_value.append(SConscriptFile::current().ns()[name.c_str()]);
 	}
-	if(kw.get("stop", object(true))) {
+	if(!kw.contains("stop") || kw["stop"].cast<bool>() == true) {
 		PyErr_SetObject(SConscriptReturnException().ptr(),  SConscriptReturnException()().ptr());
-		throw_error_already_set();
+		throw py::error_already_set();
 	}
-	return object();
 }
 
 }

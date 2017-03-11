@@ -3,6 +3,7 @@
 #include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/copy.hpp>
 #include <boost/graph/graphviz.hpp>
+#include <boost/graph/isomorphism.hpp>
 
 #include "taskmaster.hpp"
 #include "fs_node.hpp"
@@ -12,17 +13,11 @@ namespace sconspp
 namespace python_interface
 {
 
-static void translate_error_already_set(const error_already_set&)
-{
-	python_interface::throw_python_exc("A python exception was thrown");
-}
-
 struct python_setup
 {
 	python_setup()
 	{
 		python_interface::init_python();
-		boost::unit_test::unit_test_monitor.register_exception_translator<error_already_set>(&translate_error_already_set);
 		set_fs_root(boost::filesystem::current_path());
 	}
 };
@@ -53,6 +48,39 @@ void write_build_graph(std::ostream& os, Node end_goal)
 		boost::make_filtered_graph(graph, all_edges, NodeInSet(nodes.begin(), nodes.end())),
 		boost::default_writer(), boost::default_writer(), boost::default_writer(), IdMap(graph)
 		);
+}
+
+bool check_isomorphism(std::istream& is, Node end_goal)
+{
+	Graph reference_graph;
+	boost::dynamic_properties dp;
+	std::map<Node, std::string> names;
+	auto name_map { boost::make_assoc_property_map(names) } ;
+	dp.property("node_id", name_map);
+	read_graphviz(is, reference_graph, dp);
+	std::map<Node, std::size_t> reference_indices;
+	std::size_t i = 0;
+	for(Node n : boost::make_iterator_range(vertices(reference_graph))) {
+		reference_indices[n] = i;
+		i++;
+	}
+	auto reference_map { boost::make_assoc_property_map(reference_indices) } ;
+
+	std::vector<Node> nodes;
+	build_order(end_goal, nodes);
+	std::map<Node, std::size_t> goal_indices;
+	i = 0;
+	for(Node n : nodes) {
+		goal_indices[n] = i;
+		i++;
+	}
+	auto goal_map { boost::make_assoc_property_map(goal_indices) } ;
+
+	return boost::graph::isomorphism(
+		reference_graph,
+		boost::make_filtered_graph(graph, all_edges, NodeInSet(nodes.begin(), nodes.end())),
+		boost::graph::keywords::_vertex_index1_map = reference_map,
+		boost::graph::keywords::_vertex_index2_map = goal_map);
 }
 
 BOOST_GLOBAL_FIXTURE(python_setup);

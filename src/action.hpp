@@ -22,7 +22,7 @@
 #define ACTION_HPP
 
 #include <string>
-#include <deque>
+#include <vector>
 
 #include "environment.hpp"
 
@@ -32,14 +32,14 @@ namespace sconspp
 class Action
 {
 	public:
-	typedef boost::shared_ptr<Action> pointer;
+	typedef std::shared_ptr<Action> pointer;
 
 	virtual ~Action() {}
 	virtual int execute(const Environment&) const = 0;
 	virtual std::string to_string(const Environment&, bool for_signature = false) const = 0;
 };
 
-typedef std::deque<Action::pointer> ActionList;
+typedef std::list<Action::pointer> ActionList;
 
 int execute(const Action::pointer&, const Environment&);
 

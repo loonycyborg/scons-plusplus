@@ -119,7 +119,7 @@ def getJavaHClassPath(env,target, source, for_signature):
 def generate(env):
     """Add Builders and construction variables for javah to an Environment."""
     java_javah = SCons.Tool.CreateJavaHBuilder(env)
-    java_javah.emitter = emit_java_headers
+    #java_javah.emitter = emit_java_headers
 
     env['_JAVAHOUTFLAG']    = JavaHOutFlagGenerator
     env['JAVAH']            = 'javah'

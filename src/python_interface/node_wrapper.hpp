@@ -21,8 +21,6 @@
 #ifndef NODE_WRAPPER_HPP
 #define NODE_WRAPPER_HPP
 
-#include <boost/python.hpp>
-#include <boost/python/stl_iterator.hpp>
 #include <boost/cast.hpp>
 
 #include "dependency_graph.hpp"
@@ -32,7 +30,7 @@
 #include "sconscript.hpp"
 #include "fs_node.hpp"
 
-using namespace boost::python;
+
 
 namespace sconspp
 {
@@ -76,23 +74,43 @@ struct NodeWrapper
 	}
 };
 
-inline std::string extract_string_subst(const Environment& env, object obj)
+inline std::string extract_string_subst(const Environment& env, py::object obj)
 {
-	return env.subst(extract<std::string>(obj));
+	return env.subst(obj.cast<std::string>());
 }
 
-NodeList extract_file_nodes(object obj);
-NodeList extract_file_nodes(const Environment& env, object obj);
+NodeList extract_file_nodes(py::object obj);
+NodeList extract_file_nodes(const Environment& env, py::object obj);
 
-inline Node extract_node(object obj)
+inline Node extract_node(py::object obj)
 {
-	return extract<NodeWrapper>(obj)().node;
+	return obj.cast<NodeWrapper>().node;
 }
 
-Builder::NodeStringList extract_nodes(object obj);
-Builder::NodeStringList extract_nodes(const Environment& env, object obj);
+Builder::NodeStringList extract_nodes(py::object obj);
+Builder::NodeStringList extract_nodes(const Environment& env, py::object obj);
 
 }
 }
+
+namespace pybind11 { namespace detail {
+	template <> struct type_caster<sconspp::NodeList> {
+	public:
+		PYBIND11_TYPE_CASTER(sconspp::NodeList, _("NodeList"));
+
+		bool load(handle src, bool) {
+			value = sconspp::python_interface::extract_file_nodes(reinterpret_borrow<object>(src));
+			return true;
+		}
+
+		static handle cast(sconspp::NodeList src, return_value_policy /* policy */, handle /* parent */) {
+			list result;
+			for(auto node : src)
+				result.append(sconspp::python_interface::NodeWrapper(node));
+			result.inc_ref();
+			return result;
+		}
+	};
+}} // namespace pybind11::detail
 
 #endif

@@ -31,7 +31,6 @@
 #include "python_interface/action_wrapper.hpp"
 
 using std::string;
-using namespace boost::python;
 
 namespace sconspp
 {
@@ -40,31 +39,31 @@ namespace python_interface
 
 class PythonVariable : public Variable
 {
-	object obj_;
+	py::object obj_;
 	public:
-	PythonVariable(object obj) : obj_(obj) {}
-	string to_string() const { return extract<string>(str(obj_)); }
+	PythonVariable(py::object obj) : obj_(obj) {}
+	string to_string() const { return py::str(obj_).cast<string>(); }
 	std::list<std::string> to_string_list() const
 	{
 		std::list<std::string> result;
-		for(const object& item : make_object_iterator_range(flatten(obj_)))
-			result.push_back(extract<string>(str(item)));
+		for(auto item : flatten(obj_))
+			result.push_back(py::str(item).cast<string>());
 		return result;
 	}
-	object get() const { return obj_; }
-	object& get() { return obj_; }
+	py::object get() const { return obj_; }
+	py::object& get() { return obj_; }
 	pointer clone() const
 	{
-		object result = deepcopy(obj_);
+		py::object result = deepcopy(obj_);
 		return pointer(new PythonVariable(result));
 	}
 };
-inline Variable::pointer make_variable(object obj)
+inline Variable::pointer make_variable(py::object obj)
 {
 	return Variable::pointer(new PythonVariable(obj));
 }
 
-inline Variable::pointer extract_variable(object obj)
+inline Variable::pointer extract_variable(py::object obj)
 {
 	/*
 	if(is_dict(obj))
@@ -82,11 +81,11 @@ inline Variable::pointer extract_variable(object obj)
 	return make_variable(obj);
 }
 
-inline object variable_to_python(Variable::const_pointer var)
+inline py::object variable_to_python(Variable::const_pointer var)
 {
 	try {
 		const CompositeVariable* variables = boost::polymorphic_cast<const CompositeVariable*>(var.get());
-		list result;
+		py::list result;
 		for(const Variable::pointer& item : *variables)
 			result.append(variable_to_python(item));
 		return result;
@@ -99,97 +98,98 @@ inline object variable_to_python(Variable::const_pointer var)
 	}
 	try {
 		const SimpleVariable<Node>* variable = boost::polymorphic_cast<const SimpleVariable<Node>*>(var.get());
-		return object(NodeWrapper(variable->get()));
+		return py::cast(NodeWrapper(variable->get()));
 	} catch(const std::bad_cast&) {
 	}
-	return str(var->to_string());
+	return py::str(var->to_string());
 }
 
-NodeList Command(const Environment& env, object target, object source, object action);
-void Default(const Environment::pointer& env, object obj);
+NodeList Command(const Environment& env, py::object target, py::object source, py::object action);
+void Default(const Environment::pointer& env, py::object obj);
 
 NodeWrapper Entry(Environment::pointer, std::string name);
 NodeWrapper File(Environment::pointer, std::string name);
 NodeWrapper Dir(Environment::pointer, std::string name);
 NodeWrapper Value(Environment::pointer, std::string name);
-NodeList Alias(object aliases, object sources, object actions);
-void Execute(Environment::pointer, object obj);
-object get_item_from_env(const Environment& env, const std::string& key);
+NodeList Alias(py::object aliases, py::object sources, py::object actions);
+void Execute(Environment::pointer, py::object obj);
+py::object get_item_from_env(const Environment& env, const std::string& key);
 void del_item_in_env(Environment& env, const std::string& key);
-void set_item_in_env(Environment& env, const std::string& key, object val);
-void Tool(Environment::pointer, object obj);
-void Platform(Environment::pointer, const std::string& name);
+void set_item_in_env(Environment& env, const std::string& key, py::object val);
+void Tool(Environment&, py::object obj);
+void Platform(Environment&, const std::string& name);
 
 enum UpdateType { Append, Prepend };
 enum UniqueType { Unique, NonUnique };
 
-inline object update_dict(object old_val, object new_val)
+inline py::object update_dict(py::object old_val, py::object new_val)
 {
-	dict result = dict(dictify(old_val));
-	result.update(dictify(new_val));
+	py::dict result = dictify(old_val);
+	PyDict_Update(result.ptr(), dictify(new_val).ptr());
 	return result;
 }
 
-template<UpdateType update, UniqueType unique> inline void update_item(list&, const object&);
+template<UpdateType update, UniqueType unique> inline void update_item(py::list&, const py::object&);
 
-template<> inline void update_item<Append, NonUnique>(list& the_list, const object& item)
+template<> inline void update_item<Append, NonUnique>(py::list& the_list, const py::object& item)
 {
 	the_list.append(item);
 }
-template<> inline void update_item<Prepend, NonUnique>(list& the_list, const object& item)
+template<> inline void update_item<Prepend, NonUnique>(py::list& the_list, const py::object& item)
 {
-	the_list.insert(0, item);
+	PyList_Insert(the_list.ptr(), 0, item.ptr());
 }
-template<> inline void update_item<Append, Unique>(list& the_list, const object& item)
+template<> inline void update_item<Append, Unique>(py::list& the_list, const py::object& item)
 {
-	if(!the_list.count(item))
-		the_list.append(item);
+	for(auto i : the_list)
+		if(i == item)
+			return;
+	the_list.append(item);
 }
-template<> inline void update_item<Prepend, Unique>(list& the_list, const object& item)
+template<> inline void update_item<Prepend, Unique>(py::list& the_list, const py::object& item)
 {
-	if(!the_list.count(item))
-		the_list.insert(0, item);
+	for(auto i : the_list)
+		if(i == item)
+			return;
+	PyList_Insert(the_list.ptr(), 0, item.ptr());
 }
 
-template<UpdateType update, UniqueType unique> object update_list(object old_val, object new_val)
+template<UpdateType update, UniqueType unique> py::object update_list(py::object old_val, py::object new_val)
 {
-	list result(flatten(old_val));
+	py::list result(flatten(old_val));
 	new_val = flatten(new_val);
 	if(update == Prepend)
 		new_val = reversed(new_val);
-	for(const object& item : make_object_iterator_range(new_val))
-		update_item<update, unique>(result, item);
+	for(auto item : new_val)
+		update_item<update, unique>(result, py::reinterpret_borrow<py::object>(item));
 	return result;
 }
 
-template<UpdateType update_type, UniqueType unique_type>object Update(const tuple& args, const dict& kw)
+template<UpdateType update_type, UniqueType unique_type> void Update(Environment& env, py::kwargs kw)
 {
-	Environment::pointer env_ptr = extract<Environment::pointer>(args[0]);
-	Environment& env = *env_ptr;
-	for(const object& item : make_object_iterator_range(kw.items())) {
-		std::string key = extract<std::string>(item[0]);
-		object old_val = env[key] ? variable_to_python(env[key]) : object();
-		object new_val(item[1]);
-		if(is_dict(old_val) || is_dict(new_val))
+	for(auto item : kw) {
+		std::string key = py::reinterpret_borrow<py::object>(item.first).cast<std::string>();
+		py::object old_val = env[key] ? variable_to_python(env[key]) : py::none();
+		py::object new_val {py::reinterpret_borrow<py::object>(item.second)};
+		if(py::isinstance<py::dict>(old_val) || py::isinstance<py::dict>(new_val))
 			env[key] = extract_variable(update_dict(old_val, new_val));
 		else
 			env[key] = extract_variable(update_list<update_type, unique_type>(old_val, new_val));
 	}
-	return object();
 }
 
-object Replace(const tuple& args, const dict& kw);
-object Detect(const Environment&, object progs);
+void Replace(Environment&, py::kwargs kw);
+py::object Detect(const Environment&, py::object progs);
 bool has_key(const Environment&, const string& key);
-object get_item_or_none(const Environment&, const string& key);
-object get_env_attr(object, const string& key);
-object AddMethod(object, object, object);
-object SetDefault(tuple, dict);
+py::object get_item_or_none(const Environment&, const string& key);
+py::object get_env_attr(py::object, const string& key);
+void AddMethod(py::object, py::object, const std::string& name);
+void SetDefault(Environment&, py::kwargs);
 std::string Dump(const Environment& env);
-object make_environment(tuple, dict);
-Environment::pointer default_environment(tuple, dict);
+void make_environment(Environment& env, py::args, py::kwargs);
+Environment::pointer default_environment(py::tuple, py::dict);
 Environment::pointer default_environment();
-object DefaultEnvironment(tuple args, dict kw);
+py::object DefaultEnvironment(py::tuple args, py::dict kw);
 
 }
 }

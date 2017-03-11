@@ -24,9 +24,8 @@
 #include <string>
 #include <map>
 #include <vector>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <boost/lexical_cast.hpp>
-#include <boost/enable_shared_from_this.hpp>
 
 #include "dependency_graph.hpp"
 
@@ -36,8 +35,8 @@ namespace sconspp
 class Variable
 {
 	public:
-	typedef boost::shared_ptr<Variable> pointer;
-	typedef boost::shared_ptr<const Variable> const_pointer;
+	typedef std::shared_ptr<Variable> pointer;
+	typedef std::shared_ptr<const Variable> const_pointer;
 
 	virtual ~Variable() {}
 
@@ -47,16 +46,16 @@ class Variable
 	virtual pointer clone() const = 0;
 };
 
-class Environment : public boost::enable_shared_from_this<Environment>
+class Environment : public std::enable_shared_from_this<Environment>
 {
 	typedef std::map<std::string, Variable::pointer> Variables;
 	Variables variables_;
 
+	public:
 	Environment() {}
 
-	public:
-	typedef boost::shared_ptr<Environment> pointer;
-	typedef boost::shared_ptr<const Environment> const_pointer;
+	typedef std::shared_ptr<Environment> pointer;
+	typedef std::shared_ptr<const Environment> const_pointer;
 
 	std::string subst(const std::string&, bool for_signature = false) const;
 	Variable::const_pointer operator[](const std::string str) const

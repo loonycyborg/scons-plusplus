@@ -18,6 +18,9 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
+#include "python_interface_internal.hpp"
+#include <pybind11/eval.h>
+
 #include <numeric>
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix_core.hpp>
@@ -32,7 +35,6 @@
 #include "environment.hpp"
 #include "subst.hpp"
 #include "python_interface.hpp"
-#include "python_interface_internal.hpp"
 #include "environment_wrappers.hpp"
 
 namespace
@@ -67,7 +69,7 @@ using boost::phoenix::construct;
 using sconspp::Environment;
 using sconspp::Variable;
 
-boost::variant<std::string, object> expand_variable(const Environment& env, const boost::iterator_range<std::string::const_iterator>& str, bool for_signature)
+boost::variant<std::string, py::object> expand_variable(const Environment& env, const boost::iterator_range<std::string::const_iterator>& str, bool for_signature)
 {
 	using namespace sconspp::python_interface;
 	std::string name(str.begin(), str.end());
@@ -76,8 +78,8 @@ boost::variant<std::string, object> expand_variable(const Environment& env, cons
 		return "";
 	try {
 		const PythonVariable* variable = boost::polymorphic_cast<const PythonVariable*>(var.get());
-		object obj = variable->get();
-		if(is_callable(obj))
+		py::object obj = variable->get();
+		if(PyCallable_Check(obj.ptr()))
 			obj = obj(get_item_from_env(env, "SOURCES"), get_item_from_env(env, "TARGETS"), env, false);
 		return sconspp::python_interface::subst(env, obj, for_signature);
 	} catch(const std::bad_cast&) {
@@ -85,36 +87,36 @@ boost::variant<std::string, object> expand_variable(const Environment& env, cons
 	return sconspp::python_interface::subst(env, sconspp::python_interface::variable_to_python(var), for_signature);
 }
 
-boost::variant<std::string, object> eval_python(const Environment& env, const std::string& code, bool for_signature)
+boost::variant<std::string, py::object> eval_python(const Environment& env, const std::string& code, bool for_signature)
 {
-	return sconspp::python_interface::subst(env, sconspp::python_interface::eval(str(code), object(env), object(env)), for_signature);
+	return sconspp::python_interface::subst(env, py::eval(py::str(code), py::cast(env), py::cast(env)), for_signature);
 }
 
-class concat : public boost::static_visitor<boost::variant<std::string, object> >
+class concat : public boost::static_visitor<boost::variant<std::string, py::object> >
 {
 	const Environment& env;
 
 	public:
 	concat(const Environment& env) : env(env) {}
-	boost::variant<std::string, object> operator()(const std::string str1, const std::string str2)
+	boost::variant<std::string, py::object> operator()(const std::string str1, const std::string str2)
 	{
 		return str1 + str2;
 	}
-	boost::variant<std::string, object> operator()(object obj, const std::string str)
+	boost::variant<std::string, py::object> operator()(py::object obj, const std::string str)
 	{
 		return sconspp::python_interface::expand_python(env, obj) + str;
 	}
-	boost::variant<std::string, object> operator()(const std::string str, object obj)
+	boost::variant<std::string, py::object> operator()(const std::string str, py::object obj)
 	{
 		return str + sconspp::python_interface::expand_python(env, obj);
 	}
-	boost::variant<std::string, object> operator()(object obj1, object obj2)
+	boost::variant<std::string, py::object> operator()(py::object obj1, py::object obj2)
 	{
 		return sconspp::python_interface::expand_python(env, obj1) + sconspp::python_interface::expand_python(env, obj2);
 	}
 };
 
-boost::variant<std::string, object> concat_subst(const Environment& env, const std::vector<boost::variant<std::string, object> >& objs)
+boost::variant<std::string, py::object> concat_subst(const Environment& env, const std::vector<boost::variant<std::string, py::object> >& objs)
 {
 	if(objs.empty())
 		return "";
@@ -142,7 +144,7 @@ struct handle_parse_error_impl
 function<handle_parse_error_impl> handle_parse_error;
 
 template <typename Iterator>
-struct interpolator : grammar<Iterator, boost::variant<std::string, object>()>
+struct interpolator : grammar<Iterator, boost::variant<std::string, py::object>()>
 {
 	interpolator(const Environment& env, bool for_signature) : interpolator::base_type(input)
 	{
@@ -168,21 +170,21 @@ struct interpolator : grammar<Iterator, boost::variant<std::string, object>()>
 		on_error<fail>(input, handle_parse_error(args::_1, args::_2, args::_3, args::_4));
 	}
 
-	rule<Iterator, boost::variant<std::string, object>()> variable_ref, python, text, skip, input;
+	rule<Iterator, boost::variant<std::string, py::object>()> variable_ref, python, text, skip, input;
 	rule<Iterator, std::string()> raw_text, variable_name, python_code;
 };
 
-class to_object : public boost::static_visitor<object>
+class to_object : public boost::static_visitor<py::object>
 {
 	public:
-	object operator()(object& obj) const
+	py::object operator()(py::object& obj) const
 	{
 		return obj;
 	}
 
-	object operator()(const std::string& str) const
+	py::object operator()(const std::string& str) const
 	{
-		return boost::python::str(str);
+		return py::str(str);
 	}
 };
 
@@ -193,7 +195,7 @@ class to_string : public boost::static_visitor<std::string>
 	to_string(const Environment& env) : env(env)
 	{
 	}
-	std::string operator()(object& obj) const
+	std::string operator()(py::object& obj) const
 	{
 		return sconspp::python_interface::expand_python(env, obj);
 	}
@@ -212,9 +214,9 @@ namespace sconspp
 namespace python_interface
 {
 
-object subst(const Environment& env, const std::string& input, bool for_signature)
+py::object subst(const Environment& env, const std::string& input, bool for_signature)
 {
-	boost::variant<std::string, object> parse_result;
+	boost::variant<std::string, py::object> parse_result;
 	std::string::const_iterator iter(input.begin());
 
 	interpolator<std::string::const_iterator> interp(env, for_signature);
@@ -224,34 +226,33 @@ object subst(const Environment& env, const std::string& input, bool for_signatur
 	return boost::apply_visitor(visitor, parse_result);
 }
 
-object subst(const Environment& env, object obj, bool for_signature)
+py::object subst(const Environment& env, py::object obj, bool for_signature)
 {
-	if(is_list(obj) || is_tuple(obj)) {
-		list result;
-		for(object item : make_object_iterator_range(obj)) {
-			result.append(subst(env, item, for_signature));
+	if(py::isinstance<py::list>(obj) || py::isinstance<py::tuple>(obj)) {
+		py::list result;
+		for(auto item : obj) {
+			result.append(subst(env, py::reinterpret_borrow<py::object>(item), for_signature));
 		}
 		return result;
 	}
 
-	if(is_string(obj))
-		return subst(env, extract<std::string>(obj), for_signature);
+	if(py::isinstance<py::str>(obj))
+		return subst(env, obj.cast<std::string>(), for_signature);
 	return obj;
 }
 
-std::string expand_python(const Environment& env, object obj)
+std::string expand_python(const Environment& env, py::object obj)
 {
-	if(is_none(obj))
+	if(obj.is_none())
 		return std::string();
-	try {
+
+	if(py::isinstance<py::list>(obj) || py::isinstance<py::tuple>(obj)) {
 		std::vector<std::string> words;
-		for(object item : make_object_iterator_range(obj))
-			words.push_back(expand_python(env, item));
+		for(auto item : obj)
+			words.push_back(expand_python(env, py::reinterpret_borrow<py::object>(item)));
 		return boost::algorithm::join(words, std::string(" "));
-	} catch(const error_already_set&) {
-		PyErr_Clear();
 	}
-	return extract<std::string>(str(obj));
+	return py::str(obj).cast<std::string>();
 }
 
 }

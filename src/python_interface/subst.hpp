@@ -21,20 +21,17 @@
 #ifndef SUBST_HPP
 #define SUBST_HPP
 
-#include <boost/python.hpp>
-
 #include "environment.hpp"
-
-using namespace boost::python;
+#include "python_interface/python_interface_internal.hpp"
 
 namespace sconspp
 {
 namespace python_interface
 {
 
-object subst(const Environment& env, const std::string&, bool for_signature = false);
-object subst(const Environment& env, object, bool for_signature = false);
-std::string expand_python(const Environment& env, object obj);
+py::object subst(const Environment& env, const std::string&, bool for_signature = false);
+py::object subst(const Environment& env, py::object, bool for_signature = false);
+std::string expand_python(const Environment& env, py::object obj);
 
 }
 }

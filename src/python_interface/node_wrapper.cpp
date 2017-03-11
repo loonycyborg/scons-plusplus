@@ -30,38 +30,38 @@ namespace sconspp
 namespace python_interface
 {
 
-NodeList extract_file_nodes(const Environment& env, object obj)
+NodeList extract_file_nodes(const Environment& env, py::object obj)
 {
 	NodeList result;
-	for(object node : make_object_iterator_range(obj))
-		if(is_string(node)) {
-			result.push_back(add_entry_indeterminate(extract_string_subst(env, node)));
+	for(auto node : obj)
+		if(py::isinstance<py::str>(node)) {
+			result.push_back(add_entry_indeterminate(extract_string_subst(env, py::reinterpret_borrow<py::object>(node))));
 		} else {
-			result.push_back(extract_node(node));
+			result.push_back(extract_node(py::reinterpret_borrow<py::object>(node)));
 		}
 	return result;
 }
 
-Builder::NodeStringList extract_nodes(object obj)
+Builder::NodeStringList extract_nodes(py::object obj)
 {
 	Builder::NodeStringList result;
-	for(object node : make_object_iterator_range(obj)) {
-		if(is_string(node))
-			result.push_back(extract<std::string>(node)());
+	for(auto node : obj) {
+		if(py::isinstance<py::str>(node))
+			result.push_back(node.cast<std::string>());
 		else
-			result.push_back(extract_node(node));
+			result.push_back(extract_node(py::reinterpret_borrow<py::object>(node)));
 	}
 	return result;
 }
 
-Builder::NodeStringList extract_nodes(const Environment& env, object obj)
+Builder::NodeStringList extract_nodes(const Environment& env, py::object obj)
 {
 	Builder::NodeStringList result;
-	for(object node : make_object_iterator_range(obj)) {
-		if(is_string(node))
-			result.push_back(extract_string_subst(env, node));
+	for(auto node : obj) {
+		if(py::isinstance<py::str>(node))
+			result.push_back(extract_string_subst(env, py::reinterpret_borrow<py::object>(node)));
 		else
-			result.push_back(extract_node(node));
+			result.push_back(extract_node(py::reinterpret_borrow<py::object>(node)));
 	}
 	return result;
 }
@@ -76,7 +76,7 @@ struct ExtractFileVisitor : public boost::static_visitor<Node>
 	}
 };
 
-NodeList extract_file_nodes(object obj)
+NodeList extract_file_nodes(py::object obj)
 {
 	NodeList result;
 	Builder::NodeStringList nodes = extract_nodes(obj);

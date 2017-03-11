@@ -22,18 +22,19 @@
 #define SCONSCRIPT_HPP
 
 #include "environment.hpp"
+#include "python_interface/python_interface_internal.hpp"
 
 namespace sconspp
 {
 namespace python_interface
 {
 
-object SConscript(const std::string& script);
-object SConscript(const Environment&, const std::string& script);
+py::object SConscript(const std::string& script);
+py::object SConscript(const Environment&, const std::string& script);
 
-object Export(tuple args, dict kw);
-object Import(tuple args, dict kw);
-object Return(tuple args, dict kw);
+void Export(py::args args);
+void Import(py::args args);
+void Return(py::args args, py::kwargs kw);
 
 }
 }

@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_CASE(test_update)
 BOOST_AUTO_TEST_CASE(test_add_method)
 {
 	SCONSPP_EXEC("env = Environment()");
-	SCONSPP_EXEC("def Custom(env): return 'foo'");
+	SCONSPP_EXEC("def Custom(env):\n\treturn 'foo'");
 	SCONSPP_EXEC("env.AddMethod(Custom)");
 	SCONSPP_CHECK("env.Custom() == 'foo'");
 }
@@ -128,8 +128,8 @@ BOOST_AUTO_TEST_CASE(test_depends)
 	SCONSPP_EXEC("dependency = Alias('test_depends_dependency')");
 	SCONSPP_EXEC("Depends(target, dependency)");
 	Node 
-		target = python_interface::extract_node(ns["target"][0]),
-		dependency = python_interface::extract_node(ns["dependency"][0]);
+		target = python_interface::extract_node(py::list(ns["target"])[0]),
+		dependency = python_interface::extract_node(py::list(ns["dependency"])[0]);
 	BOOST_CHECK(is_adjacent(graph, target, dependency));
 }
 

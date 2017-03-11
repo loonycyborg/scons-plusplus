@@ -44,7 +44,7 @@ class Builder
 	    Task::Scanner scanner = Task::Scanner()
 		) const;
 	public:
-	typedef boost::shared_ptr<Builder> pointer;
+	typedef std::shared_ptr<Builder> pointer;
 
 	virtual ~Builder() {}
 

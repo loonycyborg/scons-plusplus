@@ -21,8 +21,6 @@
 #include "python_interface_internal.hpp"
 #include "python_interface/directives.hpp"
 
-#include <boost/python/raw_function.hpp>
-
 #include "util.hpp"
 #include "environment.hpp"
 #include "python_interface/action_wrapper.hpp"
@@ -34,15 +32,16 @@ namespace sconspp
 namespace python_interface
 {
 
-object WhereIs(const std::string& name)
+py::object WhereIs(const std::string& name)
 {
 	std::string path = where_is(name).native();
 	if(path.empty())
-		return object();
+		return py::none();
 	else
-		return str(path);
+		return py::str(path);
 }
 
+/*
 class DirectiveWrapper
 {
 	const char* name_;
@@ -50,21 +49,22 @@ class DirectiveWrapper
 	public:
 	DirectiveWrapper(const char* name) : name_(name) {}
 
-	object operator()(tuple args, dict kw)
+	py::object operator()(py::tuple args, py::dict kw)
 	{
-		static object directive = import("SCons").attr("Script").attr(name_);
+		static py::object directive = import("SCons").attr("Script").attr(name_);
 		const Environment& env = extract<const Environment&>(args[0]);
 		return call_extended(directive, tuple(subst(env, args.slice(1, _))), kw);
 	}
 };
 
-object subst_directive_args(const char* name)
+py::object subst_directive_args(const char* name)
 {
 	return raw_function(DirectiveWrapper(name));
 }
+*/
 
 template<template<class Container> class insert_iterator>
-inline void AddFooAction(const object& target, const object& action)
+inline void AddFooAction(const py::object& target, const py::object& action)
 {
 	ActionList actions = make_actions(flatten(action));
 	NodeList targets = extract_file_nodes(flatten(target));
@@ -78,17 +78,17 @@ inline void AddFooAction(const object& target, const object& action)
 		std::copy(actions.begin(), actions.end(), insert_iterator<ActionList>(task->actions()));
 }
 
-void AddPreAction(object target, object action)
+void AddPreAction(py::object target, py::object action)
 {
 	AddFooAction<std::front_insert_iterator>(target, action);
 }
 
-void AddPostAction(object target, object action)
+void AddPostAction(py::object target, py::object action)
 {
 	AddFooAction<std::back_insert_iterator>(target, action);
 }
 
-void Depends(object target, object dependency)
+void Depends(py::object target, py::object dependency)
 {
 	NodeList
 		targets = extract_file_nodes(flatten(target)),
@@ -100,23 +100,22 @@ void Depends(object target, object dependency)
 	}
 }
 
-object AlwaysBuild(tuple args, dict keywords)
+void AlwaysBuild(py::args args)
 {
 	NodeList nodes = extract_file_nodes(flatten(args));
 	for(Node node : nodes)
 		graph[node]->always_build();
-	return object();
 }
 
-object FindFile(const std::string& name, object dir_objs)
+py::object FindFile(const std::string& name, py::object dir_objs)
 {
 	std::vector<std::string> directories;
-	for(object dir : make_object_iterator_range(flatten(dir_objs)))
-		directories.push_back(extract<std::string>(dir)());
+	for(auto dir : flatten(dir_objs))
+		directories.push_back(dir.cast<std::string>());
 	boost::optional<Node> file = find_file(name, directories);
 	if(file)
-		return object(NodeWrapper(file.get()));
-	return object();
+		return py::cast(NodeWrapper(file.get()));
+	return py::none();
 }
 
 }
