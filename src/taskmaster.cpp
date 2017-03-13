@@ -26,7 +26,9 @@
 #include <boost/spirit/include/phoenix_core.hpp>
 #include <boost/spirit/include/phoenix_stl.hpp>
 #include <boost/spirit/include/phoenix_bind.hpp>
-#include <boost/thread.hpp>
+#include <thread>
+#include <future>
+#include <condition_variable>
 #include <map>
 #include <iostream>
 
@@ -195,53 +197,49 @@ namespace sconspp
 
 	class JobServer
 	{
-		typedef std::map<Node, boost::shared_future<int> > Futures;
-		Futures futures;
-		typedef std::vector<boost::shared_future<int> > FutureVec;
 		typedef std::vector<std::pair<Node,int>> ResultVec;
-		
-		FutureVec future_vec() const
-		{
-			FutureVec vec;
-			for(const Futures::value_type& value : futures)
-				vec.push_back(value.second);
-			return vec;
-		}
+		ResultVec result_vec;
+		std::size_t num_scheduled_jobs = 0;
+		std::condition_variable num_scheduled_jobs_cv;
+		std::mutex num_scheduled_jobs_mutex;
 
 		public:
 		void schedule(Node node)
 		{
-			boost::packaged_task<int> ptask(boost::bind(
-			    &Task::execute, graph[node]->task().get()
-				));
-			futures[node] = boost::shared_future<int>(ptask.get_future());
-			boost::thread thread(boost::move(ptask));
-		}
-		ResultVec wait_for_any()
-		{
-			FutureVec vec = future_vec();
-			boost::wait_for_any(vec.begin(), vec.end());
-			Futures new_futures;
-			ResultVec result;
-			for(const auto& fut : futures) {
-				if(fut.second.is_ready()) {
-					int status = fut.second.get();
-					result.push_back(std::make_pair(fut.first, status));
-				} else {
-					new_futures.insert(fut);
+			std::lock_guard<std::mutex> lock { num_scheduled_jobs_mutex };
+			std::packaged_task<void()> ptask{ [this, node]() {
+				int result;
+				try {
+					result = graph[node]->task()->execute();
+				} catch(std::exception& e) {
+					result = -1;
+					logging::error(logging::Taskmaster) <<
+						"Exception during execution of task: " << e.what() << std::endl;
 				}
-			}
-			std::swap(futures, new_futures);
-			return result;
+				std::lock_guard<std::mutex> lock { num_scheduled_jobs_mutex };
+				num_scheduled_jobs--;
+				num_scheduled_jobs_cv.notify_one();
+				result_vec.emplace_back(node, result);
+			} };
+			num_scheduled_jobs++;
+			std::thread thread(std::move(ptask));
+			thread.detach();
+		}
+		bool have_free_slots()
+		{
+			return !num_jobs || num_scheduled_jobs < num_jobs.get();
+		}
+		ResultVec wait_for_results()
+		{
+			std::unique_lock<std::mutex> lock(num_scheduled_jobs_mutex);
+			num_scheduled_jobs_cv.wait(lock, [this]{ return have_free_slots(); });
+			return std::move(result_vec);
 		}
 		void wait_for_all()
 		{
-			if(futures.size() > 0) {
-				FutureVec vec = future_vec();
-				boost::wait_for_all(vec.begin(), vec.end());
-			}
+			std::unique_lock<std::mutex> lock(num_scheduled_jobs_mutex);
+			num_scheduled_jobs_cv.wait(lock, [this]{ return num_scheduled_jobs == 0; });
 		}
-		std::size_t num_scheduled_jobs() const { return futures.size(); }
 	};
 
 	enum TaskState { SCHEDULED, BLOCKED, TO_BUILD, BUILT, FAILED };
@@ -250,7 +248,7 @@ namespace sconspp
 	{
 		if(num_jobs) {
 			if(num_jobs.get() == 0)
-				num_jobs = boost::thread::hardware_concurrency();
+				num_jobs = std::thread::hardware_concurrency();
 			if(num_jobs.get() == 0) {
 				logging::warning(logging::Taskmaster) << "Unknown degree of hardware concurrency."
 					"Setting the number of parallel jobs to 1\n";
@@ -266,7 +264,7 @@ namespace sconspp
 
 		Node end_node = *(--nodes.end());
 		while(!states.count(end_node) || (states[end_node] != BUILT && states[end_node] != FAILED)) {
-			for(const auto& result : job_server.wait_for_any()) {
+			for(const auto& result : job_server.wait_for_results()) {
 				db[result.first].task_status() = result.second;
 				if(result.second == 0)
 					states[result.first] = BUILT;
@@ -303,7 +301,7 @@ namespace sconspp
 						logging::debug(logging::Taskmaster)
 						    << "Scheduled building target " << properties(node).name() << ".\n";
 						states[node] = SCHEDULED;
-						if(num_jobs && job_server.num_scheduled_jobs() == *num_jobs) {
+						if(!job_server.have_free_slots()) {
 							logging::debug(logging::Taskmaster)
 								<< "All slots taken. Waiting...\n";
 							break;
