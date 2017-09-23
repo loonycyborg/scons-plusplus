@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2009 by Sergey Popov                                    *
+ *   Copyright (C) 2017 by Sergey Popov                                    *
  *   loonycyborg@gmail.com                                                 *
  *                                                                         *
  *  This file is part of SCons++.                                          *
@@ -17,51 +17,13 @@
  *  You should have received a copy of the GNU General Public License      *
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
+#pragma once
 
-#include "dependency_graph.hpp"
-#include "node_properties.hpp"
-#include "fs_node.hpp"
-#include "alias_node.hpp"
-#include "write_dot.hpp"
-#include "taskmaster.hpp"
-#include "log.hpp"
-#include "options.hpp"
-#include "frontend.hpp"
-
-#include <fstream>
-
-#include <boost/filesystem/operations.hpp>
-
-using namespace sconspp;
-
-int main(int argc, char** argv)
+namespace sconspp
 {
-	try {
-		std::vector<std::string> command_line_targets = parse_command_line(argc, argv);
-		run_script(argc, argv);
+	enum struct Frontend { scons };
+	std::istream& operator>>(std::istream& in, Frontend& frontend);
+	extern Frontend commandline_frontend;
 
-		Node end_goal = add_dummy_node("The end goal");
-		if(!command_line_targets.empty()) {
-			for(std::string target : command_line_targets) {
-				boost::optional<Node> node = get_alias(target);
-				if(!node)
-					node = get_entry(target);
-				if(node)
-					add_edge(end_goal, node.get(), graph);
-				else
-					throw std::runtime_error("I don't see alias or file target named '" + target + "'. That's really all there is to be said on the matter");
-			}
-		} else
-			for(Node node : default_targets)
-				add_edge(end_goal, node, graph);
-		build(end_goal);
-	} catch(const std::exception& e) {
-		logging::error() << e.what() << std::endl;
-		return 1;
-	}
-
-	{
-	std::ofstream dot_file("graph.dot");
-	write_dot(dot_file, graph);
-	}
+	void run_script(int argc, char** argv);
 }
