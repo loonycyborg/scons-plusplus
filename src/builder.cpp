@@ -67,21 +67,6 @@ inline NodeList make_nodes(const Builder::NodeStringList& list)
 	return result;
 }
 
-NodeList Command::operator()(
-        const Environment& env,
-		const NodeStringList& targets,
-		const NodeStringList& sources
-		) const
-{
-	ActionList action;
-	action.push_back(Action::pointer(new ExecCommand(command_)));
-	NodeList 
-		target_nodes = make_nodes<add_entry_indeterminate>(targets),
-		source_nodes = make_nodes<add_entry_indeterminate>(sources);
-	create_task(env, target_nodes, source_nodes, action);
-	return target_nodes;
-}
-
 NodeList SimpleBuilder::operator()(
         const Environment& env,
 		const NodeStringList& targets,

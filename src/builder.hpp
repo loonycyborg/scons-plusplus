@@ -56,20 +56,6 @@ class Builder
 		) const = 0;
 };
 
-class Command : public Builder
-{
-	std::string command_;
-
-	public:
-	NodeList operator()(
-	    const Environment& env,
-		const NodeStringList& targets,
-		const NodeStringList& sources
-		) const;
-
-	Command(std::string command) : command_(command) {}
-};
-
 class SimpleBuilder : public Builder
 {
 	ActionList actions_;
