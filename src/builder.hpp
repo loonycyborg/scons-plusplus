@@ -33,6 +33,18 @@
 namespace sconspp
 {
 
+typedef std::vector<boost::variant<Node, std::string> > NodeStringList;
+
+NodeList add_command(const Environment& env,
+				 const NodeStringList& targets,
+				 const NodeStringList& sources,
+				 const ActionList& actions);
+
+NodeList add_alias(const Environment& env,
+				 const NodeStringList& targets,
+				 const NodeStringList& sources,
+				 const ActionList& actions);
+
 class Builder
 {
 	protected:
@@ -48,12 +60,18 @@ class Builder
 
 	virtual ~Builder() {}
 
-	typedef std::vector<boost::variant<Node, std::string> > NodeStringList;
 	virtual NodeList operator()(
 	    const Environment& env,
 		const NodeStringList& targets,
 		const NodeStringList& sources
 		) const = 0;
+
+	static NodeList add_task(
+			const Environment& env,
+			const NodeList& targets,
+			const NodeList& sources,
+			const ActionList& actions
+			);
 };
 
 class SimpleBuilder : public Builder
@@ -68,20 +86,6 @@ class SimpleBuilder : public Builder
 		) const;
 
 	SimpleBuilder(const ActionList& actions) : actions_(actions) {}
-};
-
-class AliasBuilder : public Builder
-{
-	ActionList actions_;
-
-	public:
-	NodeList operator()(
-	    const Environment& env,
-		const NodeStringList& targets,
-		const NodeStringList& sources
-		) const;
-
-	AliasBuilder(const ActionList& actions) : actions_(actions) {}
 };
 
 }

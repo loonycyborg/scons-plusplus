@@ -78,7 +78,7 @@ NodeWrapper Value(Environment::pointer, std::string name)
 NodeList Alias(py::object aliases, py::object sources, py::object actions)
 {
 	ActionList action_list = make_actions(flatten(actions));
-	return AliasBuilder(action_list)(*default_environment(), extract_nodes(flatten(aliases)), extract_nodes(flatten(sources)));
+	return add_alias(*default_environment(), extract_nodes(flatten(aliases)), extract_nodes(flatten(sources)), action_list);
 }
 
 void Execute(Environment::pointer env, py::object obj)

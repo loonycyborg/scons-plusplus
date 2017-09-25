@@ -87,8 +87,8 @@ inline Node extract_node(py::object obj)
 	return obj.cast<NodeWrapper>().node;
 }
 
-Builder::NodeStringList extract_nodes(py::object obj);
-Builder::NodeStringList extract_nodes(const Environment& env, py::object obj);
+NodeStringList extract_nodes(py::object obj);
+NodeStringList extract_nodes(const Environment& env, py::object obj);
 
 }
 }

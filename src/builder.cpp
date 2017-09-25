@@ -31,6 +31,25 @@ using boost::add_edge;
 namespace sconspp
 {
 
+NodeList Builder::add_task(
+		const Environment& env,
+		const NodeList& targets,
+		const NodeList& sources,
+		const ActionList& actions
+		)
+{
+	if(!actions.empty()) {
+		Task::pointer task(new Task(env, targets, sources, actions));
+		for(const Node& node : targets)
+			graph[node]->set_task(task);
+	} else {
+		for(const Node& target : targets)
+			for(const Node& source : sources)
+				add_edge(target, source, graph);
+	}
+	return targets;
+}
+
 void Builder::create_task(
         const Environment& env,
 		const NodeList& targets,
@@ -39,10 +58,8 @@ void Builder::create_task(
 		Task::Scanner scanner
 		) const
 {
-	Task::pointer task(new Task(env, targets, sources, actions));
-	for(const Node& node : targets)
-		graph[node]->set_task(task);
-	task->set_scanner(scanner);
+	add_task(env, targets, sources, actions);
+	properties(targets[0]).task()->set_scanner(scanner);
 }
 
 template <Node (*factory)(const std::string&)>
@@ -59,12 +76,36 @@ struct make_node : public boost::static_visitor<Node>
 };
 
 template <Node (*factory)(const std::string&)>
-inline NodeList make_nodes(const Builder::NodeStringList& list)
+inline NodeList make_nodes(const NodeStringList& list)
 {
 	NodeList result;
 	make_node<factory> visitor;
 	transform(list.begin(), list.end(), back_inserter(result), boost::apply_visitor(visitor));
 	return result;
+}
+
+NodeList add_command(const Environment& env,
+				 const NodeStringList& targets,
+				 const NodeStringList& sources,
+				 const ActionList& actions)
+{
+	NodeList
+		target_nodes = make_nodes<add_entry_indeterminate>(targets),
+		source_nodes = make_nodes<add_entry_indeterminate>(sources);
+	Builder::add_task(env, target_nodes, source_nodes, actions);
+	return target_nodes;
+}
+
+NodeList add_alias(const Environment& env,
+				 const NodeStringList& targets,
+				 const NodeStringList& sources,
+				 const ActionList& actions)
+{
+	NodeList
+		target_nodes = make_nodes<add_alias>(targets),
+		source_nodes = make_nodes<add_entry_indeterminate>(sources);
+	Builder::add_task(env, target_nodes, source_nodes, actions);
+	return target_nodes;
 }
 
 NodeList SimpleBuilder::operator()(
@@ -78,25 +119,6 @@ NodeList SimpleBuilder::operator()(
 		source_nodes = make_nodes<add_entry_indeterminate>(sources);
 	create_task(env, target_nodes, source_nodes, actions_);
 	return target_nodes;
-}
-
-NodeList AliasBuilder::operator()(
-        const Environment& env,
-		const NodeStringList& targets,
-		const NodeStringList& sources
-		) const
-{
-	NodeList
-	    aliases = make_nodes<add_alias>(targets),
-		source_nodes = make_nodes<add_entry_indeterminate>(sources);
-	if(!actions_.empty()) {
-		create_task(env, aliases, source_nodes, actions_);
-	} else {
-		for(const Node& alias : aliases)
-			for(const Node& source : source_nodes)
-				add_edge(alias, source, graph);
-	}
-	return aliases;
 }
 
 }
