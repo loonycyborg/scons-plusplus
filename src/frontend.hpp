@@ -21,7 +21,7 @@
 
 namespace sconspp
 {
-	enum struct Frontend { scons };
+	enum struct Frontend { scons, make };
 	std::istream& operator>>(std::istream& in, Frontend& frontend);
 	extern Frontend commandline_frontend;
 
