@@ -109,7 +109,7 @@ void run_makefile(const std::string& makefile_path, int argc, char** argv)
 
 	makefile_ast makefile;
 	bool match = phrase_parse(iter, i_end, make_makefile,
-		blank - '\t' | lexeme['#' >> *(char_ - eol)] | (eol >> &eol),
+		blank - '\t' | lexeme['#' >> *(char_ - eol)] | (eol >> &eol) | (lit('\\') >> eol),
 		makefile);
 	for(auto variable : *(makefile.env)) {
 		std::cout << variable.first << " = " << variable.second->to_string() << std::endl;
