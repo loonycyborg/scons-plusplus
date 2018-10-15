@@ -95,7 +95,10 @@ auto add_rule = [](auto& ctx)
 	ActionList commands;
 	for(const auto& command : ast.commands)
 		commands.push_back(Action::pointer{new ExecCommand(command.command)});
-	sconspp::add_command(env, ast.targets, ast.sources, commands);
+	auto targets = sconspp::add_command(env, ast.targets, ast.sources, commands);
+	if(default_targets.empty() && !commands.empty())
+		for(Node target : targets)
+			default_targets.insert(target);
 };
 auto const make_makefile_def = *eol >> (make_macro[add_macro] | make_rule[add_rule]) % eol;
 
