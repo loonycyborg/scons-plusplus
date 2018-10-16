@@ -205,10 +205,14 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 		py::eval<py::eval_single_statement>("import sconspp_import", main_namespace, main_namespace);
 
 		PyDict_Update(main_namespace.ptr(), py::module::import("SCons.Script").attr("__dict__").ptr());
+
+		static py::gil_scoped_release unlock{};
 	}
 
 	void run_script(const std::string& filename, int argc, char** argv)
 	{
+		py::gil_scoped_acquire lock{};
+
 		argv[0][0] = 0;
 		PySys_SetArgv(argc, argv);
 		try {
@@ -218,7 +222,6 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 			std::cerr << "scons++: *** Unhandled python exception when parsing SConscript files." << std::endl;
 			throw;
 		}
-		static py::gil_scoped_release unlock{};
 	}
 
 	std::string eval_string(const std::string& expression, const Environment& environment)
