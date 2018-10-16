@@ -34,7 +34,7 @@ namespace python_interface
 
 int PythonAction::execute(const Environment& env) const
 {
-	ScopedGIL lock;
+	py::gil_scoped_acquire acquire;
 	try {
 		action_obj(
 			env["TARGETS"] ? variable_to_python(env["TARGETS"]) : py::none(),
@@ -49,7 +49,7 @@ int PythonAction::execute(const Environment& env) const
 
 std::string PythonAction::to_string(const Environment& env, bool) const
 {
-	ScopedGIL lock;
+	py::gil_scoped_acquire acquire;
 	return string(action_obj.attr("__name__").cast<std::string>()) + "()";
 }
 
@@ -60,7 +60,7 @@ py::object call_action_factory(ActionFactory& factory, py::args args, py::kwargs
 
 int ActionCaller::execute(const Environment& env) const
 {
-	ScopedGIL lock;
+	py::gil_scoped_acquire acquire;
 	try {
 		py::list args;
 		for(auto arg : args_)
@@ -76,7 +76,7 @@ int ActionCaller::execute(const Environment& env) const
 
 std::string ActionCaller::to_string(const Environment& env, bool) const
 {
-	ScopedGIL lock;
+	py::gil_scoped_acquire acquire;
 	py::list args;
 	for(auto arg : args_)
 		args.append(convert_(env.subst(py::str(arg).cast<string>())));

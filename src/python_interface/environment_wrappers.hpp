@@ -42,9 +42,10 @@ class PythonVariable : public Variable
 	py::object obj_;
 	public:
 	PythonVariable(py::object obj) : obj_(obj) {}
-	string to_string() const { return py::str(obj_).cast<string>(); }
+	string to_string() const { py::gil_scoped_acquire lock {}; return py::str(obj_).cast<string>(); }
 	std::list<std::string> to_string_list() const
 	{
+		py::gil_scoped_acquire lock {};
 		std::list<std::string> result;
 		for(auto item : flatten(obj_))
 			result.push_back(py::str(item).cast<string>());
@@ -54,6 +55,7 @@ class PythonVariable : public Variable
 	py::object& get() { return obj_; }
 	pointer clone() const
 	{
+		py::gil_scoped_acquire lock {};
 		py::object result = deepcopy(obj_);
 		return pointer(new PythonVariable(result));
 	}

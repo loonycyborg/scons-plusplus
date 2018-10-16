@@ -193,9 +193,7 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 
 	void init_python()
 	{
-		Py_Initialize();
-		PyEval_InitThreads();
-		PyEval_ReleaseLock();
+		static py::scoped_interpreter guard{};
 
 		main_namespace = py::dict(py::module::import("__main__").attr("__dict__"));
 
@@ -220,6 +218,7 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 			std::cerr << "scons++: *** Unhandled python exception when parsing SConscript files." << std::endl;
 			throw;
 		}
+		static py::gil_scoped_release unlock{};
 	}
 
 	std::string eval_string(const std::string& expression, const Environment& environment)
@@ -251,7 +250,7 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 
 	std::string subst_to_string(const Environment& env, const std::string& input, bool for_signature)
 	{
-		ScopedGIL lock;
+		py::gil_scoped_acquire acquire;
 		return expand_python(env, subst(env, input, for_signature));
 	}
 }

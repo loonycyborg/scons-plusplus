@@ -84,6 +84,7 @@ class PythonScanner
 	}
 	void operator()(const Environment& env, Node target, Node source)
 	{
+		py::gil_scoped_acquire lock {};
 		std::set<Node> deps;
 		scan(env, source_scanner_, source, deps, get_path(env, source_scanner_, source, py::none(), target, source));
 		scan(env, target_scanner_, target, deps, get_path(env, target_scanner_, target, py::none(), target, source));
