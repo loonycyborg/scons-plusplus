@@ -113,6 +113,7 @@ class BuildVisitor : public boost::default_dfs_visitor
 
 }
 
+/*
 namespace
 {
     std::ostream& operator<<(std::ostream& os, const sconspp::NodeList& node_list)
@@ -129,6 +130,7 @@ namespace
 		return os;
 	}
 }
+*/
 
 namespace sconspp
 {

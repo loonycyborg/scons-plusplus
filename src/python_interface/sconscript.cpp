@@ -109,10 +109,7 @@ py::object SConscript(const std::string& script)
 	try {
 		py::eval_file(SConscriptFile::current().path().string().c_str(), ns, ns);
 	} catch(py::error_already_set& err) {
-		err.restore();
-		if(PyErr_ExceptionMatches(SConscriptReturnException().ptr()))
-			err.clear();
-		else {
+		if(!err.matches(SConscriptReturnException())) {
 			throw;
 		}
 	}

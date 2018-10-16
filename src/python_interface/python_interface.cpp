@@ -19,6 +19,7 @@
  ***************************************************************************/
 
 #include <pybind11/pybind11.h>
+#include <pybind11/embed.h>
 #include <pybind11/eval.h>
 
 #include <iostream>
@@ -95,10 +96,8 @@ py::dict dictify(py::object obj)
 
 using namespace pybind11::literals;
 
-PYBIND11_PLUGIN(SCons)
+PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 {
-	py::module m_scons("SCons");
-
 	py::module m_node = m_scons.def_submodule("Node");
 	py::class_<NodeWrapper>(m_node, "Node")
 		.def("__str__", &NodeWrapper::to_string)
@@ -130,7 +129,7 @@ PYBIND11_PLUGIN(SCons)
 	py::module m_environment = m_scons.def_submodule("Environment");
 	py::class_<Environment, Environment::pointer> env{m_environment, "Environment", py::dynamic_attr()};
 	env
-		.def("__init__", &make_environment)
+		.def(py::init(&make_environment))
 		.def("subst", &Environment::subst, "input"_a, "for_signature"_a = false)
 		.def("Default", &Default)
 		.def("Command", &Command)
@@ -190,13 +189,10 @@ PYBIND11_PLUGIN(SCons)
 	py::module m_sconspp_ext = m_scons.def_submodule("SConsppExt");
 	py::class_<Task::Scanner>(m_sconspp_ext, "Scanner");
 	m_sconspp_ext.attr("CPPScanner") = Task::Scanner(scan_cpp);
-
-	return m_scons.ptr();
 }
 
 	void init_python()
 	{
-		PyImport_AppendInittab(const_cast<char*>("SCons"), initSCons);
 		Py_Initialize();
 		PyEval_InitThreads();
 		PyEval_ReleaseLock();

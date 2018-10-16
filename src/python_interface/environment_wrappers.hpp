@@ -116,8 +116,8 @@ void Execute(Environment::pointer, py::object obj);
 py::object get_item_from_env(const Environment& env, const std::string& key);
 void del_item_in_env(Environment& env, const std::string& key);
 void set_item_in_env(Environment& env, const std::string& key, py::object val);
-void Tool(Environment&, py::object obj);
-void Platform(Environment&, const std::string& name);
+void Tool(Environment::pointer, py::object obj);
+void Platform(Environment::pointer, const std::string& name);
 
 enum UpdateType { Append, Prepend };
 enum UniqueType { Unique, NonUnique };
@@ -142,14 +142,14 @@ template<> inline void update_item<Prepend, NonUnique>(py::list& the_list, const
 template<> inline void update_item<Append, Unique>(py::list& the_list, const py::object& item)
 {
 	for(auto i : the_list)
-		if(i == item)
+		if(i.is(item))
 			return;
 	the_list.append(item);
 }
 template<> inline void update_item<Prepend, Unique>(py::list& the_list, const py::object& item)
 {
 	for(auto i : the_list)
-		if(i == item)
+		if(i.is(item))
 			return;
 	PyList_Insert(the_list.ptr(), 0, item.ptr());
 }
@@ -186,7 +186,7 @@ py::object get_env_attr(py::object, const string& key);
 void AddMethod(py::object, py::object, const std::string& name);
 void SetDefault(Environment&, py::kwargs);
 std::string Dump(const Environment& env);
-void make_environment(Environment& env, py::args, py::kwargs);
+Environment::pointer make_environment(py::args, py::kwargs);
 Environment::pointer default_environment(py::tuple, py::dict);
 Environment::pointer default_environment();
 py::object DefaultEnvironment(py::tuple args, py::dict kw);

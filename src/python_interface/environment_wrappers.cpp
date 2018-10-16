@@ -114,14 +114,14 @@ void set_item_in_env(Environment& env, const std::string& key, py::object val)
 	env[key] = extract_variable(val);
 }
 
-void Tool(Environment& env, py::object obj)
+void Tool(Environment::pointer env, py::object obj)
 {
 	py::eval<py::eval_single_statement>("import SCons.Tool", main_namespace, main_namespace);
 	py::object tool = py::eval("SCons.Tool.Tool", main_namespace, main_namespace);
 	tool(obj)(env);
 }
 
-void Platform(Environment& env, const std::string& name)
+void Platform(Environment::pointer env, const std::string& name)
 {
 	py::eval<py::eval_single_statement>("import SCons.Platform", main_namespace, main_namespace);
 	py::object platform = py::eval("SCons.Platform.Platform", main_namespace, main_namespace);
@@ -129,7 +129,7 @@ void Platform(Environment& env, const std::string& name)
 		platform()(env);
 	else
 		platform(name)(env);
-	env["PLATFORM"] = extract_variable(py::eval("'FOO'"));
+	(*env)["PLATFORM"] = extract_variable(py::eval("'FOO'"));
 }
 
 void Replace(Environment& env, py::kwargs kw)
@@ -209,14 +209,15 @@ py::object concat(const std::string& prefix, py::object objs, const std::string&
 	return result;
 }
 
-void make_environment(Environment& env, py::args args, py::kwargs kw)
+Environment::pointer make_environment(py::args args, py::kwargs kw)
 {
-	new (&env) Environment();
+	Environment::pointer env_ptr{ new Environment };
+	Environment& env = *env_ptr;
 	env["BUILDERS"] = extract_variable(py::dict());
 
 	if(!kw.contains("_no_platform")) {
-		Platform(env, kw.contains("platform") ? kw["platform"].cast<string>() : "");
-		Tool(env, py::str("default"));
+		Platform(env_ptr, kw.contains("platform") ? kw["platform"].cast<string>() : "");
+		Tool(env_ptr, py::str("default"));
 
 		env["_concat"] = extract_variable(py::cast(std::function<decltype(concat)>(concat)));
 		env["_defines"] = extract_variable(py::module::import("SCons.Defaults").attr("_defines"));
@@ -233,6 +234,7 @@ void make_environment(Environment& env, py::args args, py::kwargs kw)
 		env["LIBPATH"] = extract_variable(py::list());
 		env["__env__"] = extract_variable(py::cast(env));
 	}
+	return env_ptr;
 }
 
 py::object DefaultEnvironment(py::tuple args, py::dict kw)
