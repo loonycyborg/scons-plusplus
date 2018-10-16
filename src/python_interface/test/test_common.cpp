@@ -1,3 +1,5 @@
+#include <pybind11/pybind11.h>
+
 #include "test_common.hpp"
 
 #include <boost/graph/filtered_graph.hpp>

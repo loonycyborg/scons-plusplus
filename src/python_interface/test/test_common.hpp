@@ -22,7 +22,7 @@ struct python_exception_matches
 	bool operator()(py::error_already_set const& err)
 	{
 		bool result = PyErr_ExceptionMatches(type);
-		return true;
+		return result;
 	}
 };
 #define SCONSPP_CHECK_THROW(expr, exception) BOOST_CHECK_EXCEPTION(py::eval(expr, ns, ns), py::error_already_set, python_exception_matches(exception))

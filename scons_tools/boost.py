@@ -89,6 +89,7 @@ def CheckBoost(context, boost_lib, require_version = None, header_only = False):
         test_program += """
         boost::unit_test::test_suite* init_unit_test_suite ( int, char**)
         {
+            return nullptr;
         }
         \n"""
 

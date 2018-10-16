@@ -1,4 +1,6 @@
 #define BOOST_TEST_MODULE scons_plus_plus regression tests
+
+#include <pybind11/pybind11.h>
 #include "test_common.hpp"
 #include "python_interface/node_wrapper.hpp"
 #include <boost/graph/graph_utility.hpp>
