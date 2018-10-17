@@ -21,14 +21,14 @@ struct python_exception_matches
 	python_exception_matches(PyObject* type) : type(type) {}
 	bool operator()(py::error_already_set const& err)
 	{
-		bool result = PyErr_ExceptionMatches(type);
-		return result;
+		return err.matches(type);
 	}
 };
 #define SCONSPP_CHECK_THROW(expr, exception) BOOST_CHECK_EXCEPTION(py::eval(expr, ns, ns), py::error_already_set, python_exception_matches(exception))
 
 struct sconspp_fixture
 {
+	py::gil_scoped_acquire lock;
 	py::dict ns;
 	sconspp_fixture()
 	{
