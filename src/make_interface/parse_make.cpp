@@ -46,11 +46,49 @@ struct make_command_ast
 	make_command_ast() {}
 };
 
+enum class special_target_type
+{
+	None=0, POSIX
+};
+
+struct special_target_symbol_ : boost::spirit::x3::symbols<special_target_type>
+{
+	special_target_symbol_() {
+		add
+			("POSIX", special_target_type::POSIX)
+		;
+	}
+} special_target_symbol;
+
 struct make_rule_ast
 {
 	NodeStringList targets;
 	NodeStringList sources;
+	special_target_type special_target = special_target_type::None;
 	std::vector<make_command_ast> commands;
+
+	void do_special_target() const {
+		switch (special_target) {
+			case special_target_type::None:
+				break;
+			case special_target_type::POSIX:
+				break;
+		}
+	}
+	NodeList operator()(const Environment& env) const {
+		if(special_target != special_target_type::None) {
+			do_special_target();
+			return {};
+		}
+		ActionList actions;
+		for(const auto& command : commands)
+			actions.push_back(Action::pointer{new ExecCommand(command.command)});
+		auto result = sconspp::add_command(env, targets, sources, actions);
+		if(default_targets.empty() && !result.empty())
+			for(Node target : result)
+				default_targets.insert(target);
+		return result;
+	}
 };
 
 struct makefile_ast
@@ -63,12 +101,14 @@ struct makefile_ast
 
 x3::rule<class make_macro, std::vector<std::string>> make_macro = "make_macro";
 x3::rule<class make_target, std::string> make_target = "make_target";
+x3::rule<class make_special_target, special_target_type> make_special_target = "make_special_target";
 x3::rule<class make_command, make_command_ast> make_command = "make_command";
 x3::rule<class make_rule, make_rule_ast> make_rule = "make_rule";
 x3::rule<class make_makefile, makefile_ast> make_makefile = "makefile";
 
 auto const make_macro_def = lexeme[+(graph - '=')] >> "=" >> -lexeme[+(char_ - eol - '#')];
 auto const make_target_def = lexeme[+(graph - ':')];
+auto const make_special_target_def = lexeme[lit('.') >> special_target_symbol];
 auto set_silent = [] (auto& ctx){ _val(ctx).silent = true; };
 auto set_ignore_error = [] (auto& ctx){ _val(ctx).ignore_error = true; };
 auto set_no_suppress = [] (auto& ctx){ _val(ctx).no_suppress = true; };
@@ -77,9 +117,10 @@ auto const make_command_def = lit('\t') >>
 	*(lit('@')[set_silent] | lit('-')[set_ignore_error] | lit('+')[set_no_suppress]) >>
 	lexeme[+(char_-eol)][add_command_string];
 auto add_target = [](auto& ctx){ _val(ctx).targets.push_back(_attr(ctx)); };
+auto add_special_target = [](auto& ctx){ _val(ctx).special_target = _attr(ctx); };
 auto add_source = [](auto& ctx){ _val(ctx).sources.push_back(_attr(ctx)); };
 auto add_command = [](auto& ctx){ _val(ctx).commands.push_back(_attr(ctx)); };
-auto const make_rule_def = +make_target[add_target] >> ":" >> *make_target[add_source] >> -(eol >> make_command[add_command]);
+auto const make_rule_def = -make_special_target[add_special_target] >> *make_target[add_target] >> ":" >> *make_target[add_source] >> -(eol >> make_command[add_command]);
 auto add_macro = [](auto& ctx)
 {
 	assert(_attr(ctx).size() == 1 || _attr(ctx).size() == 2);
@@ -92,17 +133,11 @@ auto add_rule = [](auto& ctx)
 {
 	const Environment& env = *(_val(ctx).env);
 	auto& ast = _attr(ctx);
-	ActionList commands;
-	for(const auto& command : ast.commands)
-		commands.push_back(Action::pointer{new ExecCommand(command.command)});
-	auto targets = sconspp::add_command(env, ast.targets, ast.sources, commands);
-	if(default_targets.empty() && !commands.empty())
-		for(Node target : targets)
-			default_targets.insert(target);
+	ast(env);
 };
 auto const make_makefile_def = *eol >> (make_macro[add_macro] | make_rule[add_rule]) % eol;
 
-BOOST_SPIRIT_DEFINE(make_macro, make_target, make_command, make_rule, make_makefile);
+BOOST_SPIRIT_DEFINE(make_macro, make_target, make_special_target, make_command, make_rule, make_makefile);
 
 void run_makefile(const std::string& makefile_path, int argc, char** argv)
 {
