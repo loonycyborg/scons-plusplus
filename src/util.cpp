@@ -43,7 +43,7 @@ boost::scoped_ptr<Environ> Environ::environ_;
 
 Environ::Environ()
 {
-	for(int i = 0; environ[i] != NULL; i++) {
+	for(int i = 0; environ[i] != nullptr; i++) {
 		string var(environ[i]);
 		size_t pos = var.find('=');
 		if(pos == string::npos)
@@ -144,7 +144,7 @@ int exec(const std::vector<string>& args)
 	std::vector<char*> argv;
 	for(const string& arg : args)
 		argv.push_back(const_cast<char*>(arg.c_str()));
-	argv.push_back(NULL);
+	argv.push_back(nullptr);
 
 	boost::filesystem::path binary = where_is(args[0]);
 	if(binary.empty())
@@ -181,7 +181,7 @@ boost::array<unsigned char, 16> MD5::hash_file(const std::string& filename)
 		fclose(file);
 	} BOOST_SCOPE_EXIT_END
 
-	if(file == NULL) throw boost::system::system_error(errno, boost::system::get_system_category(), "util::MD5::hash_file: Failed to open " + filename);
+	if(file == nullptr) throw boost::system::system_error(errno, boost::system::get_system_category(), "util::MD5::hash_file: Failed to open " + filename);
 	while(!feof(file)) {
 		const int blocksize = 4096;
 		unsigned char buffer[blocksize];

@@ -51,7 +51,7 @@ namespace
 		SConscriptFile(const boost::filesystem::path& new_sconscript_file, py::object& ns)
 			: path_(new_sconscript_file), dir_(path_.parent_path()), ns_(ns)
 		{
-			if(current_sconscript == NULL)
+			if(current_sconscript == nullptr)
 				exports_ = py::dict();
 			else
 				exports_ = current_sconscript->exports_;
