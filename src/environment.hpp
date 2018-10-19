@@ -48,16 +48,20 @@ class Variable
 
 class Environment : public std::enable_shared_from_this<Environment>
 {
+	std::string (*subst_)(const Environment&, const std::string&, bool);
 	typedef std::map<std::string, Variable::pointer> Variables;
 	Variables variables_;
 
 	public:
-	Environment() {}
+	Environment(decltype(subst_) subst) : subst_(subst) {}
 
 	typedef std::shared_ptr<Environment> pointer;
 	typedef std::shared_ptr<const Environment> const_pointer;
 
-	std::string subst(const std::string&, bool for_signature = false) const;
+	std::string subst(const std::string& input, bool for_signature = false) const {
+		return subst_(*this, input, for_signature);
+	}
+
 	Variable::const_pointer operator[](const std::string str) const
 	{
 		Variables::const_iterator iter = variables_.find(str);
@@ -68,7 +72,7 @@ class Environment : public std::enable_shared_from_this<Environment>
 	}
 	Variable::pointer& operator[](const std::string str) { return variables_[str]; }
 
-	static pointer create() { return pointer(new Environment()); }
+	static pointer create(decltype(subst_) subst) { return pointer(new Environment(subst)); }
 	pointer override() const { return pointer(new Environment(*this)); }
 	pointer clone() const;
 

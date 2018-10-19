@@ -21,7 +21,6 @@
 #include <boost/algorithm/string/join.hpp>
 
 #include "environment.hpp"
-#include "python_interface/python_interface.hpp"
 
 using std::string;
 using std::vector;
@@ -29,14 +28,9 @@ using std::vector;
 namespace sconspp
 {
 
-std::string Environment::subst(const std::string& str, bool for_signature) const
-{
-	return python_interface::subst_to_string(*this, str, for_signature);
-}
-
 Environment::pointer Environment::clone() const
 {
-	pointer new_env(new Environment);
+	pointer new_env(new Environment(subst_));
 	for(const Variables::value_type& val : variables_)
 		(*new_env)[val.first] = val.second->clone();
 	return new_env;

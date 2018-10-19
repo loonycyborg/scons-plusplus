@@ -28,6 +28,7 @@
 #include <pybind11/eval.h>
 #include <pybind11/functional.h>
 
+#include "python_interface.hpp"
 #include "builder_wrapper.hpp"
 #include "environment_wrappers.hpp"
 #include "python_interface/directives.hpp"
@@ -211,7 +212,7 @@ py::object concat(const std::string& prefix, py::object objs, const std::string&
 
 Environment::pointer make_environment(py::args args, py::kwargs kw)
 {
-	Environment::pointer env_ptr{ new Environment };
+	Environment::pointer env_ptr{ new Environment(subst_to_string) };
 	Environment& env = *env_ptr;
 	env["BUILDERS"] = extract_variable(py::dict());
 

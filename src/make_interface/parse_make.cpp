@@ -91,12 +91,16 @@ struct make_rule_ast
 	}
 };
 
+std::string make_subst(const Environment&, const std::string& input, bool) {
+	return input;
+}
+
 struct makefile_ast
 {
 	Environment::pointer env;
 	std::vector<make_rule_ast> rules;
 
-	makefile_ast() { env = Environment::create(); }
+	makefile_ast() { env = Environment::create(make_subst); }
 };
 
 x3::rule<class make_macro, std::vector<std::string>> make_macro = "make_macro";
