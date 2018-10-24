@@ -52,6 +52,9 @@ namespace sconspp
 class PersistentNodeData : public boost::noncopyable
 {
 	boost::optional<int> id_;
+	boost::optional<int> prev_id_;
+	int node_id_;
+	int generation_;
 	std::string type_;
 	std::string name_;
 	boost::optional<bool> existed_;
@@ -67,8 +70,11 @@ class PersistentNodeData : public boost::noncopyable
 	SQLite::Db& db;
 	Node node;
 
+	bool skip_write_;
+	bool archive_record_ = false;
+
 	public:
-	PersistentNodeData();
+	PersistentNodeData(SQLite::Db& db, int id);
 	PersistentNodeData(SQLite::Db& db, Node node);
 	~PersistentNodeData();
 
@@ -83,13 +89,19 @@ class PersistentNodeData : public boost::noncopyable
 	boost::optional<int>& task_status() { return task_status_; }
 
 	int id() const { return id_.get(); }
+	int node_id() const { return node_id_; }
+	int generation() const { return generation_; }
 
 	std::set<int> dependencies();
+	boost::optional<int> map_to_archive_dep(int id);
 
 	IncludeDeps& scanner_cache() {
 		if(!scanner_cache_) read_scanner_cache();
 		return scanner_cache_.get();
 	}
+	void bump_generation();
+	boost::optional<int> prev_id() const { return prev_id_; }
+	bool is_archive() const { return archive_record_; }
 	private:
 	void read_scanner_cache();
 	void write_scanner_cache();
@@ -100,10 +112,16 @@ class PersistentData : public boost::noncopyable
 	SQLite::Db db_;
 	typedef std::map<Node, boost::shared_ptr<PersistentNodeData> > Nodes;
 	Nodes nodes_;
+	typedef std::map<int, boost::shared_ptr<PersistentNodeData> > Archive;
+	Archive archive_;
+	bool do_clean_db_ = false;
 	public:
 	explicit PersistentData(const std::string& filename);
 	~PersistentData();
-	PersistentNodeData& operator[](Node);
+	PersistentNodeData& record_current_data(Node);
+	PersistentNodeData& get_archive_data(int);
+
+	void schedule_clean_db() { do_clean_db_ = true; }
 };
 
 PersistentData& get_global_db();

@@ -35,7 +35,7 @@ class Alias : public node_properties
 	~Alias();
 	std::string name() const { return name_; }
 	const char* type() const { return "alias"; }
-	bool unchanged(const NodeList&, const PersistentNodeData&) const { return false; }
+	bool unchanged(const NodeList&, PersistentNodeData&) const { return false; }
 };
 
 Node add_alias(const std::string& name);

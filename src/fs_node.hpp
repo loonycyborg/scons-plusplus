@@ -45,7 +45,7 @@ class FSEntry : public node_properties
 	std::string relpath() const;
 	const char* type() const { return "fs"; }
 
-	bool unchanged(const NodeList&, const PersistentNodeData&) const;
+	bool unchanged(const NodeList&, PersistentNodeData&) const;
 	bool needs_rebuild() const { return always_build_ || !exists(); }
 
 	boost::logic::tribool is_file() const { return is_file_; }

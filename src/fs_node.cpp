@@ -250,7 +250,7 @@ FSEntry::FSEntry(path name, boost::logic::tribool is_file) : path_(name), is_fil
 		abspath_ = fs_root / path_;
 }
 
-bool FSEntry::unchanged(const NodeList& targets, const PersistentNodeData& prev_data) const
+bool FSEntry::unchanged(const NodeList& targets, PersistentNodeData& prev_data) const
 {
 #if 0
 	std::time_t source_timestamp = timestamp();
@@ -267,15 +267,18 @@ bool FSEntry::unchanged(const NodeList& targets, const PersistentNodeData& prev_
 		}
 	}
 #endif
-	if(!unchanged_)
+	if(!unchanged_ || prev_data.is_archive())
 	{
-		if(exists())
+		if(exists()) {
+			bool timestamp_same = (timestamp() == prev_data.timestamp());
 			unchanged_ = (prev_data.existed() == boost::optional<bool>(true)) &&
-				(timestamp() == prev_data.timestamp() ||
+				(timestamp_same ||
 				MD5::hash_file(abspath_.string()) == prev_data.signature());
-		else
+			if(!timestamp_same) prev_data.bump_generation();
+		} else
 			unchanged_ = (prev_data.existed() == boost::optional<bool>(false));
 	}
+	if(!unchanged_.get()) prev_data.bump_generation();
 	return unchanged_.get();
 }
 
