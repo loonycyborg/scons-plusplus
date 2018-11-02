@@ -91,10 +91,6 @@ struct make_rule_ast
 	}
 };
 
-std::string make_subst(const Environment&, const std::string& input, bool) {
-	return input;
-}
-
 struct makefile_ast
 {
 	Environment::pointer env;
@@ -103,15 +99,31 @@ struct makefile_ast
 	makefile_ast() { env = Environment::create(make_subst); }
 };
 
+x3::rule<class make_placeholder, std::string> make_placeholder = "make_placeholder";
+x3::rule<class make_substitution_pattern, std::string> make_substitution_pattern = "make_substitution_pattern";
 x3::rule<class make_macro, std::vector<std::string>> make_macro = "make_macro";
 x3::rule<class make_target, std::string> make_target = "make_target";
 x3::rule<class make_special_target, special_target_type> make_special_target = "make_special_target";
 x3::rule<class make_command, make_command_ast> make_command = "make_command";
 x3::rule<class make_rule, make_rule_ast> make_rule = "make_rule";
 x3::rule<class make_makefile, makefile_ast> make_makefile = "makefile";
+struct env_tag;
 
+auto do_substitution = [] (auto& ctx)
+{
+	auto& env = boost::spirit::x3::get<env_tag>(ctx).get();
+	const std::string& var = _attr(ctx);
+	if(env.count(var)) {
+		_val(ctx) += env[var]->to_string();
+	}
+};
+auto const make_placeholder_def = lit('$') >> (
+	(lit('(') >> (+(graph - ')'))[do_substitution] >> lit(')')) |
+	lit('{') >> (+(graph - '}'))[do_substitution] >> lit('}') |
+	(+graph)[do_substitution]);
+auto const make_substitution_pattern_def = +(+((graph - '=' - ':' - '$') | (lit('$') >> char_('$'))) | make_placeholder);
 auto const make_macro_def = lexeme[+(graph - '=')] >> "=" >> -lexeme[+(char_ - eol - '#')];
-auto const make_target_def = lexeme[+(graph - ':')];
+auto const make_target_def = lexeme[make_substitution_pattern];
 auto const make_special_target_def = lexeme[lit('.') >> special_target_symbol];
 auto set_silent = [] (auto& ctx){ _val(ctx).silent = true; };
 auto set_ignore_error = [] (auto& ctx){ _val(ctx).ignore_error = true; };
@@ -141,7 +153,17 @@ auto add_rule = [](auto& ctx)
 };
 auto const make_makefile_def = *eol >> (make_macro[add_macro] | make_rule[add_rule]) % eol;
 
-BOOST_SPIRIT_DEFINE(make_macro, make_target, make_special_target, make_command, make_rule, make_makefile);
+BOOST_SPIRIT_DEFINE(make_placeholder, make_substitution_pattern, make_macro, make_target, make_special_target, make_command, make_rule, make_makefile);
+
+std::string make_subst(const Environment& env, const std::string& input, bool) {
+	std::string result;
+	bool match = boost::spirit::x3::parse(input.begin(), input.end(),
+		boost::spirit::x3::with<env_tag>(std::ref(env))[*(make_substitution_pattern|+(blank | char_(':') | char_('=')))],
+		result
+	);
+	assert(match);
+	return result;
+}
 
 void run_makefile(const std::string& makefile_path, int argc, char** argv)
 {
@@ -149,8 +171,8 @@ void run_makefile(const std::string& makefile_path, int argc, char** argv)
 	ifs.unsetf(std::ios::skipws);
 	boost::spirit::istream_iterator iter{ifs}, i_end;
 
-	makefile_ast makefile;
-	bool match = phrase_parse(iter, i_end, make_makefile,
+	static makefile_ast makefile;
+	bool match = phrase_parse(iter, i_end, boost::spirit::x3::with<env_tag>(std::ref(*(makefile.env)))[make_makefile],
 		blank - '\t' | lexeme['#' >> *(char_ - eol)] | (eol >> &eol) | (lit('\\') >> eol),
 		makefile);
 	for(auto variable : *(makefile.env)) {
