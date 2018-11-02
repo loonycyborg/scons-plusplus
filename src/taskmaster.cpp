@@ -291,7 +291,9 @@ namespace sconspp
 		Node end_node = *(--nodes.end());
 		while(!states.count(end_node) || (states[end_node] != BUILT && states[end_node] != FAILED)) {
 			for(const auto& result : job_server.wait_for_results()) {
-				db.record_current_data(result.first).task_status() = result.second;
+				auto& node_data { db.record_current_data(result.first) };
+				properties(result.first).unchanged({}, node_data);
+				node_data.task_status() = result.second;
 				if(result.second == 0)
 					states[result.first] = BUILT;
 				else {
