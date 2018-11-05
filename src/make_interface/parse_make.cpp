@@ -99,6 +99,8 @@ struct makefile_ast
 	makefile_ast() { env = Environment::create(make_subst); }
 };
 
+x3::rule<class make_comment, std::string> make_comment = "make_comment";
+x3::rule<class make_blank_line, std::string> make_blank_line = "make_blank_line";
 x3::rule<class make_placeholder, std::string> make_placeholder = "make_placeholder";
 x3::rule<class make_substitution_pattern, std::string> make_substitution_pattern = "make_substitution_pattern";
 x3::rule<class make_macro, std::vector<std::string>> make_macro = "make_macro";
@@ -108,6 +110,9 @@ x3::rule<class make_command, make_command_ast> make_command = "make_command";
 x3::rule<class make_rule, make_rule_ast> make_rule = "make_rule";
 x3::rule<class make_makefile, makefile_ast> make_makefile = "makefile";
 struct env_tag;
+
+auto const make_comment_def = '#' >> *(char_ - eol) >> &eol;
+auto const make_blank_line_def = eol >> *blank >> -make_comment >> &eol;
 
 auto do_substitution = [] (auto& ctx)
 {
@@ -153,7 +158,7 @@ auto add_rule = [](auto& ctx)
 };
 auto const make_makefile_def = *eol >> (make_macro[add_macro] | make_rule[add_rule]) % eol;
 
-BOOST_SPIRIT_DEFINE(make_placeholder, make_substitution_pattern, make_macro, make_target, make_special_target, make_command, make_rule, make_makefile);
+BOOST_SPIRIT_DEFINE(make_comment, make_blank_line, make_placeholder, make_substitution_pattern, make_macro, make_target, make_special_target, make_command, make_rule, make_makefile);
 
 std::string make_subst(const Environment& env, const std::string& input, bool) {
 	std::string result;
@@ -173,7 +178,7 @@ void run_makefile(const std::string& makefile_path, int argc, char** argv)
 
 	static makefile_ast makefile;
 	bool match = phrase_parse(iter, i_end, boost::spirit::x3::with<env_tag>(std::ref(*(makefile.env)))[make_makefile],
-		blank - '\t' | lexeme['#' >> *(char_ - eol)] | (eol >> &eol) | (lit('\\') >> eol),
+		blank - '\t' | make_blank_line | make_comment | (lit('\\') >> eol),
 		makefile);
 	for(auto variable : *(makefile.env)) {
 		std::cout << variable.first << " = " << variable.second->to_string() << std::endl;
