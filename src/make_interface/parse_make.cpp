@@ -149,6 +149,8 @@ auto add_macro = [](auto& ctx)
 	auto& var = env[_attr(ctx)[0]];
 	if(_attr(ctx).size() == 2)
 		var = make_variable(_attr(ctx)[1]);
+	else
+		var = make_variable(std::string{""});
 };
 auto add_rule = [](auto& ctx)
 {
