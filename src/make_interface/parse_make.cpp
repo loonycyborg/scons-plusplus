@@ -1,4 +1,5 @@
 #include <boost/optional.hpp>
+#include <boost/algorithm/string/join.hpp>
 //#define BOOST_SPIRIT_X3_DEBUG
 #include <boost/fusion/include/adapt_struct.hpp>
 #include <boost/spirit/home/x3.hpp>
@@ -127,7 +128,7 @@ auto const make_placeholder_def = lit('$') >> (
 	lit('{') >> (+(graph - '}'))[do_substitution] >> lit('}') |
 	(+graph)[do_substitution]);
 auto const make_substitution_pattern_def = +(+((graph - '=' - ':' - '$') | (lit('$') >> char_('$'))) | make_placeholder);
-auto const make_macro_def = lexeme[+(graph - '=')] >> "=" >> -lexeme[+(char_ - eol - '#')];
+auto const make_macro_def = lexeme[+(graph - '=')] >> "=" >> *(*lit('\t') >> lexeme[+(char_ - blank - eol - '\\' - '#')] >> *lit('\t'));
 auto const make_target_def = lexeme[make_substitution_pattern];
 auto const make_special_target_def = lexeme[lit('.') >> special_target_symbol];
 auto set_silent = [] (auto& ctx){ _val(ctx).silent = true; };
@@ -144,13 +145,15 @@ auto add_command = [](auto& ctx){ _val(ctx).commands.push_back(_attr(ctx)); };
 auto const make_rule_def = -make_special_target[add_special_target] >> *make_target[add_target] >> ":" >> *make_target[add_source] >> -(eol >> make_command[add_command]);
 auto add_macro = [](auto& ctx)
 {
-	assert(_attr(ctx).size() == 1 || _attr(ctx).size() == 2);
+	assert(_attr(ctx).size() >= 1);
 	Environment& env = *(_val(ctx).env);
 	auto& var = env[_attr(ctx)[0]];
-	if(_attr(ctx).size() == 2)
-		var = make_variable(_attr(ctx)[1]);
-	else
+	if(_attr(ctx).size() == 1)
 		var = make_variable(std::string{""});
+	else {
+		std::vector<std::string> value { ++_attr(ctx).begin(), _attr(ctx).end() };
+		var = make_variable(boost::algorithm::join(value, " "));
+	}
 };
 auto add_rule = [](auto& ctx)
 {
