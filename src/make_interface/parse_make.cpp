@@ -149,7 +149,7 @@ auto const make_placeholder_def = lit('$') >> (
 	(+graph)[do_substitution]);
 auto const make_substitution_pattern_def = +(+((graph - '=' - ':' - '$') | (lit('$') >> char_('$'))) | make_placeholder);
 auto const make_macro_def = lexeme[+(graph - '=')] >> "=" >> *(*lit('\t') >> lexeme[+(char_ - blank - eol - '\\' - '#')] >> *lit('\t'));
-auto const make_target_def = lexeme[make_substitution_pattern];
+auto const make_target_def = *lit('\t') >> lexeme[make_substitution_pattern] >> *lit('\t');
 auto const make_special_target_def = lexeme[lit('.') >> special_target_symbol];
 auto set_silent = [] (auto& ctx){ _val(ctx).silent = true; };
 auto set_ignore_error = [] (auto& ctx){ _val(ctx).ignore_error = true; };
