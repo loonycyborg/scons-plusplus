@@ -1,5 +1,7 @@
 #include <boost/optional.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
 //#define BOOST_SPIRIT_X3_DEBUG
 #include <boost/fusion/include/adapt_struct.hpp>
 #include <boost/spirit/home/x3.hpp>
@@ -156,9 +158,17 @@ auto add_command_string = [] (auto& ctx){ _val(ctx).command = _attr(ctx); };
 auto const make_command_def = lit('\t') >>
 	*(lit('@')[set_silent] | lit('-')[set_ignore_error] | lit('+')[set_no_suppress]) >>
 	lexeme[+(char_-eol)][add_command_string];
-auto add_target = [](auto& ctx){ _val(ctx).targets.push_back(_attr(ctx)); };
+template <typename C> void split_into(C& container, const std::string& input)
+{
+	std::list<boost::iterator_range<std::string::const_iterator>> tokens;
+	boost::algorithm::split(tokens, input, boost::algorithm::is_space(), boost::algorithm::token_compress_on);
+	for(auto token : tokens) {
+		container.push_back(std::string(token.begin(), token.end()));
+	}
+}
+auto add_target = [](auto& ctx){ split_into(_val(ctx).targets, _attr(ctx)); };
 auto add_special_target = [](auto& ctx){ _val(ctx).special_target = _attr(ctx); };
-auto add_source = [](auto& ctx){ _val(ctx).sources.push_back(_attr(ctx)); };
+auto add_source = [](auto& ctx){ split_into(_val(ctx).sources, _attr(ctx)); };
 auto add_command = [](auto& ctx){ _val(ctx).commands.push_back(_attr(ctx)); };
 auto const make_rule_def = -make_special_target[add_special_target] >> *make_target[add_target] >> ":" >> *make_target[add_source] >> -(eol >> make_command[add_command]);
 auto add_macro = [](auto& ctx)
