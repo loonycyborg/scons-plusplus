@@ -37,6 +37,24 @@ using boost::spirit::x3::ascii::blank;
 using boost::spirit::x3::ascii::graph;
 using boost::spirit::x3::ascii::alnum;
 
+class recursive_variable : public Variable
+{
+	std::string value_;
+	const Environment& env_;
+
+	public:
+	recursive_variable(const std::string& value, const Environment& env) : value_(value), env_(env) {}
+	std::string to_string() const { return make_subst(env_, value_, false); }
+	std::list<std::string> to_string_list() const { return { make_subst(env_, value_, false) }; }
+	pointer clone() const { return pointer(new recursive_variable(value_, env_)); }
+	std::string& get() { return value_; }
+};
+
+Variable::pointer make_recursive_variable(std::string value, const Environment& env)
+{
+	return Variable::pointer{ new recursive_variable{value, env}};
+}
+
 struct make_command_ast
 {
 	bool silent;
@@ -152,7 +170,7 @@ auto add_macro = [](auto& ctx)
 		var = make_variable(std::string{""});
 	else {
 		std::vector<std::string> value { ++_attr(ctx).begin(), _attr(ctx).end() };
-		var = make_variable(boost::algorithm::join(value, " "));
+		var = make_recursive_variable(boost::algorithm::join(value, " "), env);
 	}
 };
 auto add_rule = [](auto& ctx)
