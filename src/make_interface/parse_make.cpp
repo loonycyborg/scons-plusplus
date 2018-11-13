@@ -170,7 +170,7 @@ auto add_target = [](auto& ctx){ split_into(_val(ctx).targets, _attr(ctx)); };
 auto add_special_target = [](auto& ctx){ _val(ctx).special_target = _attr(ctx); };
 auto add_source = [](auto& ctx){ split_into(_val(ctx).sources, _attr(ctx)); };
 auto add_command = [](auto& ctx){ _val(ctx).commands.push_back(_attr(ctx)); };
-auto const make_rule_def = -make_special_target[add_special_target] >> *make_target[add_target] >> ":" >> *make_target[add_source] >> -(eol >> make_command[add_command]);
+auto const make_rule_def = -make_special_target[add_special_target] >> *make_target[add_target] >> ":" >> *make_target[add_source] >> *(eol >> make_command[add_command]);
 auto add_macro = [](auto& ctx)
 {
 	assert(_attr(ctx).size() >= 1);
