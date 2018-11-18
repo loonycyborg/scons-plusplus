@@ -28,9 +28,14 @@ using std::vector;
 namespace sconspp
 {
 
+void Environment::setup_task_context(const Task& task)
+{
+	setup_task_context_(*this, task);
+}
+
 Environment::pointer Environment::clone() const
 {
-	pointer new_env(new Environment(subst_));
+	pointer new_env(new Environment(subst_, setup_task_context_));
 	for(const Variables::value_type& val : variables_)
 		(*new_env)[val.first] = val.second->clone();
 	return new_env;

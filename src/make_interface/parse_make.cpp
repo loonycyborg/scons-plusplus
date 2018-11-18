@@ -117,7 +117,7 @@ struct makefile_ast
 	Environment::pointer env;
 	std::vector<make_rule_ast> rules;
 
-	makefile_ast() { env = Environment::create(make_subst); }
+	makefile_ast() { env = Environment::create(make_subst, setup_make_task_context); }
 };
 
 x3::rule<class make_comment, std::string> make_comment = "make_comment";
@@ -201,6 +201,10 @@ std::string make_subst(const Environment& env, const std::string& input, bool) {
 	);
 	assert(match);
 	return result;
+}
+
+void setup_make_task_context(Environment&, const Task&)
+{
 }
 
 void run_makefile(const std::string& makefile_path, int argc, char** argv)

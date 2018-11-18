@@ -36,14 +36,7 @@ void Task::add_sources(const NodeList& sources)
 Environment::const_pointer Task::env() const
 {
 	Environment::pointer task_env = env_->override();
-	if(targets_.size()) {
-		(*task_env)["TARGETS"] = make_variable(targets_.begin(), targets_.end());
-		(*task_env)["TARGET"] = make_variable(targets_[0]);
-	}
-	if(sources_.size()) {
-		(*task_env)["SOURCES"] = make_variable(sources_.begin(), sources_.end());
-		(*task_env)["SOURCE"] = make_variable(sources_[0]);
-	}
+	task_env->setup_task_context(*this);
 	return task_env;
 }
 

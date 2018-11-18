@@ -210,9 +210,23 @@ py::object concat(const std::string& prefix, py::object objs, const std::string&
 	return result;
 }
 
+void setup_scons_task_context(Environment& env, const Task& task)
+{
+	auto targets = task.targets();
+	auto sources = task.sources();
+	if(targets.size()) {
+		env["TARGETS"] = sconspp::make_variable(targets.begin(), targets.end());
+		env["TARGET"] = sconspp::make_variable(targets[0]);
+	}
+	if(sources.size()) {
+		env["SOURCES"] = sconspp::make_variable(sources.begin(), sources.end());
+		env["SOURCE"] = sconspp::make_variable(sources[0]);
+	}
+}
+
 Environment::pointer make_environment(py::args args, py::kwargs kw)
 {
-	Environment::pointer env_ptr{ new Environment(subst_to_string) };
+	Environment::pointer env_ptr{ new Environment(subst_to_string, setup_scons_task_context) };
 	Environment& env = *env_ptr;
 	env["BUILDERS"] = extract_variable(py::dict());
 

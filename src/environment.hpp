@@ -46,14 +46,17 @@ class Variable
 	virtual pointer clone() const = 0;
 };
 
+class Task;
+
 class Environment : public std::enable_shared_from_this<Environment>
 {
 	std::string (*subst_)(const Environment&, const std::string&, bool);
+	void (*setup_task_context_)(Environment&, const Task&);
 	typedef std::map<std::string, Variable::pointer> Variables;
 	Variables variables_;
 
 	public:
-	Environment(decltype(subst_) subst) : subst_(subst) {}
+	Environment(decltype(subst_) subst, decltype(setup_task_context_) setup_task_context) : subst_(subst), setup_task_context_(setup_task_context) {}
 
 	typedef std::shared_ptr<Environment> pointer;
 	typedef std::shared_ptr<const Environment> const_pointer;
@@ -61,6 +64,7 @@ class Environment : public std::enable_shared_from_this<Environment>
 	std::string subst(const std::string& input, bool for_signature = false) const {
 		return subst_(*this, input, for_signature);
 	}
+	void setup_task_context(const Task&);
 
 	Variable::const_pointer operator[](const std::string str) const
 	{
@@ -72,7 +76,7 @@ class Environment : public std::enable_shared_from_this<Environment>
 	}
 	Variable::pointer& operator[](const std::string str) { return variables_[str]; }
 
-	static pointer create(decltype(subst_) subst) { return pointer(new Environment(subst)); }
+	static pointer create(decltype(subst_) subst, decltype(setup_task_context_) setup_task_context) { return pointer(new Environment(subst, setup_task_context)); }
 	pointer override() const { return pointer(new Environment(*this)); }
 	pointer clone() const;
 
