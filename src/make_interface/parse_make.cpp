@@ -13,6 +13,7 @@
 #include <fstream>
 
 #include "environment.hpp"
+#include "node_properties.hpp"
 #include "builder.hpp"
 
 #include "parse_make.hpp"
@@ -203,8 +204,58 @@ std::string make_subst(const Environment& env, const std::string& input, bool) {
 	return result;
 }
 
-void setup_make_task_context(Environment&, const Task&)
+class automatic_variable : public Variable
 {
+public:
+	typedef std::list<std::string> (*eval_auto_variable)(const Task& task);
+
+private:
+	const Task& task_;
+	eval_auto_variable eval_;
+
+	public:
+	automatic_variable(eval_auto_variable eval, const Task& task) : task_(task), eval_(eval) {}
+	std::string to_string() const { return boost::algorithm::join(eval_(task_), " "); }
+	std::list<std::string> to_string_list() const { return eval_(task_); }
+	pointer clone() const { return pointer(new automatic_variable(eval_, task_)); }
+};
+
+Variable::pointer make_automatic_variable(automatic_variable::eval_auto_variable eval, const Task& task)
+{
+	return Variable::pointer{ new automatic_variable{eval, task}};
+}
+
+std::list<std::string> expand_targets(const Task& task)
+{
+	std::list<std::string> result;
+	auto targets = task.targets();
+	for(auto target : targets) {
+		result.push_back(properties(target).name());
+	}
+	return result;
+}
+
+std::list<std::string> expand_source(const Task& task)
+{
+	assert(task.sources().size() >= 1);
+	return { properties(task.sources()[0]).name() };
+}
+
+std::list<std::string> expand_sources(const Task& task)
+{
+	std::list<std::string> result;
+	auto sources = task.sources();
+	for(auto source : sources) {
+		result.push_back(properties(source).name());
+	}
+	return result;
+}
+
+void setup_make_task_context(Environment& env, const Task& task)
+{
+	env["@"] = make_automatic_variable(expand_targets, task);
+	env["<"] = make_automatic_variable(expand_source, task);
+	env["^"] = make_automatic_variable(expand_sources, task);
 }
 
 void run_makefile(const std::string& makefile_path, int argc, char** argv)
