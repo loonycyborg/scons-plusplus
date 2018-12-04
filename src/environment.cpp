@@ -35,7 +35,7 @@ void Environment::setup_task_context(const Task& task)
 
 Environment::pointer Environment::clone() const
 {
-	pointer new_env(new Environment(subst_, setup_task_context_));
+	pointer new_env{ new Environment(subst_, setup_task_context_) };
 	for(const Variables::value_type& val : variables_)
 		(*new_env)[val.first] = val.second->clone();
 	return new_env;

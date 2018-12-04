@@ -53,11 +53,6 @@ class recursive_variable : public Variable
 	std::string& get() { return value_; }
 };
 
-Variable::pointer make_recursive_variable(std::string value, const Environment& env)
-{
-	return Variable::pointer{ new recursive_variable{value, env}};
-}
-
 struct make_command_ast
 {
 	bool silent;
@@ -181,7 +176,7 @@ auto add_macro = [](auto& ctx)
 		var = make_variable(std::string{""});
 	else {
 		std::vector<std::string> value { ++_attr(ctx).begin(), _attr(ctx).end() };
-		var = make_recursive_variable(boost::algorithm::join(value, " "), env);
+		var = std::make_shared<recursive_variable>(boost::algorithm::join(value, " "), env);
 	}
 };
 auto add_rule = [](auto& ctx)
@@ -220,11 +215,6 @@ private:
 	pointer clone() const { return pointer(new automatic_variable(eval_, task_)); }
 };
 
-Variable::pointer make_automatic_variable(automatic_variable::eval_auto_variable eval, const Task& task)
-{
-	return Variable::pointer{ new automatic_variable{eval, task}};
-}
-
 std::list<std::string> expand_targets(const Task& task)
 {
 	std::list<std::string> result;
@@ -253,9 +243,9 @@ std::list<std::string> expand_sources(const Task& task)
 
 void setup_make_task_context(Environment& env, const Task& task)
 {
-	env["@"] = make_automatic_variable(expand_targets, task);
-	env["<"] = make_automatic_variable(expand_source, task);
-	env["^"] = make_automatic_variable(expand_sources, task);
+	env["@"] = std::make_shared<automatic_variable>(expand_targets, task);
+	env["<"] = std::make_shared<automatic_variable>(expand_source, task);
+	env["^"] = std::make_shared<automatic_variable>(expand_sources, task);
 }
 
 void run_makefile(const std::string& makefile_path, int argc, char** argv)

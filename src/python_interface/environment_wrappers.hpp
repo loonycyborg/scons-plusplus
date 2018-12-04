@@ -57,13 +57,9 @@ class PythonVariable : public Variable
 	{
 		py::gil_scoped_acquire lock {};
 		py::object result = deepcopy(obj_);
-		return pointer(new PythonVariable(result));
+		return std::make_shared<PythonVariable>(result);
 	}
 };
-inline Variable::pointer make_variable(py::object obj)
-{
-	return Variable::pointer(new PythonVariable(obj));
-}
 
 inline Variable::pointer extract_variable(py::object obj)
 {
@@ -80,7 +76,7 @@ inline Variable::pointer extract_variable(py::object obj)
 	}
 	*/
 
-	return make_variable(obj);
+	return std::make_shared<PythonVariable>(obj);
 }
 
 inline py::object variable_to_python(Variable::const_pointer var)

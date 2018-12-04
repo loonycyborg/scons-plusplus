@@ -76,8 +76,8 @@ class Environment : public std::enable_shared_from_this<Environment>
 	}
 	Variable::pointer& operator[](const std::string str) { return variables_[str]; }
 
-	static pointer create(decltype(subst_) subst, decltype(setup_task_context_) setup_task_context) { return pointer(new Environment(subst, setup_task_context)); }
-	pointer override() const { return pointer(new Environment(*this)); }
+	static pointer create(decltype(subst_) subst, decltype(setup_task_context_) setup_task_context) { return std::make_shared<Environment>(subst, setup_task_context); }
+	pointer override() const { return std::make_shared<Environment>(*this); }
 	pointer clone() const;
 
 	Variables::size_type count(const std::string& key) const { return variables_.count(key); }
@@ -104,13 +104,13 @@ template<typename T> class SimpleVariable : public Variable
 	{ 
 		return std::list<std::string>(1, this->to_string());
 	}
-	pointer clone() const { return pointer(new SimpleVariable<T>(value_)); }
+	pointer clone() const { return std::make_shared<SimpleVariable<T>>(value_); }
 	const T& get() const { return value_; }
 };
 
 template<typename T> inline Variable::pointer make_variable(const T& value)
 {
-	return Variable::pointer(new SimpleVariable<T>(value));
+	return std::make_shared<SimpleVariable<T>>(value);
 }
 
 class CompositeVariable : public Variable
