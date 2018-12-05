@@ -63,7 +63,20 @@ class FSEntry : public node_properties
 
 	std::string get_contents() const;
 
-	void was_rebuilt() { unchanged_.reset(); }
+	private:
+	enum class deletion_policy {
+		precious,
+		on_fail
+	} deletion_policy_ = deletion_policy::on_fail;
+	public:
+	void precious() { deletion_policy_ = deletion_policy::precious; }
+
+	void was_rebuilt(int status)
+	{
+		unchanged_.reset();
+		if(deletion_policy_ == deletion_policy::on_fail && status != 0)
+			boost::filesystem::remove(abspath_);
+	}
 	void record_persistent_data(PersistentNodeData&);
 };
 

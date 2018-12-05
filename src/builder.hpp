@@ -35,6 +35,8 @@ namespace sconspp
 
 typedef std::vector<boost::variant<Node, std::string> > NodeStringList;
 
+NodeList make_file_nodes(NodeStringList);
+
 NodeList add_command(const Environment& env,
 				 const NodeStringList& targets,
 				 const NodeStringList& sources,

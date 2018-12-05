@@ -118,5 +118,15 @@ py::object FindFile(const std::string& name, py::object dir_objs)
 	return py::none();
 }
 
+void Precious(py::args args)
+{
+	NodeList nodes = extract_file_nodes(flatten(args));
+	for(Node node : nodes) {
+		try {
+			properties<FSEntry>(node).precious();
+		} catch (const std::bad_cast&) { }
+	}
+}
+
 }
 }

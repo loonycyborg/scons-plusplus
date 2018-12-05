@@ -45,6 +45,7 @@ namespace python_interface
 	void Depends(py::object target, py::object dependency);
 	void AlwaysBuild(py::args args);
 	py::object FindFile(const std::string& name, py::object dir_objs);
+	void Precious(py::args args);
 
 	template<typename T>
 	inline T subst_arg(const Environment&, const T& val) { return val; }

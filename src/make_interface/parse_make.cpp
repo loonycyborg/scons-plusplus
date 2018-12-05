@@ -15,6 +15,7 @@
 #include "environment.hpp"
 #include "node_properties.hpp"
 #include "builder.hpp"
+#include "fs_node.hpp"
 
 #include "parse_make.hpp"
 
@@ -65,7 +66,7 @@ struct make_command_ast
 
 enum class special_target_type
 {
-	None=0, POSIX
+	None=0, POSIX, PRECIOUS
 };
 
 struct special_target_symbol_ : boost::spirit::x3::symbols<special_target_type>
@@ -73,6 +74,7 @@ struct special_target_symbol_ : boost::spirit::x3::symbols<special_target_type>
 	special_target_symbol_() {
 		add
 			("POSIX", special_target_type::POSIX)
+			("PRECIOUS", special_target_type::PRECIOUS)
 		;
 	}
 } special_target_symbol;
@@ -89,6 +91,14 @@ struct make_rule_ast
 			case special_target_type::None:
 				break;
 			case special_target_type::POSIX:
+				break;
+			case special_target_type::PRECIOUS:
+				for(auto node : make_file_nodes(sources))
+				{
+					try {
+						properties<FSEntry>(node).precious();
+					} catch (const std::bad_cast&) {}
+				}
 				break;
 		}
 	}

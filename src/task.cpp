@@ -54,14 +54,16 @@ boost::optional<boost::array<unsigned char, 16> > Task::signature() const
 int Task::execute() const
 {
 	Environment::const_pointer task_env = env();
+	int status = 0;
 	for(const Action::pointer& action : actions_) {
-		int status = sconspp::execute(action, *task_env);
+		status = sconspp::execute(action, *task_env);
 		if(status != 0)
-			return status;
+			break;
 	}
+
 	for(const Node& target : targets_)
-		properties(target).was_rebuilt();
-	return 0;
+		properties(target).was_rebuilt(status);
+	return status;
 }
 
 }

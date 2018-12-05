@@ -52,7 +52,7 @@ class node_properties
 	void always_build() { always_build_ = true; }
 	Task::pointer task() const { return task_; }
 
-	virtual void was_rebuilt() {}
+	virtual void was_rebuilt(int) {}
 	virtual void record_persistent_data(PersistentNodeData&) {}
 };
 

@@ -84,6 +84,11 @@ inline NodeList make_nodes(const NodeStringList& list)
 	return result;
 }
 
+NodeList make_file_nodes(NodeStringList list)
+{
+	return make_nodes<add_entry_indeterminate>(list);
+}
+
 NodeList add_command(const Environment& env,
 				 const NodeStringList& targets,
 				 const NodeStringList& sources,

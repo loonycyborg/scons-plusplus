@@ -185,6 +185,7 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	def_directive(m_script, env, "AlwaysBuild", &AlwaysBuild);
 	def_directive(m_script, env, "Glob", &glob, "pattern"_a, "ondisk"_a = true);
 	def_directive(m_script, env, "FindFile", &FindFile, "file"_a, "dirs"_a);
+	def_directive(m_script, env, "Precious", &Precious);
 
 	py::module m_sconspp_ext = m_scons.def_submodule("SConsppExt");
 	py::class_<Task::Scanner>(m_sconspp_ext, "Scanner");
