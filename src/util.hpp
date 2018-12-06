@@ -32,6 +32,11 @@
 namespace sconspp
 {
 
+struct restart_exception
+{
+	[[ noreturn ]] void do_restart(char** argv) const;
+};
+
 class Environ
 {
 	static boost::scoped_ptr<Environ> environ_;

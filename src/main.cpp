@@ -27,6 +27,7 @@
 #include "log.hpp"
 #include "options.hpp"
 #include "frontend.hpp"
+#include "util.hpp"
 
 #include <fstream>
 
@@ -58,6 +59,9 @@ int main(int argc, char** argv)
 	} catch(const std::exception& e) {
 		logging::error() << e.what() << std::endl;
 		return 1;
+	} catch(const restart_exception& e) {
+		get_global_db(true); // flush the database
+		e.do_restart(argv);
 	}
 
 	{

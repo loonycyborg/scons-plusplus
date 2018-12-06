@@ -39,6 +39,12 @@ using std::string;
 namespace sconspp
 {
 
+[[ noreturn ]] void restart_exception::do_restart(char** argv) const
+{
+	execv(argv[0], argv);
+	std::terminate();
+}
+
 boost::scoped_ptr<Environ> Environ::environ_;
 
 Environ::Environ()

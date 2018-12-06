@@ -270,8 +270,9 @@ namespace sconspp
 
 	enum TaskState { SCHEDULED, BLOCKED, TO_BUILD, BUILT, FAILED };
 
-	void parallel_build(TaskList& tasks, std::vector<Node>& nodes, PersistentData& db)
+	int parallel_build(TaskList& tasks, std::vector<Node>& nodes, PersistentData& db)
 	{
+		int job_counter = 0;
 		if(num_jobs) {
 			if(num_jobs.get() == 0)
 				num_jobs = std::thread::hardware_concurrency();
@@ -294,9 +295,10 @@ namespace sconspp
 				auto& node_data { db.record_current_data(result.first) };
 				properties(result.first).unchanged({}, node_data);
 				node_data.task_status() = result.second;
-				if(result.second == 0)
+				if(result.second == 0) {
+					job_counter++;
 					states[result.first] = BUILT;
-				else {
+				} else {
 					states[result.first] = FAILED;
 					if(!keep_going) {
 						logging::warning(logging::Taskmaster) << "Task failed. Waiting for the rest of active tasks to finish...\n";
@@ -338,16 +340,17 @@ namespace sconspp
 				}
 			}
 		}
+		return job_counter;
 	}
 
-	void build(Node end_goal)
+	int build(Node end_goal)
 	{
 		TaskList tasks;
 		std::vector<Node> nodes;
 		build_order(end_goal, tasks, nodes);
 		PersistentData& db = get_global_db();
 
-		parallel_build(tasks, nodes, db);
+		return parallel_build(tasks, nodes, db);
 	}
 
 }

@@ -16,6 +16,8 @@
 #include "node_properties.hpp"
 #include "builder.hpp"
 #include "fs_node.hpp"
+#include "taskmaster.hpp"
+#include "util.hpp"
 
 #include "parse_make.hpp"
 
@@ -272,6 +274,14 @@ void run_makefile(const std::string& makefile_path, int argc, char** argv)
 		std::cout << variable.first << " = " << variable.second->to_string() << std::endl;
 	}
 	assert(match);
+
+	auto makefile_node = add_entry_indeterminate(makefile_path);
+	if(out_degree(makefile_node, sconspp::graph) > 0) { // there is a way to build the Makefile so we better update it
+		if(sconspp::build(makefile_node) > 0) {
+			// Makefile was rebuilt so we need to start over
+			throw restart_exception();
+		}
+	}
 }
 
 }

@@ -455,10 +455,14 @@ PersistentNodeData& PersistentData::get_archive_data(int id)
 	return *(archive_[id]);
 }
 
-PersistentData& get_global_db()
+PersistentData& get_global_db(bool flush)
 {
-	static PersistentData data("sconsppsign.sqlite");
-	return data;
+	static std::unique_ptr<PersistentData> data;
+	if(!data || flush) {
+		data.reset();
+		data.reset(new PersistentData{"sconsppsign.sqlite"});
+	}
+	return *data.get();
 }
 
 }

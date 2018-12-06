@@ -124,7 +124,7 @@ class PersistentData : public boost::noncopyable
 	void schedule_clean_db() { do_clean_db_ = true; }
 };
 
-PersistentData& get_global_db();
+PersistentData& get_global_db(bool flush = false);
 
 }
 
