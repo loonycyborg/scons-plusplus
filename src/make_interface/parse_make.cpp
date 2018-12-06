@@ -270,9 +270,6 @@ void run_makefile(const std::string& makefile_path, int argc, char** argv)
 	bool match = phrase_parse(iter, i_end, boost::spirit::x3::with<env_tag>(std::ref(*(makefile.env)))[make_makefile],
 		blank - '\t' | make_blank_line | make_comment | (lit('\\') >> eol),
 		makefile);
-	for(auto variable : *(makefile.env)) {
-		std::cout << variable.first << " = " << variable.second->to_string() << std::endl;
-	}
 	assert(match);
 
 	auto makefile_node = add_entry_indeterminate(makefile_path);
