@@ -71,6 +71,11 @@ class FSEntry : public node_properties
 	public:
 	void precious() { deletion_policy_ = deletion_policy::precious; }
 
+	enum class change_detection {
+		timestamp_md5,
+		timestamp_pure
+	} change_detection = change_detection::timestamp_md5;
+
 	void was_rebuilt(int status)
 	{
 		unchanged_.reset();

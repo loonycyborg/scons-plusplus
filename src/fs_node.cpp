@@ -252,29 +252,32 @@ FSEntry::FSEntry(path name, boost::logic::tribool is_file) : path_(name), is_fil
 
 bool FSEntry::unchanged(const NodeList& targets, PersistentNodeData& prev_data) const
 {
-#if 0
-	std::time_t source_timestamp = timestamp();
-	bool up_to_date = true;
-	foreach(Node target, targets) {
-		try {
-			if(
-				!properties<FSEntry>(target).exists() ||
-				(source_timestamp > properties<FSEntry>(target).timestamp())
-			  )
-				up_to_date = false;
-		} catch(const std::bad_cast&) {
-			up_to_date = false;
-		}
-	}
-#endif
-	if(!unchanged_ || prev_data.is_archive())
-	{
+	if(!unchanged_ || prev_data.is_archive()) {
 		if(exists()) {
 			bool timestamp_same = (timestamp() == prev_data.timestamp());
-			unchanged_ = (prev_data.existed() == boost::optional<bool>(true)) &&
-				(timestamp_same ||
-				MD5::hash_file(abspath_.string()) == prev_data.signature());
 			if(!timestamp_same) prev_data.bump_generation();
+			switch(change_detection) {
+				case change_detection::timestamp_pure:
+					unchanged_ = true;
+					for(Node target : targets) {
+						try {
+							if(
+								!properties<FSEntry>(target).exists() ||
+								(timestamp() > properties<FSEntry>(target).timestamp())
+							  )
+								unchanged_ = false;
+						} catch(const std::bad_cast&) {
+							unchanged_ = false;
+						}
+					}
+				break;
+
+				case change_detection::timestamp_md5:
+					unchanged_ = (prev_data.existed() == boost::optional<bool>(true)) &&
+						(timestamp_same ||
+						MD5::hash_file(abspath_.string()) == prev_data.signature());
+				break;
+			}
 		} else
 			unchanged_ = (prev_data.existed() == boost::optional<bool>(false));
 	}
