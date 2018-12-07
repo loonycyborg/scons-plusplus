@@ -274,6 +274,9 @@ void run_makefile(const std::string& makefile_path, int argc, char** argv)
 
 	auto makefile_node = add_entry_indeterminate(makefile_path);
 	if(out_degree(makefile_node, sconspp::graph) > 0) { // there is a way to build the Makefile so we better update it
+		auto task = properties(makefile_node).task();
+		if(task)
+			task->decider = &Task::timestamp_pure_decider;
 		if(sconspp::build(makefile_node) > 0) {
 			// Makefile was rebuilt so we need to start over
 			throw restart_exception();

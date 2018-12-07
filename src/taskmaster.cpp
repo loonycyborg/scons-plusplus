@@ -62,6 +62,11 @@ struct TaskListItem
 	Task::pointer task;
 	NodeList targets;
 
+	bool is_up_to_date() const
+	{
+		return task->is_up_to_date(targets) && !always_build;
+	}
+
 	TaskListItem(Task::pointer task, Node target) : task(task) { targets.push_back(target); }
 };
 
@@ -151,75 +156,7 @@ namespace sconspp
 		build_order(end_goal, tasks, output);
 	}
 
-	bool is_task_up_to_date(const TaskListItem& item, PersistentData& db)
-	{
-		bool up_to_date = !always_build;
-		for(Node build_target : item.targets) {
 
-			// let node check if it has an inherent need to be rebuilt, such as a file not existing
-			if(graph[build_target]->needs_rebuild()) {
-				up_to_date = false;
-			}
-			// check if building node failed last run, or if it never was built yet
-			auto& target_data = db.record_current_data(build_target);
-			if(!target_data.task_status() || target_data.task_status().get() != 0) {
-				logging::debug(logging::Taskmaster) << graph[build_target]->name() << " wasn't built before or failed\n";
-				up_to_date = false;
-			}
-			std::set<int> 
-				prev_sources{ target_data.dependencies() };
-			for(Edge dependency : boost::make_iterator_range(out_edges(build_target, graph))) {
-				Node build_source = target(dependency, graph);
-				auto& source_data = db.record_current_data(build_source);
-				int source_id = source_data.id();
-
-				bool unchanged;
-				if(prev_sources.count(source_id)) {
-					prev_sources.erase(source_id);
-					unchanged = graph[build_source]->unchanged(item.targets, source_data);
-				} else {
-					auto prev_id = source_data.prev_id();
-					if(prev_id && prev_sources.count(prev_id.get())) {
-						unchanged = graph[build_source]->unchanged(item.targets, source_data);
-						prev_sources.erase(prev_id.get());
-					} else {
-						auto archive_record = target_data.map_to_archive_dep(source_id);
-						if(archive_record) {
-							prev_sources.erase(archive_record.get());
-							auto& archive_data = db.get_archive_data(archive_record.get());
-							unchanged = graph[build_source]->unchanged(item.targets, archive_data);
-							logging::debug(logging::Taskmaster) << graph[build_source]->name() << " is an archived dependency\n";
-						} else {
-							logging::debug(logging::Taskmaster) << graph[build_source]->name() << " is a new dependency\n";
-							unchanged = false;
-						}
-					}
-				}
-				if(!unchanged) {
-					logging::debug(logging::Taskmaster) << graph[build_source]->name() << " has changed or is a new dependency\n";
-					up_to_date = false;
-					db.schedule_clean_db();
-				}
-			}
-
-			if(!prev_sources.empty()) {
-				logging::debug(logging::Taskmaster) << "Dependency relations have changed\n";
-				up_to_date = false;
-			}
-
-			if(target_data.task_signature() != item.task->signature()) {
-				up_to_date = false;
-				target_data.task_signature() = item.task->signature();
-				logging::debug(logging::Taskmaster) << "Task signature has changed\n";
-			}
-
-			// mark node as unbuilt, in case build is interrupted
-			if(!up_to_date)
-				target_data.task_status().reset();
-		}
-
-		return up_to_date;
-	}
 
 	class JobServer
 	{
@@ -322,8 +259,8 @@ namespace sconspp
 				}
 				if(states[node] == TO_BUILD) {
 					if(!graph[node]->task() ||
-						is_task_up_to_date(*(tasks.get<task_index>().find(
-					        graph[node]->task())), db)
+						(tasks.get<task_index>().find(
+							graph[node]->task()))->is_up_to_date()
 					) {
 						states[node] = BUILT;
 					} else {

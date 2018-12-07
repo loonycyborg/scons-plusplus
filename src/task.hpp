@@ -58,6 +58,12 @@ class Task
 	ActionList& actions() { return actions_; }
 	Environment::const_pointer env() const;
 
+	bool database_decider(NodeList targets);
+	bool timestamp_pure_decider(NodeList targets);
+	bool (Task::*decider)(NodeList) = &Task::database_decider;
+
+	bool is_up_to_date(NodeList targets) { return (this->*decider)(targets); }
+
 	void scan(Node target, Node source) const { if(scanner_) scanner_(*env_, target, source); }
 	void set_scanner(Scanner scanner) { scanner_ = scanner; }
 
