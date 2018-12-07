@@ -86,7 +86,7 @@ namespace sconspp
 		try {
 			PersistentData& db = get_global_db();
 			IncludeDeps& deps = db.record_current_data(source).scanner_cache();
-			if(!graph[source]->unchanged(NodeList(), db.record_current_data(source))) {
+			if(!graph[source]->unchanged(db.record_current_data(source))) {
 				deps.clear();
 				std::string contents = properties<FSEntry>(source).get_contents();
 				std::string::iterator iter(contents.begin()), iend(contents.end());

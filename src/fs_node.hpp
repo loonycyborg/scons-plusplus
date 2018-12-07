@@ -45,7 +45,7 @@ class FSEntry : public node_properties
 	std::string relpath() const;
 	const char* type() const { return "fs"; }
 
-	bool unchanged(const NodeList&, PersistentNodeData&) const;
+	bool unchanged(PersistentNodeData&) const;
 	bool needs_rebuild() const { return always_build_ || !exists(); }
 
 	boost::logic::tribool is_file() const { return is_file_; }
@@ -73,7 +73,7 @@ class FSEntry : public node_properties
 
 	enum class change_detection {
 		timestamp_md5,
-		timestamp_pure
+		timestamp_match
 	} change_detection = change_detection::timestamp_md5;
 
 	void was_rebuilt(int status)

@@ -250,26 +250,15 @@ FSEntry::FSEntry(path name, boost::logic::tribool is_file) : path_(name), is_fil
 		abspath_ = fs_root / path_;
 }
 
-bool FSEntry::unchanged(const NodeList& targets, PersistentNodeData& prev_data) const
+bool FSEntry::unchanged(PersistentNodeData& prev_data) const
 {
 	if(!unchanged_ || prev_data.is_archive()) {
 		if(exists()) {
 			bool timestamp_same = (timestamp() == prev_data.timestamp());
 			if(!timestamp_same) prev_data.bump_generation();
 			switch(change_detection) {
-				case change_detection::timestamp_pure:
-					unchanged_ = true;
-					for(Node target : targets) {
-						try {
-							if(
-								!properties<FSEntry>(target).exists() ||
-								(timestamp() > properties<FSEntry>(target).timestamp())
-							  )
-								unchanged_ = false;
-						} catch(const std::bad_cast&) {
-							unchanged_ = false;
-						}
-					}
+				case change_detection::timestamp_match:
+					unchanged_ = (prev_data.existed() == boost::optional<bool>(true)) && timestamp_same;
 				break;
 
 				case change_detection::timestamp_md5:
@@ -304,7 +293,7 @@ void FSEntry::record_persistent_data(PersistentNodeData& data)
 	bool entry_exists = exists();
 	data.existed() = entry_exists;
 	data.timestamp() = entry_exists ? timestamp() : boost::optional<time_t>();
-	if(unchanged(NodeList(), data))
+	if(unchanged(data))
 		return;
 	data.signature() = entry_exists ? MD5::hash_file(abspath_.string()) : boost::optional<boost::array<unsigned char, 16> >();
 }

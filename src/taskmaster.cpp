@@ -230,7 +230,7 @@ namespace sconspp
 		while(!states.count(end_node) || (states[end_node] != BUILT && states[end_node] != FAILED)) {
 			for(const auto& result : job_server.wait_for_results()) {
 				auto& node_data { db.record_current_data(result.first) };
-				properties(result.first).unchanged({}, node_data);
+				properties(result.first).unchanged(node_data);
 				node_data.task_status() = result.second;
 				if(result.second == 0) {
 					job_counter++;

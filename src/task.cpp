@@ -69,18 +69,18 @@ bool Task::database_decider(NodeList targets)
 			bool unchanged;
 			if(prev_sources.count(source_id)) {
 				prev_sources.erase(source_id);
-				unchanged = graph[build_source]->unchanged(targets, source_data);
+				unchanged = graph[build_source]->unchanged(source_data);
 			} else {
 				auto prev_id = source_data.prev_id();
 				if(prev_id && prev_sources.count(prev_id.get())) {
-					unchanged = graph[build_source]->unchanged(targets, source_data);
+					unchanged = graph[build_source]->unchanged(source_data);
 					prev_sources.erase(prev_id.get());
 				} else {
 					auto archive_record = target_data.map_to_archive_dep(source_id);
 					if(archive_record) {
 						prev_sources.erase(archive_record.get());
 						auto& archive_data = db.get_archive_data(archive_record.get());
-						unchanged = graph[build_source]->unchanged(targets, archive_data);
+						unchanged = graph[build_source]->unchanged(archive_data);
 						logging::debug(logging::Taskmaster) << graph[build_source]->name() << " is an archived dependency\n";
 					} else {
 						logging::debug(logging::Taskmaster) << graph[build_source]->name() << " is a new dependency\n";
