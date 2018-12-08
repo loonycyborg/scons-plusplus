@@ -41,37 +41,50 @@ std::istream& operator>>(std::istream& in, Frontend& frontend)
 }
 
 Frontend commandline_frontend = Frontend::scons;
+std::string buildfile;
 
 void run_script(int argc, char** argv)
 {
 	bool script_found = false;
 	const char* scons_script_names[] = { "SConstruct++", "SConstruct" };
 	const char* make_script_names[] = { "Makefile" };
+
+	if(!buildfile.empty()) {
+		script_found = boost::filesystem::exists(buildfile);
+		if(!script_found)
+			throw std::runtime_error(std::string("Explicitly set buildfile '") + buildfile + "' not found.");
+	}
+
 	switch(commandline_frontend)
 	{
 		case Frontend::scons:
 			python_interface::init_python();
-			for(const char* name : scons_script_names) {
-				if(boost::filesystem::exists(name)) {
-					script_found = true;
-					python_interface::run_script(name, argc, argv);
-					break;
+			if(!script_found) {
+				for(const char* name : scons_script_names) {
+					if(boost::filesystem::exists(name)) {
+						script_found = true;
+						buildfile = name;
+						break;
+					}
 				}
 			}
 			if(!script_found)
 				throw std::runtime_error("No SConstruct file found.");
+			else
+				python_interface::run_script(buildfile, argc, argv);
 		break;
 		case Frontend::make:
-			python_interface::init_python();
 			for(const char* name : make_script_names) {
 				if(boost::filesystem::exists(name)) {
 					script_found = true;
-					make_interface::run_makefile(name, argc, argv);
+					buildfile = name;
 					break;
 				}
 			}
 			if(!script_found)
 				throw std::runtime_error("No Makefile found.");
+			else
+				make_interface::run_makefile(buildfile, argc, argv);
 		break;
 	}
 }

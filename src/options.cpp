@@ -54,6 +54,7 @@ std::vector<std::string> parse_command_line(int argc, char** argv)
 	boost::program_options::options_description desc("Usage: scons++ [option]... [target]...\nOptions");
 	desc.add_options()
 		("scripting-frontend,F", boost::program_options::value<Frontend>(&commandline_frontend), "Scripting frontend to use. Possible values: 'scons', 'make'")
+		("file,f", boost::program_options::value<std::string>(&buildfile), "Exact name of buildfile to parse")
 		("debug,d", "Enable debug messages")
 		("jobs,j", boost::program_options::value<optional_last_overrides<unsigned int> >()
 			->implicit_value(optional_last_overrides<unsigned int>(), "unlimited")

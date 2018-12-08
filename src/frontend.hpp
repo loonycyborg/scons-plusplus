@@ -18,12 +18,14 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 #pragma once
+#include <iostream>
 
 namespace sconspp
 {
 	enum struct Frontend { scons, make };
 	std::istream& operator>>(std::istream& in, Frontend& frontend);
 	extern Frontend commandline_frontend;
+	extern std::string buildfile;
 
 	void run_script(int argc, char** argv);
 }
