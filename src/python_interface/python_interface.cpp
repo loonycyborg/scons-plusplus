@@ -222,7 +222,7 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 		}
 		catch(py::error_already_set const & e) {
 			std::cerr << "scons++: *** Unhandled python exception when parsing SConscript files." << std::endl;
-			throw;
+			throw std::runtime_error(e.what()); // not using pybind's exception type to prevent segfault outside of lock in outer scope when it's destructed
 		}
 	}
 
