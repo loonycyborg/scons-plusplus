@@ -277,10 +277,13 @@ void run_makefile(const std::string& makefile_path, int argc, char** argv)
 		auto task = properties(makefile_node).task();
 		if(task)
 			task->decider = &Task::timestamp_pure_decider;
+		bool always_build_saved = always_build;
+		always_build = false; // Prevent infinite loop
 		if(sconspp::build(makefile_node) > 0) {
 			// Makefile was rebuilt so we need to start over
 			throw restart_exception();
 		}
+		always_build = always_build_saved;
 	}
 }
 
