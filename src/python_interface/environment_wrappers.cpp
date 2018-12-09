@@ -158,9 +158,9 @@ bool has_key(const Environment& env, const string& key)
 	return env.count(key);
 }
 
-py::object get_item_or_none(const Environment& env, const string& key)
+py::object get_item_default(const Environment& env, const string& key, py::object default_value)
 {
-	return env[key] ? variable_to_python(env[key]) : py::none();
+	return env[key] ? variable_to_python(env[key]) : default_value;
 }
 
 py::object get_env_attr(py::object env, const string& name)

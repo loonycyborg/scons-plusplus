@@ -179,7 +179,7 @@ template<UpdateType update_type, UniqueType unique_type> void Update(Environment
 void Replace(Environment&, py::kwargs kw);
 py::object Detect(const Environment&, py::object progs);
 bool has_key(const Environment&, const string& key);
-py::object get_item_or_none(const Environment&, const string& key);
+py::object get_item_default(const Environment&, const string& key, py::object);
 py::object get_env_attr(py::object, const string& key);
 void AddMethod(py::object, py::object, const std::string& name);
 void SetDefault(Environment&, py::kwargs);
