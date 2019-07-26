@@ -128,8 +128,8 @@ struct makefile_ast
 	makefile_ast() { env = Environment::create(make_subst, setup_make_task_context); }
 };
 
-x3::rule<class make_comment, std::string> make_comment = "make_comment";
-x3::rule<class make_blank_line, std::string> make_blank_line = "make_blank_line";
+x3::rule<class make_comment> make_comment = "make_comment";
+x3::rule<class make_blank_line> make_blank_line = "make_blank_line";
 x3::rule<class make_placeholder, std::string> make_placeholder = "make_placeholder";
 x3::rule<class make_substitution_pattern, std::string> make_substitution_pattern = "make_substitution_pattern";
 x3::rule<class make_macro, std::vector<std::string>> make_macro = "make_macro";

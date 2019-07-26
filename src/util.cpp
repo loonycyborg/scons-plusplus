@@ -79,7 +79,7 @@ boost::filesystem::path readlink(const boost::filesystem::path& path)
 	char buf[5000];
 	size_t n = ::readlink(path.string().c_str(), buf, 5000);
 	if(n == static_cast<size_t>(-1))
-		throw boost::system::error_code(errno, boost::system::get_system_category());
+		throw boost::system::error_code(errno, boost::system::system_category());
 	std::string name(buf, n);
 	return name;
 }
@@ -187,13 +187,13 @@ boost::array<unsigned char, 16> MD5::hash_file(const std::string& filename)
 		fclose(file);
 	} BOOST_SCOPE_EXIT_END
 
-	if(file == nullptr) throw boost::system::system_error(errno, boost::system::get_system_category(), "util::MD5::hash_file: Failed to open " + filename);
+	if(file == nullptr) throw boost::system::system_error(errno, boost::system::system_category(), "util::MD5::hash_file: Failed to open " + filename);
 	while(!feof(file)) {
 		const int blocksize = 4096;
 		unsigned char buffer[blocksize];
 
 		size_t count = fread(buffer, 1, blocksize, file);
-		if(ferror(file)) throw boost::system::system_error(errno, boost::system::get_system_category(), "util::MD5::hash_file: Failed to read " + filename);
+		if(ferror(file)) throw boost::system::system_error(errno, boost::system::system_category(), "util::MD5::hash_file: Failed to read " + filename);
 
 		md5.append(buffer, count);
 	}
