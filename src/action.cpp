@@ -42,7 +42,7 @@ int ExecCommand::execute(const Environment& env) const
 	boost::algorithm::trim(command_str);
 	boost::algorithm::split(command, command_str, boost::is_any_of(" "), boost::token_compress_on);
 
-	return exec(command);
+	return exec(command).first;
 }
 
 std::string ExecCommand::to_string(const Environment& env, bool for_signature) const

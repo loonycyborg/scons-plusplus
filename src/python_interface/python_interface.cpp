@@ -191,6 +191,7 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	py::module m_sconspp_ext = m_scons.def_submodule("SConsppExt");
 	py::class_<Task::Scanner>(m_sconspp_ext, "Scanner");
 	m_sconspp_ext.attr("CPPScanner") = Task::Scanner(scan_cpp);
+	m_sconspp_ext.def("execute", &sconspp::exec, "argv"_a, "capture_output"_a = false);
 }
 
 	void init_python()

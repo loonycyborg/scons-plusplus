@@ -19,6 +19,7 @@
  ***************************************************************************/
 
 #include <unistd.h>
+#include <poll.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -145,7 +146,7 @@ scoped_chdir::~scoped_chdir()
 	boost::filesystem::current_path(old_current_dir);
 }
 
-int exec(const std::vector<string>& args)
+std::pair<int, std::vector<string>> exec(const std::vector<string>& args, bool capture_output)
 {
 	std::vector<char*> argv;
 	for(const string& arg : args)
@@ -157,13 +158,53 @@ int exec(const std::vector<string>& args)
 		throw std::runtime_error("util::exec : Failed to find executable: " + args[0]);
 	throw_if_error(access(binary.string().c_str(), X_OK));
 
+	int stdout_fds[2] = { 0, 0 }, stderr_fds[2] = { 0, 0 };
+	if(capture_output) {
+		throw_if_error(pipe(stdout_fds)); throw_if_error(pipe(stderr_fds));
+	}
+
 	pid_t child = throw_if_error(fork());
 	if(child == 0) {
+		if(capture_output) {
+			close(stdout_fds[0]); close(stderr_fds[0]);
+
+			dup2(stdout_fds[1], 1);
+			dup2(stderr_fds[1], 2);
+
+			close(stdout_fds[1]); close(stderr_fds[1]);
+		}
+
 		execvp(binary.string().c_str(), &argv[0]);
 		std::terminate();
 	} else {
 		int status;
+		std::vector<string> output;
+		if(capture_output) {
+			close(stdout_fds[1]); close(stderr_fds[1]);
+			output.resize(2);
+
+			pollfd pollfds[2] { { stdout_fds[0], POLLIN, 0 }, { stderr_fds[0], POLLIN, 0 } };
+			bool eof_reached[2] { false, false };
+			while(!eof_reached[0] || !eof_reached[1]) {
+				int num_fds = throw_if_error(poll(pollfds, 2, -1));
+				assert(num_fds > 0);
+				assert(num_fds <= 2);
+
+				char buf[1024];
+				for(int index : { 0, 1 }) {
+					if((pollfds[index].revents & POLLIN) || (pollfds[index].revents & POLLHUP)) {
+						int n_bytes = throw_if_error(read(pollfds[index].fd, buf, 1024));
+						if(n_bytes == 0)
+							eof_reached[index] = true;
+						else
+							output[index] += string(buf, n_bytes);
+					}
+				}
+			}
+		}
+
 		throw_if_error(waitpid(child, &status, 0));
+
 		if(WIFEXITED(status)) {
 			if(WEXITSTATUS(status) != 0) {
 				logging::error(logging::System) << args[0] << " exited with status " << boost::lexical_cast<std::string>(WEXITSTATUS(status)) << "\n";
@@ -175,7 +216,7 @@ int exec(const std::vector<string>& args)
 				logging::error(logging::System) << args[0] << " exited abnormally\n";
 		}
 
-		return status;
+		return { status, output };
 	}
 }
 
