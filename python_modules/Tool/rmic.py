@@ -99,8 +99,8 @@ RMICAction = SCons.Action.Action('$RMICCOM', '$RMICCOMSTR')
 RMICBuilder = SCons.Builder.Builder(action = RMICAction,
                      emitter = emit_rmic_classes,
                      src_suffix = '$JAVACLASSSUFFIX',
-                     target_factory = SCons.Node.FS.FS.Dir,
-                     source_factory = SCons.Node.FS.FS.File)
+                     target_factory = SCons.Node.FS.Dir,
+                     source_factory = SCons.Node.FS.File)
 
 def generate(env):
     """Add Builders and construction variables for rmic to an Environment."""

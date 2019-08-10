@@ -85,5 +85,10 @@ NodeList extract_file_nodes(py::object obj)
 	return result;
 }
 
+std::string scons_norm_case(std::string name)
+{
+	return name;
+}
+
 }
 }

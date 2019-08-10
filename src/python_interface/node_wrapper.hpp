@@ -74,6 +74,14 @@ struct NodeWrapper
 	}
 };
 
+template<Node (*func)(const std::string&)>
+NodeWrapper wrap_add(const std::string& name)
+{
+	return NodeWrapper { func(name) };
+}
+
+std::string scons_norm_case(std::string name);
+
 inline std::string extract_string_subst(const Environment& env, py::object obj)
 {
 	return env.subst(obj.cast<std::string>());
