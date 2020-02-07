@@ -9,7 +9,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -31,31 +31,61 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/gcc.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/gcc.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
+
+from . import cc
+import os
+import re
+import subprocess
 
 import SCons.Util
 
-import cc
-import os
-import re
-
 compilers = ['gcc', 'cc']
+
 
 def generate(env):
     """Add Builders and construction variables for gcc to an Environment."""
+
+    if 'CC' not in env:
+        env['CC'] = env.Detect(compilers) or compilers[0]
+
     cc.generate(env)
 
-    env['CC'] = env.Detect(compilers) or 'gcc'
     if env['PLATFORM'] in ['cygwin', 'win32']:
         env['SHCCFLAGS'] = SCons.Util.CLVar('$CCFLAGS')
     else:
         env['SHCCFLAGS'] = SCons.Util.CLVar('$CCFLAGS -fPIC')
     # determine compiler version
-    if env['CC']:
-        line = os.popen(env['CC'] + ' --version').readline()
-        match = re.search(r'[0-9]+(\.[0-9]+)+', line)
-        if match:
-            env['CCVERSION'] = match.group(0)
+    version = detect_version(env, env['CC'])
+    if version:
+        env['CCVERSION'] = version
+
 
 def exists(env):
-    return env.Detect(compilers)
+    # is executable, and is a GNU compiler (or accepts '--version' at least)
+    return detect_version(env, env.Detect(env.get('CC', compilers)))
+
+
+def detect_version(env, cc):
+    """Return the version of the GNU compiler, or None if it is not a GNU compiler."""
+    version = None
+    cc = env.subst(cc)
+    if not cc:
+        return version
+
+    from SCons.SConsppExt import execute
+    try:
+        status, version = execute([cc, "-dumpversion"], True)
+    except:
+        return None
+
+    if status != 0:
+        return None
+    else:
+        return version[0].strip()
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

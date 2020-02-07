@@ -7,7 +7,7 @@ Phar Lap ETS tool chain.  Right now, this is linkloc and
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -29,14 +29,13 @@ Phar Lap ETS tool chain.  Right now, this is linkloc and
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/PharLapCommon.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/PharLapCommon.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import os
 import os.path
 import SCons.Errors
 import SCons.Util
 import re
-import string
 
 def getPharLapPath():
     """Reads the registry to find the installed path of the Phar Lap ETS
@@ -46,7 +45,7 @@ def getPharLapPath():
     be found."""
 
     if not SCons.Util.can_read_reg:
-        raise SCons.Errors.InternalError, "No Windows registry module was found"
+        raise SCons.Errors.InternalError("No Windows registry module was found")
     try:
         k=SCons.Util.RegOpenKeyEx(SCons.Util.HKEY_LOCAL_MACHINE,
                                   'SOFTWARE\\Pharlap\\ETS')
@@ -62,7 +61,7 @@ def getPharLapPath():
                     
         return os.path.normpath(val)
     except SCons.Util.RegError:
-        raise SCons.Errors.UserError, "Cannot find Phar Lap ETS path in the registry.  Is it installed properly?"
+        raise SCons.Errors.UserError("Cannot find Phar Lap ETS path in the registry.  Is it installed properly?")
 
 REGEX_ETS_VER = re.compile(r'#define\s+ETS_VER\s+([0-9]+)')
 
@@ -79,34 +78,13 @@ def getPharLapVersion():
 
     include_path = os.path.join(getPharLapPath(), os.path.normpath("include/embkern.h"))
     if not os.path.exists(include_path):
-        raise SCons.Errors.UserError, "Cannot find embkern.h in ETS include directory.\nIs Phar Lap ETS installed properly?"
-    mo = REGEX_ETS_VER.search(open(include_path, 'r').read())
+        raise SCons.Errors.UserError("Cannot find embkern.h in ETS include directory.\nIs Phar Lap ETS installed properly?")
+    with open(include_path, 'r') as f:
+        mo = REGEX_ETS_VER.search(f.read())
     if mo:
         return int(mo.group(1))
     # Default return for Phar Lap 9.1
     return 910
-
-def addPathIfNotExists(env_dict, key, path, sep=os.pathsep):
-    """This function will take 'key' out of the dictionary
-    'env_dict', then add the path 'path' to that key if it is not
-    already there.  This treats the value of env_dict[key] as if it
-    has a similar format to the PATH variable...a list of paths
-    separated by tokens.  The 'path' will get added to the list if it
-    is not already there."""
-    try:
-        is_list = 1
-        paths = env_dict[key]
-        if not SCons.Util.is_List(env_dict[key]):
-            paths = string.split(paths, sep)
-            is_list = 0
-        if not os.path.normcase(path) in map(os.path.normcase, paths):
-            paths = [ path ] + paths
-        if is_list:
-            env_dict[key] = paths
-        else:
-            env_dict[key] = string.join(paths, sep)
-    except KeyError:
-        env_dict[key] = path
 
 def addPharLapPaths(env):
     """This function adds the path to the Phar Lap binaries, includes,
@@ -118,15 +96,21 @@ def addPharLapPaths(env):
     except KeyError:
         env_dict = {}
         env['ENV'] = env_dict
-    addPathIfNotExists(env_dict, 'PATH',
-                       os.path.join(ph_path, 'bin'))
-    addPathIfNotExists(env_dict, 'INCLUDE',
-                       os.path.join(ph_path, 'include'))
-    addPathIfNotExists(env_dict, 'LIB',
-                       os.path.join(ph_path, 'lib'))
-    addPathIfNotExists(env_dict, 'LIB',
-                       os.path.join(ph_path, os.path.normpath('lib/vclib')))
+    SCons.Util.AddPathIfNotExists(env_dict, 'PATH',
+                                  os.path.join(ph_path, 'bin'))
+    SCons.Util.AddPathIfNotExists(env_dict, 'INCLUDE',
+                                  os.path.join(ph_path, 'include'))
+    SCons.Util.AddPathIfNotExists(env_dict, 'LIB',
+                                  os.path.join(ph_path, 'lib'))
+    SCons.Util.AddPathIfNotExists(env_dict, 'LIB',
+                                  os.path.join(ph_path, os.path.normpath('lib/vclib')))
     
     env['PHARLAP_PATH'] = getPharLapPath()
     env['PHARLAP_VERSION'] = str(getPharLapVersion())
     
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

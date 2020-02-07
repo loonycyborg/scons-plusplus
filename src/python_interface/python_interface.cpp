@@ -113,9 +113,13 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 		;
 	py::implicitly_convertible<Node, NodeWrapper>();
 
+	py::module m_value = m_node.def_submodule("Python");
+	m_value.def("Value", wrap_add<add_dummy_node>);
+
 	py::module m_fs = m_node.def_submodule("FS");
 	m_fs.def("find_file", FindFile, "filename"_a, "paths"_a);
 	m_fs.def("Entry", wrap_add<add_entry_indeterminate>);
+	m_fs.def("Base", wrap_add<add_entry_indeterminate>);
 	m_fs.def("File", wrap_add<add_file>);
 	m_fs.def("Dir", wrap_add<add_directory>);
 	m_fs.def("_my_normcase", scons_norm_case);

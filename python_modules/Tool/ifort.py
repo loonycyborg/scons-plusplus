@@ -1,7 +1,7 @@
 """SCons.Tool.ifort
 
 Tool-specific initialization for newer versions of the Intel Fortran Compiler
-for Linux. 
+for Linux/Windows (and possibly Mac OS X).
 
 There normally shouldn't be any need to import this module directly.
 It will usually be imported through the generic SCons.Tool.Tool()
@@ -10,7 +10,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -32,13 +32,11 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/ifort.py 3266 2008/08/12 07:31:01 knight"
-
-import string
+__revision__ = "src/engine/SCons/Tool/ifort.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import SCons.Defaults
 from SCons.Scanner.Fortran import FortranScan
-from FortranCommon import add_all_to_env
+from .FortranCommon import add_all_to_env
 
 def generate(env):
     """Add Builders and construction variables for ifort to an Environment."""
@@ -47,13 +45,13 @@ def generate(env):
     fscan = FortranScan("FORTRANPATH")
     SCons.Tool.SourceFileScanner.add_scanner('.i', fscan)
     SCons.Tool.SourceFileScanner.add_scanner('.i90', fscan)
-     
-    if not env.has_key('FORTRANFILESUFFIXES'):
+
+    if 'FORTRANFILESUFFIXES' not in env:
         env['FORTRANFILESUFFIXES'] = ['.i']
     else:
         env['FORTRANFILESUFFIXES'].append('.i')
 
-    if not env.has_key('F90FILESUFFIXES'):
+    if 'F90FILESUFFIXES' not in env:
         env['F90FILESUFFIXES'] = ['.i90']
     else:
         env['F90FILESUFFIXES'].append('.i90')
@@ -65,7 +63,8 @@ def generate(env):
     for dialect in ['F77', 'F90', 'FORTRAN', 'F95']:
         env['%s' % dialect] = fc
         env['SH%s' % dialect] = '$%s' % dialect
-        env['SH%sFLAGS' % dialect] = SCons.Util.CLVar('$%sFLAGS -fPIC' % dialect)
+        if env['PLATFORM'] == 'posix':
+            env['SH%sFLAGS' % dialect] = SCons.Util.CLVar('$%sFLAGS -fPIC' % dialect)
 
     if env['PLATFORM'] == 'win32':
         # On Windows, the ifort compiler specifies the object on the
@@ -74,7 +73,16 @@ def generate(env):
         for dialect in ['F77', 'F90', 'FORTRAN', 'F95']:
             for var in ['%sCOM' % dialect, '%sPPCOM' % dialect,
                         'SH%sCOM' % dialect, 'SH%sPPCOM' % dialect]:
-                env[var] = string.replace(env[var], '-o $TARGET', '-object:$TARGET')
+                env[var] = env[var].replace('-o $TARGET', '-object:$TARGET')
+        env['FORTRANMODDIRPREFIX'] = "/module:"
+    else:
+        env['FORTRANMODDIRPREFIX'] = "-module "
 
 def exists(env):
     return env.Detect('ifort')
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

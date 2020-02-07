@@ -1,10 +1,10 @@
 """SCons.Tool.Packaging.tarbz2
 
-The tarbz2 SRC packager.
+The tarbz2 packager.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 # 
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -26,13 +26,19 @@ The tarbz2 SRC packager.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/packaging/tarbz2.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/packaging/tarbz2.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 from SCons.Tool.packaging import stripinstallbuilder, putintopackageroot
 
 def package(env, target, source, PACKAGEROOT, **kw):
     bld = env['BUILDERS']['Tar']
-    bld.set_suffix('.tar.gz')
+    bld.set_suffix('.tar.bz2')
     target, source = putintopackageroot(target, source, env, PACKAGEROOT)
     target, source = stripinstallbuilder(target, source, env)
     return bld(env, target, source, TARFLAGS='-jc')
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

@@ -5,7 +5,7 @@ The Scanner package for the SCons software construction utility.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -27,16 +27,15 @@ The Scanner package for the SCons software construction utility.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Scanner/__init__.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Scanner/__init__.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import re
-import string
 
 import SCons.Node.FS
 import SCons.Util
 
 
-class _Null:
+class _Null(object):
     pass
 
 # This is used instead of None as a default argument value so None can be
@@ -56,15 +55,17 @@ def Scanner(function, *args, **kw):
     patterned on SCons code.
     """
     if SCons.Util.is_Dict(function):
-        return apply(Selector, (function,) + args, kw)
+        return Selector(function, *args, **kw)
     else:
-        return apply(Base, (function,) + args, kw)
+        return Base(function, *args, **kw)
 
 
 
-class FindPathDirs:
-    """A class to bind a specific *PATH variable name to a function that
-    will return all of the *path directories."""
+class FindPathDirs(object):
+    """
+    A class to bind a specific E{*}PATH variable name to a function that
+    will return all of the E{*}path directories.
+    """
     def __init__(self, variable):
         self.variable = variable
     def __call__(self, env, dir=None, target=None, source=None, argument=None):
@@ -81,7 +82,7 @@ class FindPathDirs:
 
 
 
-class Base:
+class Base(object):
     """
     The base class for dependency scanners.  This implements
     straightforward, single-pass scanning of a single file.
@@ -93,7 +94,9 @@ class Base:
                  argument = _null,
                  skeys = _null,
                  path_function = None,
-                 node_class = SCons.Node.FS.Entry,
+                 # Node.FS.Base so that, by default, it's okay for a
+                 # scanner to return a Dir, File or Entry.
+                 node_class = SCons.Node.FS.Base,
                  node_factory = None,
                  scan_check = None,
                  recursive = None):
@@ -170,7 +173,7 @@ class Base:
 
         if skeys is _null:
             if SCons.Util.is_Dict(function):
-                skeys = function.keys()
+                skeys = list(function.keys())
             else:
                 skeys = []
         self.skeys = skeys
@@ -188,12 +191,12 @@ class Base:
     def path(self, env, dir=None, target=None, source=None):
         if not self.path_function:
             return ()
-        if not self.argument is _null:
+        if self.argument is not _null:
             return self.path_function(env, dir, target, source, self.argument)
         else:
             return self.path_function(env, dir, target, source)
 
-    def __call__(self, node, env, path = ()):
+    def __call__(self, node, env, path=()):
         """
         This method scans a single object. 'node' is the node
         that will be passed to the scanner function, and 'env' is the
@@ -205,23 +208,29 @@ class Base:
 
         self = self.select(node)
 
-        if not self.argument is _null:
-            list = self.function(node, env, path, self.argument)
+        if self == None: return []
+
+        if self.argument is not _null:
+            node_list = self.function(node, env, path, self.argument)
         else:
-            list = self.function(node, env, path)
+            node_list = self.function(node, env, path)
 
         kw = {}
+        if hasattr(node, 'dir'):
+            kw['directory'] = node.dir
+        node_factory = env.Entry
         nodes = []
-        for l in env.Flatten(list):
+        for l in node_list:
+            l = node_factory(str(l))
             nodes.append(l)
         return nodes
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
         try:
-            return cmp(self.__dict__, other.__dict__)
+            return self.__dict__ == other.__dict__
         except AttributeError:
             # other probably doesn't have a __dict__
-            return cmp(self.__dict__, other)
+            return self.__dict__ == other
 
     def __hash__(self):
         return id(self)
@@ -254,7 +263,7 @@ class Base:
     def _recurse_no_nodes(self, nodes):
         return []
 
-    recurse_nodes = _recurse_no_nodes
+    # recurse_nodes = _recurse_no_nodes
 
     def add_scanner(self, skey, scanner):
         self.function[skey] = scanner
@@ -274,11 +283,11 @@ class Selector(Base):
     for custom modules that may be out there.)
     """
     def __init__(self, dict, *args, **kw):
-        apply(Base.__init__, (self, None,)+args, kw)
+        Base.__init__(self, None, *args, **kw)
         self.dict = dict
-        self.skeys = dict.keys()
+        self.skeys = list(dict.keys())
 
-    def __call__(self, node, env, path = ()):
+    def __call__(self, node, env, path=()):
         return self.select(node)(node, env, path)
 
     def select(self, node):
@@ -303,7 +312,7 @@ class Current(Base):
         def current_check(node, env):
             return not node.has_builder() or node.is_up_to_date()
         kw['scan_check'] = current_check
-        apply(Base.__init__, (self,) + args, kw)
+        Base.__init__(self, *args, **kw)
 
 class Classic(Current):
     """
@@ -321,18 +330,23 @@ class Classic(Current):
 
         self.cre = re.compile(regex, re.M)
 
-        def _scan(node, env, path=(), self=self):
+        def _scan(node, _, path=(), self=self):
             if not node.exists():
                 return []
             return self.scan(node, path)
 
         kw['function'] = _scan
         kw['path_function'] = FindPathDirs(path_variable)
-        kw['recursive'] = 1
+
+        # Allow recursive to propagate if child class specifies.
+        # In this case resource scanner needs to specify a filter on which files
+        # get recursively processed.  Previously was hardcoded to 1 instead of
+        # defaulted to 1.
+        kw['recursive'] = kw.get('recursive', 1)
         kw['skeys'] = suffixes
         kw['name'] = name
 
-        apply(Current.__init__, (self,) + args, kw)
+        Current.__init__(self, *args, **kw)
 
     def find_include(self, include, source_dir, path):
         n = SCons.Node.FS.find_file(include, (source_dir,) + tuple(path))
@@ -342,11 +356,12 @@ class Classic(Current):
         return SCons.Node.FS._my_normcase(include)
 
     def find_include_names(self, node):
+        print(node.name)
         return self.cre.findall(node.get_contents())
 
     def scan(self, node, path=()):
 
-        includes = self.find_include_names (node)
+        includes = self.find_include_names(node)
 
         # This is a hand-coded DSU (decorate-sort-undecorate, or
         # Schwartzian transform) pattern.  The sort key is the raw name
@@ -365,12 +380,9 @@ class Classic(Current):
                 SCons.Warnings.warn(SCons.Warnings.DependencyWarning,
                                     "No dependency generated for file: %s (included from: %s) -- file not found" % (i, node))
             else:
-                sortkey = self.sort_key(include)
-                nodes.append((sortkey, n))
+                nodes.append((self.sort_key(include), n))
 
-        nodes.sort()
-        nodes = map(lambda pair: pair[1], nodes)
-        return nodes
+        return [pair[1] for pair in sorted(nodes)]
 
 class ClassicCPP(Classic):
     """
@@ -383,6 +395,7 @@ class ClassicCPP(Classic):
     the contained filename in group 1.
     """
     def find_include(self, include, source_dir, path):
+        include = list(map(SCons.Util.to_str, include))
         if include[0] == '"':
             paths = (source_dir,) + tuple(path)
         else:
@@ -390,7 +403,14 @@ class ClassicCPP(Classic):
 
         n = SCons.Node.FS.find_file(include[1], paths)
 
-        return n, include[1]
+        i = SCons.Util.silent_intern(include[1])
+        return n, i
 
     def sort_key(self, include):
-        return SCons.Node.FS._my_normcase(string.join(include))
+        return SCons.Node.FS._my_normcase(' '.join(include))
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

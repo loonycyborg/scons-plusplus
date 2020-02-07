@@ -12,7 +12,7 @@ environment.  Consequently, we'll examine both sys.platform and os.name
 (and anything else that might come in to play) in order to return some
 specification which is unique enough for our purposes.
 
-Note that because this subsysem just *selects* a callable that can
+Note that because this subsystem just *selects* a callable that can
 modify a construction environment, it's possible for people to define
 their own "platform specification" in an arbitrary callable function.
 No one needs to use or tie in to this subsystem in order to roll
@@ -20,8 +20,8 @@ their own platform definition.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
-# 
+# Copyright (c) 2001 - 2019 The SCons Foundation
+#
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
 # "Software"), to deal in the Software without restriction, including
@@ -41,17 +41,21 @@ their own platform definition.
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
+from __future__ import print_function
 
-__revision__ = "src/engine/SCons/Platform/__init__.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Platform/__init__.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
-import imp
+import SCons.compat
+
+import importlib
 import os
-import string
 import sys
 import tempfile
 
 import SCons.Errors
+import SCons.Subst
 import SCons.Tool
+
 
 def platform_default():
     """Return the platform string for our execution environment.
@@ -66,15 +70,15 @@ def platform_default():
     if osname == 'posix':
         if sys.platform == 'cygwin':
             return 'cygwin'
-        elif string.find(sys.platform, 'irix') != -1:
+        elif sys.platform.find('irix') != -1:
             return 'irix'
-        elif string.find(sys.platform, 'sunos') != -1:
+        elif sys.platform.find('sunos') != -1:
             return 'sunos'
-        elif string.find(sys.platform, 'hp-ux') != -1:
+        elif sys.platform.find('hp-ux') != -1:
             return 'hpux'
-        elif string.find(sys.platform, 'aix') != -1:
+        elif sys.platform.find('aix') != -1:
             return 'aix'
-        elif string.find(sys.platform, 'darwin') != -1:
+        elif sys.platform.find('darwin') != -1:
             return 'darwin'
         else:
             return 'posix'
@@ -83,6 +87,7 @@ def platform_default():
     else:
         return sys.platform
 
+
 def platform_module(name = platform_default()):
     """Return the imported module for the platform.
 
@@ -90,88 +95,123 @@ def platform_module(name = platform_default()):
     If the name is unspecified, we fetch the appropriate default for
     our execution environment.
     """
-    full_name = 'SCons.Platform.' + name
-    if not sys.modules.has_key(full_name):
+    full_name = 'Platform.' + name
+    if full_name not in sys.modules:
         if os.name == 'java':
             eval(full_name)
         else:
             try:
-                file, path, desc = imp.find_module(name,
-                                        sys.modules['SCons.Platform'].__path__)
-                try:
-                    mod = imp.load_module(full_name, file, path, desc)
-                finally:
-                    if file:
-                        file.close()
+                # the specific platform module is a relative import
+                mod = importlib.import_module("." + name, __name__)
             except ImportError:
                 try:
                     import zipimport
                     importer = zipimport.zipimporter( sys.modules['SCons.Platform'].__path__[0] )
                     mod = importer.load_module(full_name)
                 except ImportError:
-                    raise SCons.Errors.UserError, "No platform named '%s'" % name
+                    raise SCons.Errors.UserError("No platform named '%s'" % name)
             setattr(SCons.Platform, name, mod)
     return sys.modules[full_name]
+
 
 def DefaultToolList(platform, env):
     """Select a default tool list for the specified platform.
     """
     return SCons.Tool.tool_list(platform, env)
 
-class PlatformSpec:
-    def __init__(self, name):
+
+class PlatformSpec(object):
+    def __init__(self, name, generate):
         self.name = name
+        self.generate = generate
+
+    def __call__(self, *args, **kw):
+        return self.generate(*args, **kw)
 
     def __str__(self):
         return self.name
-        
-class TempFileMunge:
+
+
+class TempFileMunge(object):
     """A callable class.  You can set an Environment variable to this,
     then call it with a string argument, then it will perform temporary
     file substitution on it.  This is used to circumvent the long command
     line limitation.
 
     Example usage:
-    env["TEMPFILE"] = TempFileMunge
-    env["LINKCOM"] = "${TEMPFILE('$LINK $TARGET $SOURCES')}"
+        env["TEMPFILE"] = TempFileMunge
+        env["LINKCOM"] = "${TEMPFILE('$LINK $TARGET $SOURCES','$LINKCOMSTR')}"
 
     By default, the name of the temporary file used begins with a
-    prefix of '@'.  This may be configred for other tool chains by
-    setting '$TEMPFILEPREFIX'.
+    prefix of '@'.  This may be configured for other tool chains by
+    setting '$TEMPFILEPREFIX':
+        env["TEMPFILEPREFIX"] = '-@'        # diab compiler
+        env["TEMPFILEPREFIX"] = '-via'      # arm tool chain
+        env["TEMPFILEPREFIX"] = ''          # (the empty string) PC Lint
 
-    env["TEMPFILEPREFIX"] = '-@'        # diab compiler
-    env["TEMPFILEPREFIX"] = '-via'      # arm tool chain
+    You can configure the extension of the temporary file through the
+    TEMPFILESUFFIX variable, which defaults to '.lnk' (see comments
+    in the code below):
+        env["TEMPFILESUFFIX"] = '.lnt'   # PC Lint
     """
-    def __init__(self, cmd):
+    def __init__(self, cmd, cmdstr = None):
         self.cmd = cmd
+        self.cmdstr = cmdstr
 
     def __call__(self, target, source, env, for_signature):
         if for_signature:
+            # If we're being called for signature calculation, it's
+            # because we're being called by the string expansion in
+            # Subst.py, which has the logic to strip any $( $) that
+            # may be in the command line we squirreled away.  So we
+            # just return the raw command line and let the upper
+            # string substitution layers do their thing.
             return self.cmd
-        cmd = env.subst_list(self.cmd, 0, target, source)[0]
+
+        # Now we're actually being called because someone is actually
+        # going to try to execute the command, so we have to do our
+        # own expansion.
+        cmd = env.subst_list(self.cmd, SCons.Subst.SUBST_CMD, target, source)[0]
         try:
             maxline = int(env.subst('$MAXLINELENGTH'))
         except ValueError:
             maxline = 2048
 
-        if (reduce(lambda x, y: x + len(y), cmd, 0) + len(cmd)) <= maxline:
+        length = 0
+        for c in cmd:
+            length += len(c)
+        length += len(cmd) - 1
+        if length <= maxline:
             return self.cmd
+
+        # Check if we already created the temporary file for this target
+        # It should have been previously done by Action.strfunction() call
+        node = target[0] if SCons.Util.is_List(target) else target
+        cmdlist = getattr(node.attributes, 'tempfile_cmdlist', None) \
+                    if node is not None else None
+        if cmdlist is not None:
+            return cmdlist
 
         # We do a normpath because mktemp() has what appears to be
         # a bug in Windows that will use a forward slash as a path
-        # delimiter.  Windows's link mistakes that for a command line
+        # delimiter.  Windows' link mistakes that for a command line
         # switch and barfs.
         #
-        # We use the .lnk suffix for the benefit of the Phar Lap
+        # Default to the .lnk suffix for the benefit of the Phar Lap
         # linkloc linker, which likes to append an .lnk suffix if
         # none is given.
-        tmp = os.path.normpath(tempfile.mktemp('.lnk'))
-        native_tmp = SCons.Util.get_native_path(tmp)
+        if env.has_key('TEMPFILESUFFIX'):
+            suffix = env.subst('$TEMPFILESUFFIX')
+        else:
+            suffix = '.lnk'
 
-        if env['SHELL'] and env['SHELL'] == 'sh':
+        fd, tmp = tempfile.mkstemp(suffix, text=True)
+        native_tmp = SCons.Util.get_native_path(os.path.normpath(tmp))
+
+        if env.get('SHELL', None) == 'sh':
             # The sh shell will try to escape the backslashes in the
             # path, so unescape them.
-            native_tmp = string.replace(native_tmp, '\\', r'\\\\')
+            native_tmp = native_tmp.replace('\\', r'\\\\')
             # In Cygwin, we want to use rm to delete the temporary
             # file, because del does not exist in the sh shell.
             rm = env.Detect('rm') or 'del'
@@ -185,8 +225,11 @@ class TempFileMunge:
         if not prefix:
             prefix = '@'
 
-        args = map(SCons.Subst.quote_spaces, cmd[1:])
-        open(tmp, 'w').write(string.join(args, " ") + "\n")
+        args = list(map(SCons.Subst.quote_spaces, cmd[1:]))
+        join_char = env.get('TEMPFILEARGJOIN',' ')
+        os.write(fd, bytearray(join_char.join(args) + "\n",'utf-8'))
+        os.close(fd)
+
         # XXX Using the SCons.Action.print_actions value directly
         # like this is bogus, but expedient.  This class should
         # really be rewritten as an Action that defines the
@@ -203,14 +246,51 @@ class TempFileMunge:
         # purity get in the way of just being helpful, so we'll
         # reach into SCons.Action directly.
         if SCons.Action.print_actions:
-            print("Using tempfile "+native_tmp+" for command line:\n"+
-                  str(cmd[0]) + " " + string.join(args," "))
-        return [ cmd[0], prefix + native_tmp + '\n' + rm, native_tmp ]
-    
+            cmdstr = env.subst(self.cmdstr, SCons.Subst.SUBST_RAW, target,
+                               source) if self.cmdstr is not None else ''
+            # Print our message only if XXXCOMSTR returns an empty string
+            if len(cmdstr) == 0 :
+                cmdstr = ("Using tempfile "+native_tmp+" for command line:\n"+
+                    str(cmd[0]) + " " + " ".join(args))
+                self._print_cmd_str(target, source, env, cmdstr)
+
+        # Store the temporary file command list into the target Node.attributes
+        # to avoid creating two temporary files one for print and one for execute.
+        cmdlist = [ cmd[0], prefix + native_tmp + '\n' + rm, native_tmp ]
+        if node is not None:
+            try :
+                setattr(node.attributes, 'tempfile_cmdlist', cmdlist)
+            except AttributeError:
+                pass
+        return cmdlist
+
+    def _print_cmd_str(self, target, source, env, cmdstr):
+        # check if the user has specified a cmd line print function
+        print_func = None
+        try:
+            get = env.get
+        except AttributeError:
+            pass
+        else:
+            print_func = get('PRINT_CMD_LINE_FUNC')
+
+        # use the default action cmd line print if user did not supply one
+        if not print_func:
+            action = SCons.Action._ActionAction()
+            action.print_cmd_line(cmdstr, target, source, env)
+        else:
+            print_func(cmdstr, target, source, env)
+
+
 def Platform(name = platform_default()):
     """Select a canned Platform specification.
     """
     module = platform_module(name)
-    spec = PlatformSpec(name)
-    spec.__call__ = module.generate
+    spec = PlatformSpec(name, module.generate)
     return spec
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

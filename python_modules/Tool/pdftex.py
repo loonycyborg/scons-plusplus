@@ -1,6 +1,7 @@
 """SCons.Tool.pdftex
 
 Tool-specific initialization for pdftex.
+Generates .pdf files from .tex files
 
 There normally shouldn't be any need to import this module directly.
 It will usually be imported through the generic SCons.Tool.Tool()
@@ -9,7 +10,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -31,8 +32,9 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/pdftex.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/pdftex.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
+import os
 import SCons.Action
 import SCons.Util
 import SCons.Tool.tex
@@ -44,17 +46,25 @@ PDFTeXAction = None
 PDFLaTeXAction = None
 
 def PDFLaTeXAuxAction(target = None, source= None, env=None):
-    SCons.Tool.tex.InternalLaTeXAuxAction( PDFLaTeXAction, target, source, env )
+    result = SCons.Tool.tex.InternalLaTeXAuxAction( PDFLaTeXAction, target, source, env )
+    return result
 
 def PDFTeXLaTeXFunction(target = None, source= None, env=None):
     """A builder for TeX and LaTeX that scans the source file to
     decide the "flavor" of the source and then executes the appropriate
     program."""
-    if SCons.Tool.tex.is_LaTeX(source):
-        PDFLaTeXAuxAction(target,source,env)
+    basedir = os.path.split(str(source[0]))[0]
+    abspath = os.path.abspath(basedir)
+
+    if SCons.Tool.tex.is_LaTeX(source,env,abspath):
+        result = PDFLaTeXAuxAction(target,source,env)
+        if result != 0:
+            SCons.Tool.tex.check_file_error_message(env['PDFLATEX'])
     else:
-        PDFTeXAction(target,source,env)
-    return 0
+        result = PDFTeXAction(target,source,env)
+        if result != 0:
+            SCons.Tool.tex.check_file_error_message(env['PDFTEX'])
+    return result
 
 PDFTeXLaTeXAction = None
 
@@ -71,24 +81,29 @@ def generate(env):
     global PDFTeXLaTeXAction
     if PDFTeXLaTeXAction is None:
         PDFTeXLaTeXAction = SCons.Action.Action(PDFTeXLaTeXFunction,
-                                                strfunction=None)
+                              strfunction=SCons.Tool.tex.TeXLaTeXStrFunction)
 
-    import pdf
+    env.AppendUnique(LATEXSUFFIXES=SCons.Tool.LaTeXSuffixes)
+
+    from . import pdf
     pdf.generate(env)
 
     bld = env['BUILDERS']['PDF']
     bld.add_action('.tex', PDFTeXLaTeXAction)
-    bld.add_emitter('.tex', SCons.Tool.tex.tex_emitter)
+    bld.add_emitter('.tex', SCons.Tool.tex.tex_pdf_emitter)
 
-    env['PDFTEX']      = 'pdftex'
-    env['PDFTEXFLAGS'] = SCons.Util.CLVar('')
-    env['PDFTEXCOM']   = 'cd ${TARGET.dir} && $PDFTEX $PDFTEXFLAGS ${SOURCE.file}'
+    # Add the epstopdf builder after the pdftex builder 
+    # so pdftex is the default for no source suffix
+    pdf.generate2(env)
 
-    # Duplicate from latex.py.  If latex.py goes away, then this is still OK.
-    env['PDFLATEX']      = 'pdflatex'
-    env['PDFLATEXFLAGS'] = SCons.Util.CLVar('')
-    env['PDFLATEXCOM']   = 'cd ${TARGET.dir} && $PDFLATEX $PDFLATEXFLAGS ${SOURCE.file}'
-    env['LATEXRETRIES']  = 3
+    SCons.Tool.tex.generate_common(env)
 
 def exists(env):
+    SCons.Tool.tex.generate_darwin(env)
     return env.Detect('pdftex')
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

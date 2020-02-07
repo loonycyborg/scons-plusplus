@@ -5,7 +5,7 @@ This module implements the dependency scanner for Fortran code.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -25,12 +25,10 @@ This module implements the dependency scanner for Fortran code.
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#
 
-__revision__ = "src/engine/SCons/Scanner/Fortran.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Scanner/Fortran.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import re
-import string
 
 import SCons.Node
 import SCons.Node.FS
@@ -75,31 +73,31 @@ class F90Scanner(SCons.Scanner.Classic):
         kw['skeys'] = suffixes
         kw['name'] = name
 
-        apply(SCons.Scanner.Current.__init__, (self,) + args, kw)
+        SCons.Scanner.Current.__init__(self, *args, **kw)
 
     def scan(self, node, env, path=()):
 
         # cache the includes list in node so we only scan it once:
-        if node.includes != None:
+        if node.includes is not None:
             mods_and_includes = node.includes
         else:
             # retrieve all included filenames
-            includes = self.cre_incl.findall(node.get_contents())
+            includes = self.cre_incl.findall(node.get_text_contents())
             # retrieve all USE'd module names
-            modules = self.cre_use.findall(node.get_contents())
+            modules = self.cre_use.findall(node.get_text_contents())
             # retrieve all defined module names
-            defmodules = self.cre_def.findall(node.get_contents())
+            defmodules = self.cre_def.findall(node.get_text_contents())
 
             # Remove all USE'd module names that are defined in the same file
+            # (case-insensitively)
             d = {}
             for m in defmodules:
-                d[m] = 1
-            modules = filter(lambda m, d=d: not d.has_key(m), modules)
-            #modules = self.undefinedModules(modules, defmodules)
+                d[m.lower()] = 1
+            modules = [m for m in modules if m.lower() not in d]
 
             # Convert module name to a .mod filename
             suffix = env.subst('$FORTRANMODSUFFIX')
-            modules = map(lambda x, s=suffix: string.lower(x) + s, modules)
+            modules = [x.lower() + suffix for x in modules]
             # Remove unique items from the list
             mods_and_includes = SCons.Util.unique(includes+modules)
             node.includes = mods_and_includes
@@ -123,9 +121,7 @@ class F90Scanner(SCons.Scanner.Classic):
                 sortkey = self.sort_key(dep)
                 nodes.append((sortkey, n))
 
-        nodes.sort()
-        nodes = map(lambda pair: pair[1], nodes)
-        return nodes
+        return [pair[1] for pair in sorted(nodes)]
 
 def FortranScan(path_variable="FORTRANPATH"):
     """Return a prototype Scanner instance for scanning source files
@@ -191,7 +187,7 @@ def FortranScan(path_variable="FORTRANPATH"):
 #   (\w+)              : match the module name that is being USE'd
 #
 #
-    use_regex = "(?i)(?:^|;)\s*USE(?:\s+|(?:(?:\s*,\s*(?:NON_)?INTRINSIC)?\s*::))\s*(\w+)"
+    use_regex = r"(?i)(?:^|;)\s*USE(?:\s+|(?:(?:\s*,\s*(?:NON_)?INTRINSIC)?\s*::))\s*(\w+)"
 
 
 #   The INCLUDE statement regex matches the following:
@@ -279,7 +275,7 @@ def FortranScan(path_variable="FORTRANPATH"):
 #                        set of semicolon-separated INCLUDE statements
 #                        (as allowed by the F2003 standard)
 
-    include_regex = """(?i)(?:^|['">]\s*;)\s*INCLUDE\s+(?:\w+_)?[<"'](.+?)(?=["'>])"""
+    include_regex = r"""(?i)(?:^|['">]\s*;)\s*INCLUDE\s+(?:\w+_)?[<"'](.+?)(?=["'>])"""
 
 #   The MODULE statement regex finds module definitions by matching
 #   the following:
@@ -289,21 +285,29 @@ def FortranScan(path_variable="FORTRANPATH"):
 #   but *not* the following:
 #
 #   MODULE PROCEDURE procedure_name
+#   MODULE SUBROUTINE subroutine_name
+#   MODULE FUNCTION function_name
+#   MODULE PURE SUBROUTINE|FUNCTION subroutine_name|function_name
+#   MODULE ELEMENTAL SUBROUTINE|FUNCTION subroutine_name|function_name
 #
 #   Here is a breakdown of the regex:
 #
-#   (?i)               : regex is case insensitive
-#   ^\s*               : any amount of white space
-#   MODULE             : match the string MODULE, case insensitive
-#   \s+                : match one or more white space characters
-#   (?!PROCEDURE)      : but *don't* match if the next word matches
-#                        PROCEDURE (negative lookahead assertion),
-#                        case insensitive
-#   (\w+)              : match one or more alphanumeric characters
-#                        that make up the defined module name and
-#                        save it in a group
+#   (?i)                               : regex is case insensitive
+#   ^\s*                               : any amount of white space
+#   MODULE                             : match the string MODULE, case
+#                                        insensitive
+#   \s+                                : match one or more white space
+#                                        characters
+#   (?!PROCEDURE|SUBROUTINE|FUNCTION|PURE|ELEMENTAL)
+#                                      : but *don't* match if the next word
+#                                        matches PROCEDURE, SUBROUTINE,
+#                                        FUNCTION, PURE or ELEMENTAL (negative
+#                                        lookahead assertion), case insensitive
+#   (\w+)                              : match one or more alphanumeric
+#                                        characters that make up the defined
+#                                        module name and save it in a group
 
-    def_regex = """(?i)^\s*MODULE\s+(?!PROCEDURE)(\w+)"""
+    def_regex = r"""(?i)^\s*MODULE\s+(?!PROCEDURE|SUBROUTINE|FUNCTION|PURE|ELEMENTAL)(\w+)"""
 
     scanner = F90Scanner("FortranScan",
                          "$FORTRANSUFFIXES",
@@ -312,3 +316,9 @@ def FortranScan(path_variable="FORTRANPATH"):
                          include_regex,
                          def_regex)
     return scanner
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

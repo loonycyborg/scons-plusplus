@@ -10,7 +10,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -30,17 +30,17 @@ selection method.
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#
+from __future__ import division, print_function
 
-__revision__ = "src/engine/SCons/Tool/intelc.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/intelc.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import math, sys, os.path, glob, string, re
 
 is_windows = sys.platform == 'win32'
-is_win64 = is_windows and (os.environ['PROCESSOR_ARCHITECTURE'] == 'AMD64' or 
-                           (os.environ.has_key('PROCESSOR_ARCHITEW6432') and
+is_win64 = is_windows and (os.environ['PROCESSOR_ARCHITECTURE'] == 'AMD64' or
+                           ('PROCESSOR_ARCHITEW6432' in os.environ and
                             os.environ['PROCESSOR_ARCHITEW6432'] == 'AMD64'))
-is_linux = sys.platform == 'linux2'
+is_linux = sys.platform.startswith('linux')
 is_mac     = sys.platform == 'darwin'
 
 if is_windows:
@@ -62,15 +62,6 @@ class MissingDirError(IntelCError):     # dir not found
 class NoRegistryModuleError(IntelCError): # can't read registry at all
     pass
 
-def uniquify(s):
-    """Return a sequence containing only one copy of each unique element from input sequence s.
-    Does not preserve order.
-    Input sequence must be hashable (i.e. must be usable as a dictionary key)."""
-    u = {}
-    for x in s:
-        u[x] = 1
-    return u.keys()
-
 def linux_ver_normalize(vstr):
     """Normalize a Linux compiler version number.
     Intel changed from "80" to "9.0" in 2005, so we assume if the number
@@ -78,10 +69,11 @@ def linux_ver_normalize(vstr):
     Always returns an old-style float like 80 or 90 for compatibility with Windows.
     Shades of Y2K!"""
     # Check for version number like 9.1.026: return 91.026
+    # XXX needs to be updated for 2011+ versions (like 2011.11.344 which is compiler v12.1.5)
     m = re.match(r'([0-9]+)\.([0-9]+)\.([0-9]+)', vstr)
     if m:
         vmaj,vmin,build = m.groups()
-        return float(vmaj) * 10 + float(vmin) + float(build) / 1000.;
+        return float(vmaj) * 10. + float(vmin) + float(build) / 1000.
     else:
         f = float(vstr)
         if is_windows:
@@ -117,15 +109,9 @@ def check_abi(abi):
     try:
         abi = valid_abis[abi]
     except KeyError:
-        raise SCons.Errors.UserError, \
-              "Intel compiler: Invalid ABI %s, valid values are %s"% \
-              (abi, valid_abis.keys())
+        raise SCons.Errors.UserError("Intel compiler: Invalid ABI %s, valid values are %s"% \
+              (abi, list(valid_abis.keys())))
     return abi
-
-def vercmp(a, b):
-    """Compare strings as floats,
-    but Intel changed Linux naming convention at 9.0"""
-    return cmp(linux_ver_normalize(b), linux_ver_normalize(a))
 
 def get_version_from_list(v, vlist):
     """See if we can match v (string) in vlist (list of strings)
@@ -156,16 +142,50 @@ def get_intel_registry_value(valuename, version=None, abi=None):
     try:
         k = SCons.Util.RegOpenKeyEx(SCons.Util.HKEY_LOCAL_MACHINE, K)
     except SCons.Util.RegError:
-        raise MissingRegistryError, \
-              "%s was not found in the registry, for Intel compiler version %s, abi='%s'"%(K, version,abi)
+        # For version 13 and later, check UUID subkeys for valuename
+        if is_win64:
+            K = 'Software\\Wow6432Node\\Intel\\Suites\\' + version + "\\Defaults\\C++\\" + abi.upper()
+        else:
+            K = 'Software\\Intel\\Suites\\' + version + "\\Defaults\\C++\\" + abi.upper()
+        try:
+            k = SCons.Util.RegOpenKeyEx(SCons.Util.HKEY_LOCAL_MACHINE, K)
+            uuid = SCons.Util.RegQueryValueEx(k, 'SubKey')[0]
+
+            if is_win64:
+                K = 'Software\\Wow6432Node\\Intel\\Suites\\' + version + "\\" + uuid + "\\C++"
+            else:
+                K = 'Software\\Intel\\Suites\\' + version + "\\" + uuid + "\\C++"
+            k = SCons.Util.RegOpenKeyEx(SCons.Util.HKEY_LOCAL_MACHINE, K)
+
+            try:
+                v = SCons.Util.RegQueryValueEx(k, valuename)[0]
+                return v  # or v.encode('iso-8859-1', 'replace') to remove unicode?
+            except SCons.Util.RegError:
+                if abi.upper() == 'EM64T':
+                    abi = 'em64t_native'
+                if is_win64:
+                    K = 'Software\\Wow6432Node\\Intel\\Suites\\' + version + "\\" + uuid + "\\C++\\" + abi.upper()
+                else:
+                    K = 'Software\\Intel\\Suites\\' + version + "\\" + uuid + "\\C++\\" + abi.upper()
+                k = SCons.Util.RegOpenKeyEx(SCons.Util.HKEY_LOCAL_MACHINE, K)
+
+            try:
+                v = SCons.Util.RegQueryValueEx(k, valuename)[0]
+                return v  # or v.encode('iso-8859-1', 'replace') to remove unicode?
+            except SCons.Util.RegError:
+                raise MissingRegistryError("%s was not found in the registry, for Intel compiler version %s, abi='%s'"%(K, version,abi))
+
+        except SCons.Util.RegError:
+            raise MissingRegistryError("%s was not found in the registry, for Intel compiler version %s, abi='%s'"%(K, version,abi))
+        except SCons.Util.WinError:
+            raise MissingRegistryError("%s was not found in the registry, for Intel compiler version %s, abi='%s'"%(K, version,abi))
 
     # Get the value:
     try:
         v = SCons.Util.RegQueryValueEx(k, valuename)[0]
         return v  # or v.encode('iso-8859-1', 'replace') to remove unicode?
     except SCons.Util.RegError:
-        raise MissingRegistryError, \
-              "%s\\%s was not found in the registry."%(K, valuename)
+        raise MissingRegistryError("%s\\%s was not found in the registry."%(K, valuename))
 
 
 def get_all_compiler_versions():
@@ -181,19 +201,31 @@ def get_all_compiler_versions():
         try:
             k = SCons.Util.RegOpenKeyEx(SCons.Util.HKEY_LOCAL_MACHINE,
                                         keyname)
-        except WindowsError:
-            return []
+        except SCons.Util.WinError:
+            # For version 13 or later, check for default instance UUID
+            if is_win64:
+                keyname = 'Software\\WoW6432Node\\Intel\\Suites'
+            else:
+                keyname = 'Software\\Intel\\Suites'
+            try:
+                k = SCons.Util.RegOpenKeyEx(SCons.Util.HKEY_LOCAL_MACHINE,
+                                            keyname)
+            except SCons.Util.WinError:
+                return []
         i = 0
         versions = []
         try:
             while i < 100:
-                subkey = SCons.Util.RegEnumKey(k, i) # raises EnvironmentError
+                subkey = SCons.Util.RegEnumKey(k, i) # raises SConsEnvironmentError
                 # Check that this refers to an existing dir.
                 # This is not 100% perfect but should catch common
                 # installation issues like when the compiler was installed
                 # and then the install directory deleted or moved (rather
                 # than uninstalling properly), so the registry values
                 # are still there.
+                if subkey == 'Defaults': # Ignore default instances
+                    i = i + 1
+                    continue
                 ok = False
                 for try_abi in ('IA32', 'IA32e',  'IA64', 'EM64T'):
                     try:
@@ -208,23 +240,22 @@ def get_all_compiler_versions():
                         # Registry points to nonexistent dir.  Ignore this
                         # version.
                         value = get_intel_registry_value('ProductDir', subkey, 'IA32')
-                    except MissingRegistryError, e:
+                    except MissingRegistryError as e:
 
                         # Registry key is left dangling (potentially
                         # after uninstalling).
 
-                        print \
-                            "scons: *** Ignoring the registry key for the Intel compiler version %s.\n" \
+                        print("scons: *** Ignoring the registry key for the Intel compiler version %s.\n" \
                             "scons: *** It seems that the compiler was uninstalled and that the registry\n" \
-                            "scons: *** was not cleaned up properly.\n" % subkey
+                            "scons: *** was not cleaned up properly.\n" % subkey)
                     else:
-                        print "scons: *** Ignoring "+str(value)
+                        print("scons: *** Ignoring "+str(value))
 
                 i = i + 1
         except EnvironmentError:
             # no more subkeys
             pass
-    elif is_linux:
+    elif is_linux or is_mac:
         for d in glob.glob('/opt/intel_cc_*'):
             # Typical dir here is /opt/intel_cc_80.
             m = re.search(r'cc_(.*)$', d)
@@ -233,19 +264,36 @@ def get_all_compiler_versions():
         for d in glob.glob('/opt/intel/cc*/*'):
             # Typical dir here is /opt/intel/cc/9.0 for IA32,
             # /opt/intel/cce/9.0 for EMT64 (AMD64)
-            m = re.search(r'([0-9.]+)$', d)
+            m = re.search(r'([0-9][0-9.]*)$', d)
             if m:
                 versions.append(m.group(1))
-    elif is_mac:
-        for d in glob.glob('/opt/intel/cc*/*'):
-            # Typical dir here is /opt/intel/cc/9.0 for IA32,
-            # /opt/intel/cce/9.0 for EMT64 (AMD64)
-            m = re.search(r'([0-9.]+)$', d)
+        for d in glob.glob('/opt/intel/Compiler/*'):
+            # Typical dir here is /opt/intel/Compiler/11.1
+            m = re.search(r'([0-9][0-9.]*)$', d)
             if m:
                 versions.append(m.group(1))
-    versions = uniquify(versions)       # remove dups
-    versions.sort(vercmp)
-    return versions
+        for d in glob.glob('/opt/intel/composerxe-*'):
+            # Typical dir here is /opt/intel/composerxe-2011.4.184
+            m = re.search(r'([0-9][0-9.]*)$', d)
+            if m:
+                versions.append(m.group(1))
+        for d in glob.glob('/opt/intel/composer_xe_*'):
+            # Typical dir here is /opt/intel/composer_xe_2011_sp1.11.344
+            # The _sp1 is useless, the installers are named 2011.9.x, 2011.10.x, 2011.11.x
+            m = re.search(r'([0-9]{0,4})(?:_sp\d*)?\.([0-9][0-9.]*)$', d)
+            if m:
+                versions.append("%s.%s"%(m.group(1), m.group(2)))
+        for d in glob.glob('/opt/intel/compilers_and_libraries_*'):
+            # JPA: For the new version of Intel compiler 2016.1.
+            m = re.search(r'([0-9]{0,4})(?:_sp\d*)?\.([0-9][0-9.]*)$', d)
+            if m:
+                versions.append("%s.%s"%(m.group(1), m.group(2)))
+
+    def keyfunc(str):
+        """Given a dot-separated version string, return a tuple of ints representing it."""
+        return [int(x) for x in str.split('.')]
+    # split into ints, sort, then remove dups
+    return sorted(SCons.Util.unique(versions), key=keyfunc, reverse=True)
 
 def get_intel_compiler_top(version, abi):
     """
@@ -257,29 +305,89 @@ def get_intel_compiler_top(version, abi):
 
     if is_windows:
         if not SCons.Util.can_read_reg:
-            raise NoRegistryModuleError, "No Windows registry module was found"
+            raise NoRegistryModuleError("No Windows registry module was found")
         top = get_intel_registry_value('ProductDir', version, abi)
-        if not os.path.exists(os.path.join(top, "Bin", "icl.exe")):
-            raise MissingDirError, \
-                  "Can't find Intel compiler in %s"%(top)
+        archdir={'x86_64': 'intel64',
+                 'amd64' : 'intel64',
+                 'em64t' : 'intel64',
+                 'x86'   : 'ia32',
+                 'i386'  : 'ia32',
+                 'ia32'  : 'ia32'
+        }[abi] # for v11 and greater
+        # pre-11, icl was in Bin.  11 and later, it's in Bin/<abi> apparently.
+        if not os.path.exists(os.path.join(top, "Bin", "icl.exe")) \
+              and not os.path.exists(os.path.join(top, "Bin", abi, "icl.exe")) \
+              and not os.path.exists(os.path.join(top, "Bin", archdir, "icl.exe")):
+            raise MissingDirError("Can't find Intel compiler in %s"%(top))
     elif is_mac or is_linux:
-        # first dir is new (>=9.0) style, second is old (8.0) style.
-        dirs=('/opt/intel/cc/%s', '/opt/intel_cc_%s')
-        if abi == 'x86_64':
-            dirs=('/opt/intel/cce/%s',)  # 'e' stands for 'em64t', aka x86_64 aka amd64
-        top=None
-        for d in dirs:
-            if os.path.exists(os.path.join(d%version, "bin", "icc")):
-                top = d%version
-                break
+        def find_in_2008style_dir(version):
+            # first dir is new (>=9.0) style, second is old (8.0) style.
+            dirs=('/opt/intel/cc/%s', '/opt/intel_cc_%s')
+            if abi == 'x86_64':
+                dirs=('/opt/intel/cce/%s',)  # 'e' stands for 'em64t', aka x86_64 aka amd64
+            top=None
+            for d in dirs:
+                if os.path.exists(os.path.join(d%version, "bin", "icc")):
+                    top = d%version
+                    break
+            return top
+        def find_in_2010style_dir(version):
+            dirs=('/opt/intel/Compiler/%s/*'%version)
+            # typically /opt/intel/Compiler/11.1/064 (then bin/intel64/icc)
+            dirs=glob.glob(dirs)
+            # find highest sub-version number by reverse sorting and picking first existing one.
+            dirs.sort()
+            dirs.reverse()
+            top=None
+            for d in dirs:
+                if (os.path.exists(os.path.join(d, "bin", "ia32", "icc")) or
+                    os.path.exists(os.path.join(d, "bin", "intel64", "icc"))):
+                    top = d
+                    break
+            return top
+        def find_in_2011style_dir(version):
+            # The 2011 (compiler v12) dirs are inconsistent, so just redo the search from
+            # get_all_compiler_versions and look for a match (search the newest form first)
+            top=None
+            for d in glob.glob('/opt/intel/composer_xe_*'):
+                # Typical dir here is /opt/intel/composer_xe_2011_sp1.11.344
+                # The _sp1 is useless, the installers are named 2011.9.x, 2011.10.x, 2011.11.x
+                m = re.search(r'([0-9]{0,4})(?:_sp\d*)?\.([0-9][0-9.]*)$', d)
+                if m:
+                    cur_ver = "%s.%s"%(m.group(1), m.group(2))
+                    if cur_ver == version and \
+                        (os.path.exists(os.path.join(d, "bin", "ia32", "icc")) or
+                        os.path.exists(os.path.join(d, "bin", "intel64", "icc"))):
+                        top = d
+                        break
+            if not top:
+                for d in glob.glob('/opt/intel/composerxe-*'):
+                    # Typical dir here is /opt/intel/composerxe-2011.4.184
+                    m = re.search(r'([0-9][0-9.]*)$', d)
+                    if m and m.group(1) == version and \
+                        (os.path.exists(os.path.join(d, "bin", "ia32", "icc")) or
+                        os.path.exists(os.path.join(d, "bin", "intel64", "icc"))):
+                            top = d
+                            break
+            return top
+        def find_in_2016style_dir(version):
+            # The 2016 (compiler v16) dirs are inconsistent from previous.
+            top = None
+            for d in glob.glob('/opt/intel/compilers_and_libraries_%s/linux'%version):
+                if os.path.exists(os.path.join(d, "bin", "ia32", "icc")) or os.path.exists(os.path.join(d, "bin", "intel64", "icc")):
+                    top = d
+                    break
+            return top
+
+        top = find_in_2016style_dir(version) or find_in_2011style_dir(version) or find_in_2010style_dir(version) or find_in_2008style_dir(version)
+        # print "INTELC: top=",top
         if not top:
-            raise MissingDirError, \
-                  "Can't find version %s Intel compiler in %s (abi='%s')"%(version,top, abi)
+            raise MissingDirError("Can't find version %s Intel compiler in %s (abi='%s')"%(version,top, abi))
     return top
 
 
 def generate(env, version=None, abi=None, topdir=None, verbose=0):
-    """Add Builders and construction variables for Intel C/C++ compiler
+    r"""Add Builders and construction variables for Intel C/C++ compiler
     to an Environment.
     args:
       version: (string) compiler version to use, like "80"
@@ -310,9 +418,8 @@ def generate(env, version=None, abi=None, topdir=None, verbose=0):
         # get_version_from_list does that mapping.
         v = get_version_from_list(version, vlist)
         if not v:
-            raise SCons.Errors.UserError, \
-                  "Invalid Intel compiler version %s: "%version + \
-                  "installed versions are %s"%(', '.join(vlist))
+            raise SCons.Errors.UserError("Invalid Intel compiler version %s: "%version + \
+                  "installed versions are %s"%(', '.join(vlist)))
         version = v
 
     # if abi is unspecified, use ia32
@@ -359,30 +466,43 @@ def generate(env, version=None, abi=None, topdir=None, verbose=0):
                                     (str(version), str(abi)))
 
     if topdir:
+        archdir={'x86_64': 'intel64',
+                 'amd64' : 'intel64',
+                 'em64t' : 'intel64',
+                 'x86'   : 'ia32',
+                 'i386'  : 'ia32',
+                 'ia32'  : 'ia32'
+        }[abi] # for v11 and greater
+        if os.path.exists(os.path.join(topdir, 'bin', archdir)):
+            bindir="bin/%s"%archdir
+            libdir="lib/%s"%archdir
+        else:
+            bindir="bin"
+            libdir="lib"
         if verbose:
-            print "Intel C compiler: using version %s (%g), abi %s, in '%s'"%\
-                  (repr(version), linux_ver_normalize(version),abi,topdir)
+            print("Intel C compiler: using version %s (%g), abi %s, in '%s/%s'"%\
+                  (repr(version), linux_ver_normalize(version),abi,topdir,bindir))
             if is_linux:
                 # Show the actual compiler version by running the compiler.
-                os.system('%s/bin/icc --version'%topdir)
+                os.system('%s/%s/icc --version'%(topdir,bindir))
             if is_mac:
                 # Show the actual compiler version by running the compiler.
-                os.system('%s/bin/icc --version'%topdir)
+                os.system('%s/%s/icc --version'%(topdir,bindir))
 
         env['INTEL_C_COMPILER_TOP'] = topdir
         if is_linux:
             paths={'INCLUDE'         : 'include',
-                   'LIB'             : 'lib',
-                   'PATH'            : 'bin',
-                   'LD_LIBRARY_PATH' : 'lib'}
-            for p in paths.keys():
+                   'LIB'             : libdir,
+                   'PATH'            : bindir,
+                   'LD_LIBRARY_PATH' : libdir}
+            for p in list(paths.keys()):
                 env.PrependENVPath(p, os.path.join(topdir, paths[p]))
         if is_mac:
             paths={'INCLUDE'         : 'include',
-                   'LIB'             : 'lib',
-                   'PATH'            : 'bin',
-                   'LD_LIBRARY_PATH' : 'lib'}
-            for p in paths.keys():
+                   'LIB'             : libdir,
+                   'PATH'            : bindir,
+                   'LD_LIBRARY_PATH' : libdir}
+            for p in list(paths.keys()):
                 env.PrependENVPath(p, os.path.join(topdir, paths[p]))
         if is_windows:
             #       env key    reg valname   default subdir of top
@@ -404,7 +524,7 @@ def generate(env, version=None, abi=None, topdir=None, verbose=0):
                     # Couldn't get it from registry: use default subdir of topdir
                     env.PrependENVPath(p[0], os.path.join(topdir, p[2]))
                 else:
-                    env.PrependENVPath(p[0], string.split(path, os.pathsep))
+                    env.PrependENVPath(p[0], path.split(os.pathsep))
                     # print "ICL %s: %s, final=%s"%(p[0], path, str(env['ENV'][p[0]]))
 
     if is_windows:
@@ -431,7 +551,7 @@ def generate(env, version=None, abi=None, topdir=None, verbose=0):
         # Look for license file dir
         # in system environment, registry, and default location.
         envlicdir = os.environ.get("INTEL_LICENSE_FILE", '')
-        K = ('SOFTWARE\Intel\Licenses')
+        K = r'SOFTWARE\Intel\Licenses'
         try:
             k = SCons.Util.RegOpenKeyEx(SCons.Util.HKEY_LOCAL_MACHINE, K)
             reglicdir = SCons.Util.RegQueryValueEx(k, "w_cpp")[0]
@@ -443,7 +563,7 @@ def generate(env, version=None, abi=None, topdir=None, verbose=0):
         for ld in [envlicdir, reglicdir]:
             # If the string contains an '@', then assume it's a network
             # license (port@system) and good by definition.
-            if ld and (string.find(ld, '@') != -1 or os.path.exists(ld)):
+            if ld and (ld.find('@') != -1 or os.path.exists(ld)):
                 licdir = ld
                 break
         if not licdir:
@@ -480,3 +600,9 @@ def exists(env):
     return detected
 
 # end of file
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

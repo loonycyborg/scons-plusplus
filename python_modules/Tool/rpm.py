@@ -11,7 +11,7 @@ tar.gz consisting of the source file and a specfile.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -33,12 +33,12 @@ tar.gz consisting of the source file and a specfile.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/rpm.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/rpm.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import os
 import re
 import shutil
-import popen2
+import subprocess
 
 import SCons.Builder
 import SCons.Node.FS
@@ -51,42 +51,44 @@ def get_cmd(source, env):
     if SCons.Util.is_List(source):
         tar_file_with_included_specfile = source[0]
     return "%s %s %s"%(env['RPM'], env['RPMFLAGS'],
-                       tar_file_with_included_specfile.abspath )
+                       tar_file_with_included_specfile.get_abspath())
 
 def build_rpm(target, source, env):
     # create a temporary rpm build root.
-    tmpdir = os.path.join( os.path.dirname( target[0].abspath ), 'rpmtemp' )
+    tmpdir = os.path.join(os.path.dirname(target[0].get_abspath()), 'rpmtemp')
     if os.path.exists(tmpdir):
         shutil.rmtree(tmpdir)
 
     # now create the mandatory rpm directory structure.
     for d in ['RPMS', 'SRPMS', 'SPECS', 'BUILD']:
-        os.makedirs( os.path.join( tmpdir, d ) )
+        os.makedirs(os.path.join(tmpdir, d))
 
     # set the topdir as an rpmflag.
-    env.Prepend( RPMFLAGS = '--define \'_topdir %s\'' % tmpdir )
+    env.Prepend(RPMFLAGS = '--define \'_topdir %s\'' % tmpdir)
 
     # now call rpmbuild to create the rpm package.
-    handle  = popen2.Popen3( get_cmd(source, env), capturestderr=1 )
-    output  = handle.fromchild.read()
-    #output += handle.childerr.read()
-    output  = output + handle.childerr.read()
-    status  = handle.wait()
+    handle  = subprocess.Popen(get_cmd(source, env),
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT,
+                               shell=True)
+    with handle.stdout:
+        output = SCons.Util.to_str(handle.stdout.read())
+    status = handle.wait()
 
     if status:
-        raise SCons.Errors.BuildError( node=target[0],
-                                       errstr=output,
-                                       filename=str(target[0]) )
+        raise SCons.Errors.BuildError(node=target[0],
+                                      errstr=output,
+                                      filename=str(target[0]))
     else:
-        # XXX: assume that LC_ALL=c is set while running rpmbuild
-        output_files = re.compile( 'Wrote: (.*)' ).findall( output )
+        # XXX: assume that LC_ALL=C is set while running rpmbuild
+        output_files = re.compile('Wrote: (.*)').findall(output)
 
-        for output, input in zip( output_files, target ):
+        for output, input in zip(output_files, target):
             rpm_output = os.path.basename(output)
             expected   = os.path.basename(input.get_path())
 
             assert expected == rpm_output, "got %s but expected %s" % (rpm_output, expected)
-            shutil.copy( output, input.abspath )
+            shutil.copy(output, input.get_abspath())
 
 
     # cleanup before leaving.
@@ -116,10 +118,16 @@ def generate(env):
         bld = RpmBuilder
         env['BUILDERS']['Rpm'] = bld
 
-    env.SetDefault(RPM          = 'LC_ALL=c rpmbuild')
+    env.SetDefault(RPM          = 'LC_ALL=C rpmbuild')
     env.SetDefault(RPMFLAGS     = SCons.Util.CLVar('-ta'))
     env.SetDefault(RPMCOM       = rpmAction)
     env.SetDefault(RPMSUFFIX    = '.rpm')
 
 def exists(env):
     return env.Detect('rpmbuild')
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

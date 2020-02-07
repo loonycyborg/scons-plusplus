@@ -9,7 +9,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -29,16 +29,55 @@ selection method.
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#
 
-__revision__ = "src/engine/SCons/Tool/dvipdf.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/dvipdf.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import SCons.Action
 import SCons.Defaults
 import SCons.Tool.pdf
+import SCons.Tool.tex
 import SCons.Util
 
+_null = SCons.Scanner.LaTeX._null
+
+def DviPdfPsFunction(XXXDviAction, target = None, source= None, env=None):
+    """A builder for DVI files that sets the TEXPICTS environment
+       variable before running dvi2ps or dvipdf."""
+
+    try:
+        abspath = source[0].attributes.path
+    except AttributeError :
+        abspath =  ''
+
+    saved_env = SCons.Scanner.LaTeX.modify_env_var(env, 'TEXPICTS', abspath)
+
+    result = XXXDviAction(target, source, env)
+
+    if saved_env is _null:
+        try:
+            del env['ENV']['TEXPICTS']
+        except KeyError:
+            pass # was never set
+    else:
+        env['ENV']['TEXPICTS'] = saved_env
+
+    return result
+
+def DviPdfFunction(target = None, source= None, env=None):
+    result = DviPdfPsFunction(PDFAction,target,source,env)
+    return result
+
+def DviPdfStrFunction(target = None, source= None, env=None):
+    """A strfunction for dvipdf that returns the appropriate
+    command string for the no_exec options."""
+    if env.GetOption("no_exec"):
+        result = env.subst('$DVIPDFCOM',0,target,source)
+    else:
+        result = ''
+    return result
+
 PDFAction = None
+DVIPDFAction = None
 
 def PDFEmitter(target, source, env):
     """Strips any .aux or .log files from the input source list.
@@ -48,7 +87,7 @@ def PDFEmitter(target, source, env):
     """
     def strip_suffixes(n):
         return not SCons.Util.splitext(str(n))[1] in ['.aux', '.log']
-    source = filter(strip_suffixes, source)
+    source = [src for src in source if strip_suffixes(src)]
     return (target, source)
 
 def generate(env):
@@ -57,11 +96,15 @@ def generate(env):
     if PDFAction is None:
         PDFAction = SCons.Action.Action('$DVIPDFCOM', '$DVIPDFCOMSTR')
 
-    import pdf
+    global DVIPDFAction
+    if DVIPDFAction is None:
+        DVIPDFAction = SCons.Action.Action(DviPdfFunction, strfunction = DviPdfStrFunction)
+
+    from . import pdf
     pdf.generate(env)
 
     bld = env['BUILDERS']['PDF']
-    bld.add_action('.dvi', PDFAction)
+    bld.add_action('.dvi', DVIPDFAction)
     bld.add_emitter('.dvi', PDFEmitter)
 
     env['DVIPDF']      = 'dvipdf'
@@ -72,4 +115,11 @@ def generate(env):
     env['PDFCOM']      = ['$DVIPDFCOM']
 
 def exists(env):
+    SCons.Tool.tex.generate_darwin(env)
     return env.Detect('dvipdf')
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

@@ -8,7 +8,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -30,7 +30,7 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/mwld.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/mwld.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import SCons.Tool
 
@@ -56,6 +56,7 @@ def generate(env):
     env['SHLINKFLAGS'] = '$LINKFLAGS'
     env['SHLINKCOM']   = shlib_action
     env['SHLIBEMITTER']= shlib_emitter
+    env['LDMODULEEMITTER']= shlib_emitter
 
 
 def exists(env):
@@ -85,7 +86,7 @@ def shlib_emitter(target, source, env):
     no_import_lib = env.get('no_import_lib', 0)
 
     if not dll:
-        raise SCons.Errors.UserError, "A shared library should have exactly one target with the suffix: %s" % env.subst("$SHLIBSUFFIX")
+        raise SCons.Errors.UserError("A shared library should have exactly one target with the suffix: %s" % env.subst("$SHLIBSUFFIX"))
 
     if not no_import_lib and \
        not env.FindIxes(target, 'LIBPREFIX', 'LIBSUFFIX'):
@@ -99,3 +100,9 @@ def shlib_emitter(target, source, env):
 
 
 shlib_action = SCons.Action.Action(shlib_generator, generator=1)
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

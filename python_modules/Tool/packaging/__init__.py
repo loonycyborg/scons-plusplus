@@ -4,7 +4,7 @@ SCons Packaging Tool.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -24,20 +24,24 @@ SCons Packaging Tool.
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#
 
-__revision__ = "src/engine/SCons/Tool/packaging/__init__.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/packaging/__init__.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
+import SCons.Defaults
 import SCons.Environment
 from SCons.Variables import *
 from SCons.Errors import *
 from SCons.Util import is_List, make_path_relative
 from SCons.Warnings import warn, Warning
 
-import os, imp
-import SCons.Defaults
+import os
+import importlib
 
-__all__ = [ 'src_targz', 'src_tarbz2', 'src_zip', 'tarbz2', 'targz', 'zip', 'rpm', 'msi', 'ipk' ]
+__all__ = [
+    'src_targz', 'src_tarbz2', 'src_tarxz', 'src_zip',
+    'targz', 'tarbz2', 'tarxz', 'zip',
+    'rpm', 'msi', 'ipk',
+]
 
 #
 # Utility and Builder function
@@ -58,7 +62,7 @@ def Tag(env, target, source, *more_tags, **kw_tags):
         kw_tags[first_tag[0]] = ''
 
     if len(kw_tags) == 0 and len(more_tags) == 0:
-        raise UserError, "No tags given."
+        raise UserError("No tags given.")
 
     # XXX: sanity checks
     for x in more_tags:
@@ -78,10 +82,9 @@ def Tag(env, target, source, *more_tags, **kw_tags):
             # differentiate between "normal" object attributes and the
             # packaging attributes. As the user should not be bothered with
             # that, the prefix will be added here if missing.
-            #if not k.startswith('PACKAGING_'):
             if k[:10] != 'PACKAGING_':
                 k='PACKAGING_'+k
-            setattr(t, k, v)
+            t.Tag(k, v)
 
 def Package(env, target=None, source=None, **kw):
     """ Entry point for the package tool.
@@ -91,7 +94,7 @@ def Package(env, target=None, source=None, **kw):
         source = env.FindInstalledFiles()
 
     if len(source)==0:
-        raise UserError, "No source for Package() given"
+        raise UserError("No source for Package() given")
 
     # decide which types of packages shall be built. Can be defined through
     # four mechanisms: command line argument, keyword argument,
@@ -104,27 +107,27 @@ def Package(env, target=None, source=None, **kw):
         from SCons.Script import GetOption
         kw['PACKAGETYPE'] = GetOption('package_type')
 
-    if kw['PACKAGETYPE'] == None:
-        if env['BUILDERS'].has_key('Tar'):
+    if kw['PACKAGETYPE'] is None:
+        if 'Tar' in env['BUILDERS']:
             kw['PACKAGETYPE']='targz'
-        elif env['BUILDERS'].has_key('Zip'):
+        elif 'Zip' in env['BUILDERS']:
             kw['PACKAGETYPE']='zip'
         else:
-            raise UserError, "No type for Package() given"
+            raise UserError("No type for Package() given")
 
     PACKAGETYPE=kw['PACKAGETYPE']
     if not is_List(PACKAGETYPE):
-        PACKAGETYPE=string.split(PACKAGETYPE, ',')
+        PACKAGETYPE=PACKAGETYPE.split(',')
 
     # load the needed packagers.
     def load_packager(type):
         try:
-            file,path,desc=imp.find_module(type, __path__)
-            return imp.load_module(type, file, path, desc)
-        except ImportError, e:
-            raise EnvironmentError("packager %s not available: %s"%(type,str(e)))
+            # the specific packager is a relative import
+            return importlib.import_module("." + type, __name__)
+        except ImportError as e:
+            raise SConsEnvironmentError("packager %s not available: %s" % (type, str(e)))
 
-    packagers=map(load_packager, PACKAGETYPE)
+    packagers = list(map(load_packager, PACKAGETYPE))
 
     # set up targets and the PACKAGEROOT
     try:
@@ -139,10 +142,10 @@ def Package(env, target=None, source=None, **kw):
             default_target = default_name%kw
             target.extend( [default_target]*size_diff )
 
-        if not kw.has_key('PACKAGEROOT'):
+        if 'PACKAGEROOT' not in kw:
             kw['PACKAGEROOT'] = default_name%kw
 
-    except KeyError, e:
+    except KeyError as e:
         raise SCons.Errors.UserError( "Missing Packagetag '%s'"%e.args[0] )
 
     # setup the source files
@@ -153,29 +156,37 @@ def Package(env, target=None, source=None, **kw):
     try:
         for packager in packagers:
             t=[target.pop(0)]
-            t=apply(packager.package, [env,t,source], kw)
+            t=packager.package(env,t,source, **kw)
             targets.extend(t)
 
         assert( len(target) == 0 )
 
-    except KeyError, e:
+    except KeyError as e:
         raise SCons.Errors.UserError( "Missing Packagetag '%s' for %s packager"\
                                       % (e.args[0],packager.__name__) )
-    except TypeError, e:
+    except TypeError as e:
         # this exception means that a needed argument for the packager is
         # missing. As our packagers get their "tags" as named function
         # arguments we need to find out which one is missing.
-        from inspect import getargspec
-        args,varargs,varkw,defaults=getargspec(packager.package)
-        if defaults!=None:
-            args=args[:-len(defaults)] # throw away arguments with default values
-        map(args.remove, 'env target source'.split())
+        #TODO: getargspec deprecated in Py3. cleanup when Py2.7 dropped.
+        try:
+            from inspect import getfullargspec
+            argspec = getfullargspec(packager.package)
+        except ImportError:
+            from inspect import getargspec
+            argspec = getargspec(packager.package)
+        args = argspec.args
+        if argspec.defaults:
+            # throw away arguments with default values
+            args = args[:-len(argspec.defaults)]
+        args.remove('env')
+        args.remove('target')
+        args.remove('source')
         # now remove any args for which we have a value in kw.
-        #args=[x for x in args if not kw.has_key(x)]
-        args=filter(lambda x, kw=kw: not kw.has_key(x), args)
+        args = [x for x in args if x not in kw]
 
         if len(args)==0:
-            raise # must be a different error, so reraise
+            raise # must be a different error, so re-raise
         elif len(args)==1:
             raise SCons.Errors.UserError( "Missing Packagetag '%s' for %s packager"\
                                           % (args[0],packager.__name__) )
@@ -220,7 +231,7 @@ def options(opts):
     opts.AddVariables(
         EnumVariable( 'PACKAGETYPE',
                      'the type of package to create.',
-                     None, allowed_values=map( str, __all__ ),
+                     None, allowed_values=list(map( str, __all__ )),
                      ignorecase=2
                   )
     )
@@ -232,12 +243,12 @@ def options(opts):
 def copy_attr(f1, f2):
     """ copies the special packaging file attributes from f1 to f2.
     """
-    #pattrs = [x for x in dir(f1) if not hasattr(f2, x) and\
-    #                                x.startswith('PACKAGING_')]
-    copyit = lambda x, f2=f2: not hasattr(f2, x) and x[:10] == 'PACKAGING_'
-    pattrs = filter(copyit, dir(f1))
-    for attr in pattrs:
-        setattr(f2, attr, getattr(f1, attr))
+    copyit = lambda x: not hasattr(f2, x) and x[:10] == 'PACKAGING_'
+    if f1._tags:
+        pattrs = [tag for tag in f1._tags if copyit(tag)]
+        for attr in pattrs:
+            f2.Tag(attr, f1.GetTag(attr))
+
 def putintopackageroot(target, source, env, pkgroot, honor_install_location=1):
     """ Uses the CopyAs builder to copy all source files to the directory given
     in pkgroot.
@@ -262,9 +273,9 @@ def putintopackageroot(target, source, env, pkgroot, honor_install_location=1):
         if file.is_under(pkgroot):
             new_source.append(file)
         else:
-            if hasattr(file, 'PACKAGING_INSTALL_LOCATION') and\
+            if file.GetTag('PACKAGING_INSTALL_LOCATION') and\
                        honor_install_location:
-                new_name=make_path_relative(file.PACKAGING_INSTALL_LOCATION)
+                new_name=make_path_relative(file.GetTag('PACKAGING_INSTALL_LOCATION'))
             else:
                 new_name=make_path_relative(file.get_path())
 
@@ -276,7 +287,7 @@ def putintopackageroot(target, source, env, pkgroot, honor_install_location=1):
     return (target, new_source)
 
 def stripinstallbuilder(target, source, env):
-    """ strips the install builder action from the source list and stores
+    """ Strips the install builder action from the source list and stores
     the final installation location as the "PACKAGING_INSTALL_LOCATION" of
     the source of the source file. This effectively removes the final installed
     files from the source list while remembering the installation location.
@@ -284,12 +295,11 @@ def stripinstallbuilder(target, source, env):
     It also warns about files which have no install builder attached.
     """
     def has_no_install_location(file):
-        return not (file.has_builder() and\
-            hasattr(file.builder, 'name') and\
-            (file.builder.name=="InstallBuilder" or\
-             file.builder.name=="InstallAsBuilder"))
+        return not (file.has_builder() and hasattr(file.builder, 'name')
+                    and file.builder.name in ["InstallBuilder", "InstallAsBuilder"])
 
-    if len(filter(has_no_install_location, source)):
+
+    if len([src for src in source if has_no_install_location(src)]):
         warn(Warning, "there are files to package which have no\
         InstallBuilder attached, this might lead to irreproducible packages")
 
@@ -301,6 +311,12 @@ def stripinstallbuilder(target, source, env):
             for ss in s.sources:
                 n_source.append(ss)
                 copy_attr(s, ss)
-                setattr(ss, 'PACKAGING_INSTALL_LOCATION', s.get_path())
+                ss.Tag('PACKAGING_INSTALL_LOCATION', s.get_path())
 
     return (target, n_source)
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

@@ -10,7 +10,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -32,12 +32,12 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/386asm.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/386asm.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 from SCons.Tool.PharLapCommon import addPharLapPaths
 import SCons.Util
 
-as_module = __import__('as', globals(), locals(), [])
+as_module = __import__('as', globals(), locals(), [], 1)
 
 def generate(env):
     """Add Builders and construction variables for ar to an Environment."""
@@ -53,3 +53,9 @@ def generate(env):
 
 def exists(env):
     return env.Detect('386asm')
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

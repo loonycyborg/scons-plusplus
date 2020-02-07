@@ -1,11 +1,12 @@
 """SCons.Tool.pdf
 
 Common PDF Builder definition for various other Tool modules that use it.
+Add an explicit action to run epstopdf to convert .eps files to .pdf
 
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -27,12 +28,14 @@ Common PDF Builder definition for various other Tool modules that use it.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/pdf.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/pdf.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import SCons.Builder
 import SCons.Tool
 
 PDFBuilder = None
+
+EpsPdfAction = SCons.Action.Action('$EPSTOPDFCOM', '$EPSTOPDFCOMSTR')
 
 def generate(env):
     try:
@@ -41,17 +44,35 @@ def generate(env):
         global PDFBuilder
         if PDFBuilder is None:
             PDFBuilder = SCons.Builder.Builder(action = {},
-                                               source_scanner = SCons.Tool.LaTeXScanner,
+                                               source_scanner = SCons.Tool.PDFLaTeXScanner,
                                                prefix = '$PDFPREFIX',
                                                suffix = '$PDFSUFFIX',
                                                emitter = {},
-                                               source_ext_match = None)
+                                               source_ext_match = None,
+                                               single_source=True)
         env['BUILDERS']['PDF'] = PDFBuilder
 
     env['PDFPREFIX'] = ''
     env['PDFSUFFIX'] = '.pdf'
 
+# put the epstopdf builder in this routine so we can add it after 
+# the pdftex builder so that one is the default for no source suffix
+def generate2(env):
+    bld = env['BUILDERS']['PDF']
+    #bld.add_action('.ps',  EpsPdfAction) # this is covered by direct Ghostcript action in gs.py
+    bld.add_action('.eps', EpsPdfAction)
+
+    env['EPSTOPDF']      = 'epstopdf'
+    env['EPSTOPDFFLAGS'] = SCons.Util.CLVar('')
+    env['EPSTOPDFCOM']   = '$EPSTOPDF $EPSTOPDFFLAGS ${SOURCE} --outfile=${TARGET}'
+
 def exists(env):
     # This only puts a skeleton Builder in place, so if someone
     # references this Tool directly, it's always "available."
     return 1
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

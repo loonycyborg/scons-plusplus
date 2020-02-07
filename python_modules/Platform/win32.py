@@ -8,7 +8,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -30,28 +30,27 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Platform/win32.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Platform/win32.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import os
 import os.path
-import string
 import sys
 import tempfile
 
 from SCons.Platform.posix import exitvalmap
 from SCons.Platform import TempFileMunge
+from SCons.Platform.virtualenv import ImportVirtualenv
+from SCons.Platform.virtualenv import ignore_virtualenv, enable_virtualenv
 import SCons.Util
 
-
+CHOCO_DEFAULT_PATH = [
+    r'C:\ProgramData\chocolatey\bin'
+]
 
 try:
     import msvcrt
     import win32api
     import win32con
-
-    msvcrt.get_osfhandle
-    win32api.SetHandleInformation
-    win32con.HANDLE_FLAG_INHERIT
 except ImportError:
     parallel_msg = \
         "you do not seem to have the pywin32 extensions installed;\n" + \
@@ -63,33 +62,114 @@ except AttributeError:
 else:
     parallel_msg = None
 
-    import __builtin__
+    if sys.version_info.major == 2:
+        import __builtin__
 
-    _builtin_file = __builtin__.file
-    _builtin_open = __builtin__.open
+        _builtin_file = __builtin__.file
+        _builtin_open = __builtin__.open
 
-    def _scons_file(*args, **kw):
-        fp = apply(_builtin_file, args, kw)
-        win32api.SetHandleInformation(msvcrt.get_osfhandle(fp.fileno()),
-                                      win32con.HANDLE_FLAG_INHERIT,
-                                      0)
-        return fp
+        def _scons_fixup_mode(mode):
+            """Adjust 'mode' to mark handle as non-inheritable.
 
-    def _scons_open(*args, **kw):
-        fp = apply(_builtin_open, args, kw)
-        win32api.SetHandleInformation(msvcrt.get_osfhandle(fp.fileno()),
-                                      win32con.HANDLE_FLAG_INHERIT,
-                                      0)
-        return fp
+            SCons is multithreaded, so allowing handles to be inherited by
+            children opens us up to races, where (e.g.) processes spawned by
+            the Taskmaster may inherit and retain references to files opened
+            by other threads. This may lead to sharing violations and,
+            ultimately, build failures.
 
-    __builtin__.file = _scons_file
-    __builtin__.open = _scons_open
+            By including 'N' as part of fopen's 'mode' parameter, all file
+            handles returned from these functions are atomically marked as
+            non-inheritable.
+            """
+            if not mode:
+                # Python's default is 'r'.
+                # https://docs.python.org/2/library/functions.html#open
+                mode = 'rN'
+            elif 'N' not in mode:
+                mode += 'N'
+            return mode
+
+        class _scons_file(_builtin_file):
+            def __init__(self, name, mode=None, *args, **kwargs):
+                _builtin_file.__init__(self, name, _scons_fixup_mode(mode),
+                                       *args, **kwargs)
+
+        def _scons_open(name, mode=None, *args, **kwargs):
+            return _builtin_open(name, _scons_fixup_mode(mode),
+                                 *args, **kwargs)
+
+        __builtin__.file = _scons_file
+        __builtin__.open = _scons_open
 
 
+
+if False:
+    # Now swap out shutil.filecopy and filecopy2 for win32 api native CopyFile
+    try:
+        from ctypes import windll
+        import shutil
+
+        CopyFile = windll.kernel32.CopyFileA
+        SetFileTime = windll.kernel32.SetFileTime
+
+        _shutil_copy = shutil.copy
+        _shutil_copy2 = shutil.copy2
+
+        shutil.copy2 = CopyFile
+
+        def win_api_copyfile(src,dst):
+            CopyFile(src,dst)
+            os.utime(dst)
+
+        shutil.copy = win_api_copyfile
+
+    except AttributeError:
+        parallel_msg = \
+            "Couldn't override shutil.copy or shutil.copy2 falling back to shutil defaults"
+
+
+
+
+
+
+
+try:
+    import threading
+    spawn_lock = threading.Lock()
+
+    # This locked version of spawnve works around a Windows
+    # MSVCRT bug, because its spawnve is not thread-safe.
+    # Without this, python can randomly crash while using -jN.
+    # See the python bug at http://bugs.python.org/issue6476
+    # and SCons issue at
+    # https://github.com/SCons/scons/issues/2449
+    def spawnve(mode, file, args, env):
+        spawn_lock.acquire()
+        try:
+            if mode == os.P_WAIT:
+                ret = os.spawnve(os.P_NOWAIT, file, args, env)
+            else:
+                ret = os.spawnve(mode, file, args, env)
+        finally:
+            spawn_lock.release()
+        if mode == os.P_WAIT:
+            pid, status = os.waitpid(ret, 0)
+            ret = status >> 8
+        return ret
+except ImportError:
+    # Use the unsafe method of spawnve.
+    # Please, don't try to optimize this try-except block
+    # away by assuming that the threading module is always present.
+    # In the test test/option-j.py we intentionally call SCons with
+    # a fake threading.py that raises an import exception right away,
+    # simulating a non-existent package.
+    def spawnve(mode, file, args, env):
+        return os.spawnve(mode, file, args, env)
 
 # The upshot of all this is that, if you are using Python 1.5.2,
 # you had better have cmd or command.com in your PATH when you run
 # scons.
+
 
 def piped_spawn(sh, escape, cmd, args, env, stdout, stderr):
     # There is no direct way to do that in python. What we do
@@ -111,11 +191,10 @@ def piped_spawn(sh, escape, cmd, args, env, stdout, stderr):
         stderrRedirected = 0
         for arg in args:
             # are there more possibilities to redirect stdout ?
-            if (string.find( arg, ">", 0, 1 ) != -1 or
-                string.find( arg, "1>", 0, 2 ) != -1):
+            if arg.find( ">", 0, 1 ) != -1 or arg.find( "1>", 0, 2 ) != -1:
                 stdoutRedirected = 1
             # are there more possibilities to redirect stderr ?
-            if string.find( arg, "2>", 0, 2 ) != -1:
+            if arg.find( "2>", 0, 2 ) != -1:
                 stderrRedirected = 1
 
         # redirect output of non-redirected streams to our tempfiles
@@ -126,57 +205,61 @@ def piped_spawn(sh, escape, cmd, args, env, stdout, stderr):
 
         # actually do the spawn
         try:
-            args = [sh, '/C', escape(string.join(args)) ]
-            ret = os.spawnve(os.P_WAIT, sh, args, env)
-        except OSError, e:
+            args = [sh, '/C', escape(' '.join(args))]
+            ret = spawnve(os.P_WAIT, sh, args, env)
+        except OSError as e:
             # catch any error
             try:
-                ret = exitvalmap[e[0]]
+                ret = exitvalmap[e.errno]
             except KeyError:
-                sys.stderr.write("scons: unknown OSError exception code %d - %s: %s\n" % (e[0], cmd, e[1]))
-            if stderr != None:
-                stderr.write("scons: %s: %s\n" % (cmd, e[1]))
+                sys.stderr.write("scons: unknown OSError exception code %d - %s: %s\n" % (e.errno, cmd, e.strerror))
+            if stderr is not None:
+                stderr.write("scons: %s: %s\n" % (cmd, e.strerror))
         # copy child output from tempfiles to our streams
         # and do clean up stuff
-        if stdout != None and stdoutRedirected == 0:
+        if stdout is not None and stdoutRedirected == 0:
             try:
-                stdout.write(open( tmpFileStdout, "r" ).read())
-                os.remove( tmpFileStdout )
+                with open(tmpFileStdout, "r" ) as tmp:
+                    stdout.write(tmp.read())
+                os.remove(tmpFileStdout)
             except (IOError, OSError):
                 pass
 
-        if stderr != None and stderrRedirected == 0:
+        if stderr is not None and stderrRedirected == 0:
             try:
-                stderr.write(open( tmpFileStderr, "r" ).read())
-                os.remove( tmpFileStderr )
+                with open(tmpFileStderr, "r" ) as tmp:
+                    stderr.write(tmp.read())
+                os.remove(tmpFileStderr)
             except (IOError, OSError):
                 pass
         return ret
 
+
 def exec_spawn(l, env):
     try:
-        result = os.spawnve(os.P_WAIT, l[0], l, env)
-    except OSError, e:
+        result = spawnve(os.P_WAIT, l[0], l, env)
+    except (OSError, EnvironmentError) as e:
         try:
-            result = exitvalmap[e[0]]
-            sys.stderr.write("scons: %s: %s\n" % (l[0], e[1]))
+            result = exitvalmap[e.errno]
+            sys.stderr.write("scons: %s: %s\n" % (l[0], e.strerror))
         except KeyError:
             result = 127
             if len(l) > 2:
                 if len(l[2]) < 1000:
-                    command = string.join(l[0:3])
+                    command = ' '.join(l[0:3])
                 else:
                     command = l[0]
             else:
                 command = l[0]
-            sys.stderr.write("scons: unknown OSError exception code %d - '%s': %s\n" % (e[0], command, e[1]))
+            sys.stderr.write("scons: unknown OSError exception code %d - '%s': %s\n" % (e.errno, command, e.strerror))
     return result
+
 
 def spawn(sh, escape, cmd, args, env):
     if not sh:
         sys.stderr.write("scons: Could not find command interpreter, is it in your PATH?\n")
         return 127
-    return exec_spawn([sh, '/C', escape(string.join(args))], env)
+    return exec_spawn([sh, '/C', escape(' '.join(args))], env)
 
 # Windows does not allow special characters in file names anyway, so no
 # need for a complex escape function, we will just quote the arg, except
@@ -189,15 +272,17 @@ def escape(x):
     return '"' + x + '"'
 
 # Get the windows system directory name
-def get_system_root():
-    # A resonable default if we can't read the registry
-    try:
-        val = os.environ['SYSTEMROOT']
-    except KeyError:
-        val = "C:/WINDOWS"
-        pass
+_system_root = None
 
-    # First see if we can look in the registry...
+
+def get_system_root():
+    global _system_root
+    if _system_root is not None:
+        return _system_root
+
+    # A resonable default if we can't read the registry
+    val = os.environ.get('SystemRoot', "C:\\WINDOWS")
+
     if SCons.Util.can_read_reg:
         try:
             # Look for Windows NT system root
@@ -214,10 +299,21 @@ def get_system_root():
                 raise
             except:
                 pass
+
+    # Ensure system root is a string and not unicode 
+    # (This only matters for py27 were unicode in env passed to POpen fails)
+    val = str(val)
+    _system_root = val
     return val
 
-# Get the location of the program files directory
+
 def get_program_files_dir():
+    """
+    Get the location of the program files directory
+    Returns
+    -------
+
+    """
     # Now see if we can look in the registry...
     val = ''
     if SCons.Util.can_read_reg:
@@ -234,8 +330,56 @@ def get_program_files_dir():
         # A reasonable default if we can't read the registry
         # (Actually, it's pretty reasonable even if we can :-)
         val = os.path.join(os.path.dirname(get_system_root()),"Program Files")
-        
+
     return val
+
+
+class ArchDefinition(object):
+    """
+    Determine which windows CPU were running on.
+    A class for defining architecture-specific settings and logic.
+    """
+    def __init__(self, arch, synonyms=[]):
+        self.arch = arch
+        self.synonyms = synonyms
+
+SupportedArchitectureList = [
+    ArchDefinition(
+        'x86',
+        ['i386', 'i486', 'i586', 'i686'],
+    ),
+
+    ArchDefinition(
+        'x86_64',
+        ['AMD64', 'amd64', 'em64t', 'EM64T', 'x86_64'],
+    ),
+
+    ArchDefinition(
+        'ia64',
+        ['IA64'],
+    ),
+]
+
+SupportedArchitectureMap = {}
+for a in SupportedArchitectureList:
+    SupportedArchitectureMap[a.arch] = a
+    for s in a.synonyms:
+        SupportedArchitectureMap[s] = a
+
+
+def get_architecture(arch=None):
+    """Returns the definition for the specified architecture string.
+
+    If no string is specified, the system default is returned (as defined
+    by the PROCESSOR_ARCHITEW6432 or PROCESSOR_ARCHITECTURE environment
+    variables).
+    """
+    if arch is None:
+        arch = os.environ.get('PROCESSOR_ARCHITEW6432')
+        if not arch:
+            arch = os.environ.get('PROCESSOR_ARCHITECTURE')
+    return SupportedArchitectureMap.get(arch, ArchDefinition('', ['']))
+
 
 def generate(env):
     # Attempt to find cmd.exe (for WinNT/2k/XP) or
@@ -267,14 +411,12 @@ def generate(env):
     # the env's PATH.  The problem with that is that it might not
     # contain an ENV and a PATH.
     if not cmd_interp:
-        systemroot = r'C:\Windows'
-        if os.environ.has_key('SYSTEMROOT'):
-            systemroot = os.environ['SYSTEMROOT']
+        systemroot = get_system_root()
         tmp_path = systemroot + os.pathsep + \
                    os.path.join(systemroot,'System32')
         tmp_pathext = '.com;.exe;.bat;.cmd'
-        if os.environ.has_key('PATHEXT'):
-            tmp_pathext = os.environ['PATHEXT'] 
+        if 'PATHEXT' in os.environ:
+            tmp_pathext = os.environ['PATHEXT']
         cmd_interp = SCons.Util.WhereIs('cmd', tmp_path, tmp_pathext)
         if not cmd_interp:
             cmd_interp = SCons.Util.WhereIs('command', tmp_path, tmp_pathext)
@@ -284,23 +426,29 @@ def generate(env):
         if not cmd_interp:
             cmd_interp = env.Detect('command')
 
-    
-    if not env.has_key('ENV'):
+    if 'ENV' not in env:
         env['ENV']        = {}
 
     # Import things from the external environment to the construction
     # environment's ENV.  This is a potential slippery slope, because we
     # *don't* want to make builds dependent on the user's environment by
-    # default.  We're doing this for SYSTEMROOT, though, because it's
+    # default.  We're doing this for SystemRoot, though, because it's
     # needed for anything that uses sockets, and seldom changes, and
-    # for SYSTEMDRIVE because it's related.
+    # for SystemDrive because it's related.
     #
     # Weigh the impact carefully before adding other variables to this list.
-    import_env = [ 'SYSTEMDRIVE', 'SYSTEMROOT', 'TEMP', 'TMP' ]
+    import_env = ['SystemDrive', 'SystemRoot', 'TEMP', 'TMP' ]
     for var in import_env:
         v = os.environ.get(var)
         if v:
             env['ENV'][var] = v
+
+    if 'COMSPEC' not in env['ENV']:
+        v = os.environ.get("COMSPEC")
+        if v:
+            env['ENV']['COMSPEC'] = v
+
+    env.AppendENVPath('PATH', get_system_root() + '\\System32')
 
     env['ENV']['PATHEXT'] = '.COM;.EXE;.BAT;.CMD'
     env['OBJPREFIX']      = ''
@@ -322,3 +470,16 @@ def generate(env):
     env['TEMPFILEPREFIX'] = '@'
     env['MAXLINELENGTH']  = 2048
     env['ESCAPE']         = escape
+
+    env['HOST_OS']        = 'win32'
+    env['HOST_ARCH']      = get_architecture().arch
+
+    if enable_virtualenv and not ignore_virtualenv:
+        ImportVirtualenv(env)
+
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

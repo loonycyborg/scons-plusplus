@@ -8,7 +8,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -30,7 +30,7 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/rpcgen.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/rpcgen.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 from SCons.Builder import Builder
 import SCons.Util
@@ -43,7 +43,7 @@ rpcgen_service  = cmd % ('m', '$RPCGENSERVICEFLAGS')
 rpcgen_xdr      = cmd % ('c', '$RPCGENXDRFLAGS')
 
 def generate(env):
-    "Add RPCGEN Builders and construction variables for an Environment."
+    """Add RPCGEN Builders and construction variables for an Environment."""
     
     client  = Builder(action=rpcgen_client,  suffix='_clnt.c', src_suffix='.x')
     header  = Builder(action=rpcgen_header,  suffix='.h',      src_suffix='.x')
@@ -62,3 +62,9 @@ def generate(env):
 
 def exists(env):
     return env.Detect('rpcgen')
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

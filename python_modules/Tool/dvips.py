@@ -9,7 +9,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -31,13 +31,28 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/dvips.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/dvips.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import SCons.Action
 import SCons.Builder
+import SCons.Tool.dvipdf
 import SCons.Util
 
+def DviPsFunction(target = None, source= None, env=None):
+    result = SCons.Tool.dvipdf.DviPdfPsFunction(PSAction,target,source,env)
+    return result
+
+def DviPsStrFunction(target = None, source= None, env=None):
+    """A strfunction for dvipdf that returns the appropriate
+    command string for the no_exec options."""
+    if env.GetOption("no_exec"):
+        result = env.subst('$PSCOM',0,target,source)
+    else:
+        result = ''
+    return result
+
 PSAction = None
+DVIPSAction = None
 PSBuilder = None
 
 def generate(env):
@@ -46,13 +61,18 @@ def generate(env):
     if PSAction is None:
         PSAction = SCons.Action.Action('$PSCOM', '$PSCOMSTR')
 
+    global DVIPSAction
+    if DVIPSAction is None:
+        DVIPSAction = SCons.Action.Action(DviPsFunction, strfunction = DviPsStrFunction)
+
     global PSBuilder
     if PSBuilder is None:
         PSBuilder = SCons.Builder.Builder(action = PSAction,
                                           prefix = '$PSPREFIX',
                                           suffix = '$PSSUFFIX',
                                           src_suffix = '.dvi',
-                                          src_builder = 'DVI')
+                                          src_builder = 'DVI',
+                                          single_source=True)
 
     env['BUILDERS']['PostScript'] = PSBuilder
     
@@ -65,4 +85,11 @@ def generate(env):
     env['PSSUFFIX'] = '.ps'
 
 def exists(env):
+    SCons.Tool.tex.generate_darwin(env)
     return env.Detect('dvips')
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

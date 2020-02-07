@@ -9,7 +9,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -31,16 +31,17 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/javah.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/javah.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import os.path
-import string
 
 import SCons.Action
 import SCons.Builder
 import SCons.Node.FS
 import SCons.Tool.javac
 import SCons.Util
+from SCons.Tool.JavaCommon import get_java_install_dirs
+
 
 def emit_java_headers(target, source, env):
     """Create and return lists of Java stub header files that will
@@ -93,7 +94,7 @@ def emit_java_headers(target, source, env):
             target[0]._morph()
         tlist = []
         for s in source:
-            fname = string.replace(s.attributes.java_classname, '.', '_') + '.h'
+            fname = s.attributes.java_classname.replace('.', '_') + '.h'
             t = target[0].File(fname)
             t.attributes.java_lookupdir = target[0]
             tlist.append(t)
@@ -103,7 +104,7 @@ def emit_java_headers(target, source, env):
 def JavaHOutFlagGenerator(target, source, env, for_signature):
     try:
         t = target[0]
-    except (AttributeError, TypeError):
+    except (AttributeError, IndexError, TypeError):
         t = target
     try:
         return '-d ' + str(t.attributes.java_lookupdir)
@@ -112,7 +113,7 @@ def JavaHOutFlagGenerator(target, source, env, for_signature):
 
 def getJavaHClassPath(env,target, source, for_signature):
     path = "${SOURCE.attributes.java_classdir}"
-    if env.has_key('JAVACLASSPATH') and env['JAVACLASSPATH']:
+    if 'JAVACLASSPATH' in env and env['JAVACLASSPATH']:
         path = SCons.Util.AppendPath(path, env['JAVACLASSPATH'])
     return "-classpath %s" % (path)
 
@@ -120,6 +121,14 @@ def generate(env):
     """Add Builders and construction variables for javah to an Environment."""
     java_javah = SCons.Tool.CreateJavaHBuilder(env)
     #java_javah.emitter = emit_java_headers
+
+    if env['PLATFORM'] == 'win32':
+        # Ensure that we have a proper path for javah
+        paths = get_java_install_dirs('win32')
+        javah = SCons.Tool.find_program_path(env, 'javah', default_paths=paths)
+        if javah:
+            javah_bin_dir = os.path.dirname(javah)
+            env.AppendENVPath('PATH', javah_bin_dir)
 
     env['_JAVAHOUTFLAG']    = JavaHOutFlagGenerator
     env['JAVAH']            = 'javah'
@@ -130,3 +139,9 @@ def generate(env):
 
 def exists(env):
     return env.Detect('javah')
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

@@ -1,7 +1,6 @@
-"""SCons.Tool.BitKeeper.py
+"""SCons.Tool.sgic++
 
-Tool-specific initialization for the BitKeeper source code control
-system.
+Tool-specific initialization for MIPSpro C++ on SGI.
 
 There normally shouldn't be any need to import this module directly.
 It will usually be imported through the generic SCons.Tool.Tool()
@@ -10,7 +9,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -32,28 +31,31 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/BitKeeper.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/sgicxx.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
-import SCons.Action
-import SCons.Builder
 import SCons.Util
 
+import SCons.Tool.cxx
+cplusplus = SCons.Tool.cxx
+#cplusplus = __import__('cxx', globals(), locals(), [])
+
+
 def generate(env):
-    """Add a Builder factory function and construction variables for
-    BitKeeper to an Environment."""
+    """Add Builders and construction variables for SGI MIPS C++ to an Environment."""
 
-    def BitKeeperFactory(env=env):
-        """ """
-        act = SCons.Action.Action("$BITKEEPERCOM", "$BITKEEPERCOMSTR")
-        return SCons.Builder.Builder(action = act, env = env)
+    cplusplus.generate(env)
 
-    #setattr(env, 'BitKeeper', BitKeeperFactory)
-    env.BitKeeper = BitKeeperFactory
-
-    env['BITKEEPER']         = 'bk'
-    env['BITKEEPERGET']      = '$BITKEEPER get'
-    env['BITKEEPERGETFLAGS'] = SCons.Util.CLVar('')
-    env['BITKEEPERCOM']      = '$BITKEEPERGET $BITKEEPERGETFLAGS $TARGET'
-
+    env['CXX']         = 'CC'
+    env['CXXFLAGS']    = SCons.Util.CLVar('-LANG:std')
+    env['SHCXX']       = '$CXX'
+    env['SHOBJSUFFIX'] = '.o'
+    env['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 1
+    
 def exists(env):
-    return env.Detect('bk')
+    return env.Detect('CC')
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

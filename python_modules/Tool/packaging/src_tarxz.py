@@ -1,15 +1,10 @@
-"""SCons.Tool.SCCS.py
+"""SCons.Tool.Packaging.src_tarxz
 
-Tool-specific initialization for SCCS.
-
-There normally shouldn't be any need to import this module directly.
-It will usually be imported through the generic SCons.Tool.Tool()
-selection method.
-
+The tarxz SRC packager.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -31,28 +26,18 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/SCCS.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/packaging/src_tarxz.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
-import SCons.Action
-import SCons.Builder
-import SCons.Util
+from SCons.Tool.packaging import putintopackageroot
 
-def generate(env):
-    """Add a Builder factory function and construction variables for
-    SCCS to an Environment."""
+def package(env, target, source, PACKAGEROOT, **kw):
+    bld = env['BUILDERS']['Tar']
+    bld.set_suffix('.tar.xz')
+    target, source = putintopackageroot(target, source, env, PACKAGEROOT, honor_install_location=0)
+    return bld(env, target, source, TARFLAGS='-Jc')
 
-    def SCCSFactory(env=env):
-        """ """
-        act = SCons.Action.Action('$SCCSCOM', '$SCCSCOMSTR')
-        return SCons.Builder.Builder(action = act, env = env)
-
-    #setattr(env, 'SCCS', SCCSFactory)
-    env.SCCS = SCCSFactory
-
-    env['SCCS']         = 'sccs'
-    env['SCCSFLAGS']    = SCons.Util.CLVar('')
-    env['SCCSGETFLAGS'] = SCons.Util.CLVar('')
-    env['SCCSCOM']      = '$SCCS $SCCSFLAGS get $SCCSGETFLAGS $TARGET'
-
-def exists(env):
-    return env.Detect('sccs')
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

@@ -9,7 +9,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -31,7 +31,9 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/mslib.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/mslib.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
+
+import os
 
 import SCons.Defaults
 import SCons.Tool
@@ -39,38 +41,33 @@ import SCons.Tool.msvs
 import SCons.Tool.msvc
 import SCons.Util
 
+from .MSCommon import msvc_exists, msvc_setup_env_once
+
 def generate(env):
     """Add Builders and construction variables for lib to an Environment."""
     SCons.Tool.createStaticLibBuilder(env)
 
-    try:
-        version = SCons.Tool.msvs.get_default_visualstudio_version(env)
-
-        if env.has_key('MSVS_IGNORE_IDE_PATHS') and env['MSVS_IGNORE_IDE_PATHS']:
-            include_path, lib_path, exe_path = SCons.Tool.msvc.get_msvc_default_paths(env,version)
-        else:
-            include_path, lib_path, exe_path = SCons.Tool.msvc.get_msvc_paths(env,version)
-
-        # since other tools can set this, we just make sure that the
-        # relevant stuff from MSVS is in there somewhere.
-        env.PrependENVPath('PATH', exe_path)
-    except (SCons.Util.RegError, SCons.Errors.InternalError):
-        pass
+    # Set-up ms tools paths
+    msvc_setup_env_once(env)
 
     env['AR']          = 'lib'
     env['ARFLAGS']     = SCons.Util.CLVar('/nologo')
-    env['ARCOM']       = "${TEMPFILE('$AR $ARFLAGS /OUT:$TARGET $SOURCES')}"
+    env['ARCOM']       = "${TEMPFILE('$AR $ARFLAGS /OUT:$TARGET $SOURCES','$ARCOMSTR')}"
     env['LIBPREFIX']   = ''
     env['LIBSUFFIX']   = '.lib'
 
-def exists(env):
-    try:
-        v = SCons.Tool.msvs.get_visualstudio_versions()
-    except (SCons.Util.RegError, SCons.Errors.InternalError):
-        pass
+    # Issue #3350
+    # Change tempfile argument joining character from a space to a newline
+    # mslink will fail if any single line is too long, but is fine with many lines
+    # in a tempfile
+    env['TEMPFILEARGJOIN'] = os.linesep
 
-    if not v:
-        return env.Detect('lib')
-    else:
-        # there's at least one version of MSVS installed.
-        return 1
+
+def exists(env):
+    return msvc_exists(env)
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

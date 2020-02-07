@@ -2,8 +2,8 @@
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
-# 
+# Copyright (c) 2001 - 2019 The SCons Foundation
+#
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
 # "Software"), to deal in the Software without restriction, including
@@ -24,18 +24,20 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/packaging/ipk.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/packaging/ipk.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
+
+import os
 
 import SCons.Builder
 import SCons.Node.FS
-import os
+import SCons.Util
 
 from SCons.Tool.packaging import stripinstallbuilder, putintopackageroot
 
 def package(env, target, source, PACKAGEROOT, NAME, VERSION, DESCRIPTION,
             SUMMARY, X_IPK_PRIORITY, X_IPK_SECTION, SOURCE_URL,
             X_IPK_MAINTAINER, X_IPK_DEPENDS, **kw):
-    """ this function prepares the packageroot directory for packaging with the
+    """ This function prepares the packageroot directory for packaging with the
     ipkg builder.
     """
     SCons.Tool.Tool('ipkg').generate(env)
@@ -45,7 +47,7 @@ def package(env, target, source, PACKAGEROOT, NAME, VERSION, DESCRIPTION,
     target, source = stripinstallbuilder(target, source, env)
     target, source = putintopackageroot(target, source, env, PACKAGEROOT)
 
-    # This should be overridable from the construction environment,
+    # This should be overrideable from the construction environment,
     # which it is by using ARCHITECTURE=.
     # Guessing based on what os.uname() returns at least allows it
     # to work for both i386 and x86_64 Linux systems.
@@ -58,10 +60,10 @@ def package(env, target, source, PACKAGEROOT, NAME, VERSION, DESCRIPTION,
     buildarchitecture = os.uname()[4]
     buildarchitecture = archmap.get(buildarchitecture, buildarchitecture)
 
-    if kw.has_key('ARCHITECTURE'):
+    if 'ARCHITECTURE' in kw:
         buildarchitecture = kw['ARCHITECTURE']
 
-    # setup the kw to contain the mandatory arguments to this fucntion.
+    # setup the kw to contain the mandatory arguments to this function.
     # do this before calling any builder or setup function
     loc=locals()
     del loc['kw']
@@ -76,7 +78,7 @@ def package(env, target, source, PACKAGEROOT, NAME, VERSION, DESCRIPTION,
         target=[ "%s_%s_%s.ipk"%(NAME, VERSION, buildarchitecture) ]
 
     # now apply the Ipkg builder
-    return apply(bld, [env, target, specfile], kw)
+    return bld(env, target, specfile, **kw)
 
 def gen_ipk_dir(proot, source, env, kw):
     # make sure the packageroot is a Dir object.
@@ -98,13 +100,13 @@ def gen_ipk_dir(proot, source, env, kw):
     spec_target.append(control.File('preinst'))
 
     # apply the builder to the specfile targets
-    apply(s_bld, [env, spec_target, source], kw)
+    s_bld(env, spec_target, source, **kw)
 
     # the packageroot directory does now contain the specfiles.
     return proot
 
 def build_specfiles(source, target, env):
-    """ filter the targets for the needed files and use the variables in env
+    """ Filter the targets for the needed files and use the variables in env
     to create the specfile.
     """
     #
@@ -115,17 +117,19 @@ def build_specfiles(source, target, env):
     #
     #
     opened_files={}
-    def open_file(needle, haystack):
+    def open_file(needle, haystack=None):
         try:
             return opened_files[needle]
         except KeyError:
-            file=filter(lambda x: x.get_path().rfind(needle)!=-1, haystack)[0]
-            opened_files[needle]=open(file.abspath, 'w')
+            files = filter(lambda x: x.get_path().rfind(needle) != -1, haystack)
+            # Py3: filter returns an iterable, not a list
+            file = list(files)[0]
+            opened_files[needle] = open(file.get_abspath(), 'w')
             return opened_files[needle]
 
-    control_file=open_file('control', target)
+    control_file = open_file('control', target)
 
-    if not env.has_key('X_IPK_DESCRIPTION'):
+    if 'X_IPK_DESCRIPTION' not in env:
         env['X_IPK_DESCRIPTION']="%s\n %s"%(env['SUMMARY'],
                                             env['DESCRIPTION'].replace('\n', '\n '))
 
@@ -145,7 +149,7 @@ Description: $X_IPK_DESCRIPTION
     control_file.write(env.subst(content))
 
     #
-    # now handle the various other files, which purpose it is to set post-, 
+    # now handle the various other files, which purpose it is to set post-,
     # pre-scripts and mark files as config files.
     #
     # We do so by filtering the source files for files which are marked with
@@ -157,23 +161,29 @@ Description: $X_IPK_DESCRIPTION
     # into the same named file.
     #
     for f in [x for x in source if 'PACKAGING_CONFIG' in dir(x)]:
-        config=open_file('conffiles')
+        config = open_file('conffiles')
         config.write(f.PACKAGING_INSTALL_LOCATION)
         config.write('\n')
 
     for str in 'POSTRM PRERM POSTINST PREINST'.split():
         name="PACKAGING_X_IPK_%s"%str
         for f in [x for x in source if name in dir(x)]:
-            file=open_file(name)
+            file = open_file(name)
             file.write(env[str])
 
     #
     # close all opened files
-    for f in opened_files.values():
+    for f in list(opened_files.values()):
         f.close()
 
     # call a user specified function
-    if env.has_key('CHANGE_SPECFILE'):
+    if 'CHANGE_SPECFILE' in env:
         content += env['CHANGE_SPECFILE'](target)
 
     return 0
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

@@ -9,7 +9,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -31,15 +31,17 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/rmic.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/rmic.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import os.path
-import string
 
 import SCons.Action
 import SCons.Builder
 import SCons.Node.FS
 import SCons.Util
+
+from SCons.Tool.JavaCommon import get_java_install_dirs
+
 
 def emit_rmic_classes(target, source, env):
     """Create and return lists of Java RMI stub and skeleton
@@ -86,7 +88,7 @@ def emit_rmic_classes(target, source, env):
     tlist = []
     for s in source:
         for suff in stub_suffixes:
-            fname = string.replace(s.attributes.java_classname, '.', os.sep) + \
+            fname = s.attributes.java_classname.replace('.', os.sep) + \
                     suff + class_suffix
             t = target[0].File(fname)
             t.attributes.java_lookupdir = target[0]
@@ -106,10 +108,32 @@ def generate(env):
     """Add Builders and construction variables for rmic to an Environment."""
     env['BUILDERS']['RMIC'] = RMICBuilder
 
+    if env['PLATFORM'] == 'win32':
+        version = env.get('JAVAVERSION', None)
+        # Ensure that we have a proper path for rmic
+        paths = get_java_install_dirs('win32', version=version)
+        rmic = SCons.Tool.find_program_path(env, 'rmic', default_paths=paths)
+        # print("RMIC: %s"%rmic)
+        if rmic:
+            rmic_bin_dir = os.path.dirname(rmic)
+            env.AppendENVPath('PATH', rmic_bin_dir)
+
     env['RMIC']            = 'rmic'
     env['RMICFLAGS']       = SCons.Util.CLVar('')
     env['RMICCOM']         = '$RMIC $RMICFLAGS -d ${TARGET.attributes.java_lookupdir} -classpath ${SOURCE.attributes.java_classdir} ${SOURCES.attributes.java_classname}'
     env['JAVACLASSSUFFIX']  = '.class'
 
 def exists(env):
-    return env.Detect('rmic')
+    # As reported by Jan Nijtmans in issue #2730, the simple
+    #    return env.Detect('rmic')
+    # doesn't always work during initialization. For now, we
+    # stop trying to detect an executable (analogous to the
+    # javac Builder).
+    # TODO: Come up with a proper detect() routine...and enable it.
+    return 1
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

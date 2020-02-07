@@ -9,7 +9,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -31,13 +31,16 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/gnulink.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/gnulink.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import SCons.Util
+import SCons.Tool
+import os
+import sys
+import re
 
-import link
+from . import link
 
-linkers = ['g++', 'gcc']
 
 def generate(env):
     """Add Builders and construction variables for gnulink to an Environment."""
@@ -48,10 +51,30 @@ def generate(env):
 
     # __RPATH is set to $_RPATH in the platform specification if that
     # platform supports it.
-    env.Append(LINKFLAGS=['$__RPATH'])
     env['RPATHPREFIX'] = '-Wl,-rpath='
     env['RPATHSUFFIX'] = ''
     env['_RPATH'] = '${_concat(RPATHPREFIX, RPATH, RPATHSUFFIX, __env__)}'
+
+    # OpenBSD doesn't usually use SONAME for libraries
+    use_soname = not sys.platform.startswith('openbsd')
+    link._setup_versioned_lib_variables(env, tool = 'gnulink', use_soname = use_soname)
+    env['LINKCALLBACKS'] = link._versioned_lib_callbacks()
+
+    # For backward-compatibility with older SCons versions
+    env['SHLIBVERSIONFLAGS'] = SCons.Util.CLVar('-Wl,-Bsymbolic')
     
 def exists(env):
-    return env.Detect(linkers)
+    # TODO: sync with link.smart_link() to choose a linker
+    linkers = { 'CXX': ['g++'], 'CC': ['gcc'] }
+    alltools = []
+    for langvar, linktools in linkers.items():
+        if langvar in env: # use CC over CXX when user specified CC but not CXX
+            return SCons.Tool.FindTool(linktools, env)
+        alltools.extend(linktools)
+    return SCons.Tool.FindTool(alltools, env) # find CXX or CC
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

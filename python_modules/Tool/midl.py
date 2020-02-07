@@ -9,7 +9,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -31,9 +31,7 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/midl.py 3266 2008/08/12 07:31:01 knight"
-
-import string
+__revision__ = "src/engine/SCons/Tool/midl.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import SCons.Action
 import SCons.Builder
@@ -41,24 +39,26 @@ import SCons.Defaults
 import SCons.Scanner.IDL
 import SCons.Util
 
+from .MSCommon import msvc_exists
+
 def midl_emitter(target, source, env):
     """Produces a list of outputs from the MIDL compiler"""
-    base, ext = SCons.Util.splitext(str(target[0]))
+    base, _ = SCons.Util.splitext(str(target[0]))
     tlb = target[0]
     incl = base + '.h'
     interface = base + '_i.c'
-    t = [tlb, incl, interface]
+    targets = [tlb, incl, interface]
 
     midlcom = env['MIDLCOM']
 
-    if string.find(midlcom, '/proxy') != -1:
+    if midlcom.find('/proxy') != -1:
         proxy = base + '_p.c'
-        t.append(proxy)
-    if string.find(midlcom, '/dlldata') != -1:
+        targets.append(proxy)
+    if midlcom.find('/dlldata') != -1:
         dlldata = base + '_data.c'
-        t.append(dlldata)
-    
-    return (t,source)
+        targets.append(dlldata)
+
+    return (targets, source)
 
 idl_scanner = SCons.Scanner.IDL.IDLScan()
 
@@ -79,12 +79,10 @@ def generate(env):
     env['BUILDERS']['TypeLibrary'] = midl_builder
 
 def exists(env):
-    if not env['PLATFORM'] in ('win32', 'cygwin'):
-        return 0
+    return msvc_exists(env)
 
-    import SCons.Tool.msvs
-    if SCons.Tool.msvs.is_msvs_installed():
-        # there's at least one version of MSVS installed, which comes with midl:
-        return 1
-    else:
-        return env.Detect('midl')
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

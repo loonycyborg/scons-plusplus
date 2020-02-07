@@ -4,7 +4,7 @@ The msi packager.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 # 
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -24,9 +24,8 @@ The msi packager.
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#
 
-__revision__ = "src/engine/SCons/Tool/packaging/msi.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/packaging/msi.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import os
 import SCons
@@ -64,15 +63,15 @@ def convert_to_id(s, id_set):
     """
     charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYabcdefghijklmnopqrstuvwxyz0123456789_.'
     if s[0] in '0123456789.':
-        s += '_'+s
-    id = filter( lambda c : c in charset, s )
+        s = '_' + s
+    id = ''.join([c for c in s if c in charset])
 
     # did we already generate an id for this file?
     try:
         return id_set[id][s]
     except KeyError:
-        # no we did not so initialize with the id
-        if not id_set.has_key(id): id_set[id] = { s : id }
+        # no we did not, so initialize with the id
+        if id not in id_set: id_set[id] = { s : id }
         # there is a collision, generate an id which is unique by appending
         # the collision number
         else: id_set[id][s] = id + str(len(id_set[id]))
@@ -80,7 +79,7 @@ def convert_to_id(s, id_set):
         return id_set[id][s]
 
 def is_dos_short_file_name(file):
-    """ examine if the given file is in the 8.3 form.
+    """ Examine if the given file is in the 8.3 form.
     """
     fname, ext = os.path.splitext(file)
     proper_ext = len(ext) == 0 or (2 <= len(ext) <= 4) # the ext contains the dot
@@ -89,7 +88,7 @@ def is_dos_short_file_name(file):
     return proper_ext and proper_fname
 
 def gen_dos_short_file_name(file, filename_set):
-    """ see http://support.microsoft.com/default.aspx?scid=kb;en-us;Q142982
+    """ See http://support.microsoft.com/default.aspx?scid=kb;en-us;Q142982
 
     These are no complete 8.3 dos short names. The ~ char is missing and 
     replaced with one character from the filename. WiX warns about such
@@ -109,14 +108,13 @@ def gen_dos_short_file_name(file, filename_set):
 
     # strip forbidden characters.
     forbidden = '."/[]:;=, '
-    fname = filter( lambda c : c not in forbidden, fname )
+    fname = ''.join([c for c in fname if c not in forbidden])
 
     # check if we already generated a filename with the same number:
     # thisis1.txt, thisis2.txt etc.
     duplicate, num = not None, 1
     while duplicate:
-        shortname = "%s%s" % (fname[:8-len(str(num))].upper(),\
-                              str(num))
+        shortname = "%s%s" % (fname[:8-len(str(num))].upper(), str(num))
         if len(ext) >= 2:
             shortname = "%s%s" % (shortname, ext[:4].upper())
 
@@ -137,7 +135,7 @@ def create_feature_dict(files):
             feature = [ feature ]
 
         for f in feature:
-            if not dict.has_key( f ):
+            if f not in dict:
                 dict[ f ] = [ file ]
             else:
                 dict[ f ].append( file )
@@ -163,7 +161,7 @@ def generate_guids(root):
     To handle this requirement, the uuid is generated with an md5 hashing the
     whole subtree of a xml node.
     """
-    from md5 import md5
+    from hashlib import md5
 
     # specify which tags need a guid and in which attribute this should be stored.
     needs_id = { 'Product'   : 'Id',
@@ -187,10 +185,10 @@ def string_wxsfile(target, source, env):
     return "building WiX file %s"%( target[0].path )
 
 def build_wxsfile(target, source, env):
-    """ compiles a .wxs file from the keywords given in env['msi_spec'] and
+    """ Compiles a .wxs file from the keywords given in env['msi_spec'] and
         by analyzing the tree of source nodes and their tags.
     """
-    file = open(target[0].abspath, 'w')
+    f = open(target[0].get_abspath(), 'w')
 
     try:
         # Create a document with the Wix root tag
@@ -211,20 +209,22 @@ def build_wxsfile(target, source, env):
         build_license_file(target[0].get_dir(), env)
 
         # write the xml to a file
-        file.write( doc.toprettyxml() )
+        f.write( doc.toprettyxml() )
 
         # call a user specified function
-        if env.has_key('CHANGE_SPECFILE'):
+        if 'CHANGE_SPECFILE' in env:
             env['CHANGE_SPECFILE'](target, source)
 
-    except KeyError, e:
+    except KeyError as e:
         raise SCons.Errors.UserError( '"%s" package field for MSI is missing.' % e.args[0] )
+    finally:
+        f.close()
 
 #
 # setup function
 #
 def create_default_directory_layout(root, NAME, VERSION, VENDOR, filename_set):
-    """ Create the wix default target directory layout and return the innermost
+    r""" Create the wix default target directory layout and return the innermost
     directory.
 
     We assume that the XML tree delivered in the root argument already contains
@@ -269,7 +269,7 @@ def create_default_directory_layout(root, NAME, VERSION, VENDOR, filename_set):
 # mandatory and optional file tags
 #
 def build_wxsfile_file_section(root, files, NAME, VERSION, VENDOR, filename_set, id_set):
-    """ builds the Component sections of the wxs file with their included files.
+    """ Builds the Component sections of the wxs file with their included files.
 
     Files need to be specified in 8.3 format and in the long name format, long
     filenames will be converted automatically.
@@ -281,7 +281,7 @@ def build_wxsfile_file_section(root, files, NAME, VERSION, VENDOR, filename_set,
     factory    = Document()
 
     def get_directory( node, dir ):
-        """ returns the node under the given node representing the directory.
+        """ Returns the node under the given node representing the directory.
 
         Returns the component node if dir is None or empty.
         """
@@ -296,11 +296,13 @@ def build_wxsfile_file_section(root, files, NAME, VERSION, VENDOR, filename_set,
         upper_dir = ''
 
         # walk down the xml tree finding parts of the directory
-        dir_parts = filter( lambda d: d != '', dir_parts )
+        dir_parts = [d for d in dir_parts if d != '']
         for d in dir_parts[:]:
-            already_created = filter( lambda c: c.nodeName == 'Directory' and c.attributes['LongName'].value == escape(d), Directory.childNodes ) 
+            already_created = [c for c in Directory.childNodes
+                               if c.nodeName == 'Directory'
+                               and c.attributes['LongName'].value == escape(d)] 
 
-            if already_created != []:
+            if already_created:
                 Directory = already_created[0]
                 dir_parts.remove(d)
                 upper_dir += d
@@ -414,7 +416,7 @@ def build_wxsfile_features_section(root, files, NAME, VERSION, SUMMARY, id_set):
     root.getElementsByTagName('Product')[0].childNodes.append(Feature)
 
 def build_wxsfile_default_gui(root):
-    """ this function adds a default GUI to the wxs file
+    """ This function adds a default GUI to the wxs file
     """
     factory = Document()
     Product = root.getElementsByTagName('Product')[0]
@@ -428,7 +430,7 @@ def build_wxsfile_default_gui(root):
     Product.childNodes.append(UIRef)
 
 def build_license_file(directory, spec):
-    """ creates a License.rtf file with the content of "X_MSI_LICENSE_TEXT"
+    """ Creates a License.rtf file with the content of "X_MSI_LICENSE_TEXT"
     in the given directory
     """
     name, text = '', ''
@@ -440,14 +442,13 @@ def build_license_file(directory, spec):
         pass # ignore this as X_MSI_LICENSE_TEXT is optional
 
     if name!='' or text!='':
-        file = open( os.path.join(directory.get_path(), 'License.rtf'), 'w' )
-        file.write('{\\rtf')
-        if text!='':
-             file.write(text.replace('\n', '\\par '))
-        else:
-             file.write(name+'\\par\\par')
-        file.write('}')
-        file.close()
+        with open(os.path.join(directory.get_path(), 'License.rtf'), 'w') as f:
+            f.write('{\\rtf')
+            if text!='':
+                 f.write(text.replace('\n', '\\par '))
+            else:
+                 f.write(name+'\\par\\par')
+            f.write('}')
 
 #
 # mandatory and optional package tags
@@ -464,7 +465,7 @@ def build_wxsfile_header_section(root, spec):
     Product.childNodes.append( Package )
 
     # set "mandatory" default values
-    if not spec.has_key('X_MSI_LANGUAGE'):
+    if 'X_MSI_LANGUAGE' not in spec:
         spec['X_MSI_LANGUAGE'] = '1033' # select english
 
     # mandatory sections, will throw a KeyError if the tag is not available
@@ -475,10 +476,10 @@ def build_wxsfile_header_section(root, spec):
     Package.attributes['Description']  = escape( spec['SUMMARY'] )
 
     # now the optional tags, for which we avoid the KeyErrror exception
-    if spec.has_key( 'DESCRIPTION' ):
+    if 'DESCRIPTION' in spec:
         Package.attributes['Comments'] = escape( spec['DESCRIPTION'] )
 
-    if spec.has_key( 'X_MSI_UPGRADE_CODE' ):
+    if 'X_MSI_UPGRADE_CODE' in spec:
         Package.attributes['X_MSI_UPGRADE_CODE'] = escape( spec['X_MSI_UPGRADE_CODE'] )
 
     # We hardcode the media tag as our current model cannot handle it.
@@ -511,7 +512,7 @@ def package(env, target, source, PACKAGEROOT, NAME, VERSION,
 
     # put the arguments into the env and call the specfile builder.
     env['msi_spec'] = kw
-    specfile = apply( wxs_builder, [env, target, source], kw )
+    specfile = wxs_builder(* [env, target, source], **kw)
 
     # now call the WiX Tool with the built specfile added as a source.
     msifile  = env.WiX(target, specfile)
@@ -519,3 +520,8 @@ def package(env, target, source, PACKAGEROOT, NAME, VERSION,
     # return the target and source tuple.
     return (msifile, source+[specfile])
 
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

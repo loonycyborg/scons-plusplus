@@ -1,6 +1,6 @@
-"""SCons.Tool.Subversion.py
+"""engine.SCons.Tool.f03
 
-Tool-specific initialization for Subversion.
+Tool-specific initialization for the generic Posix f03 Fortran compiler.
 
 There normally shouldn't be any need to import this module directly.
 It will usually be imported through the generic SCons.Tool.Tool()
@@ -9,7 +9,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -31,35 +31,33 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/Subversion.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/f03.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
-import os.path
-
-import SCons.Action
-import SCons.Builder
+import SCons.Defaults
+import SCons.Tool
 import SCons.Util
+from . import fortran
+from SCons.Tool.FortranCommon import add_all_to_env, add_f03_to_env
+
+compilers = ['f03']
 
 def generate(env):
-    """Add a Builder factory function and construction variables for
-    Subversion to an Environment."""
+    add_all_to_env(env)
+    add_f03_to_env(env)
 
-    def SubversionFactory(repos, module='', env=env):
-        """ """
-        # fail if repos is not an absolute path name?
-        if module != '':
-            module = os.path.join(module, '')
-        act = SCons.Action.Action('$SVNCOM', '$SVNCOMSTR')
-        return SCons.Builder.Builder(action = act,
-                                     env = env,
-                                     SVNREPOSITORY = repos,
-                                     SVNMODULE = module)
+    fcomp = env.Detect(compilers) or 'f03'
+    env['F03']  = fcomp
+    env['SHF03']  = fcomp
 
-    #setattr(env, 'Subversion', SubversionFactory)
-    env.Subversion = SubversionFactory
+    env['FORTRAN']  = fcomp
+    env['SHFORTRAN']  = fcomp
 
-    env['SVN']      = 'svn'
-    env['SVNFLAGS'] = SCons.Util.CLVar('')
-    env['SVNCOM']   = '$SVN $SVNFLAGS cat $SVNREPOSITORY/$SVNMODULE$TARGET > $TARGET'
 
 def exists(env):
-    return env.Detect('svn')
+    return env.Detect(compilers)
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

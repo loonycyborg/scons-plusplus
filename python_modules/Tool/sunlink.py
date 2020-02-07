@@ -8,7 +8,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -30,14 +30,14 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/sunlink.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/sunlink.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import os
 import os.path
 
 import SCons.Util
 
-import link
+from . import link
 
 ccLinker = None
 
@@ -62,10 +62,19 @@ def generate(env):
     
     env['SHLINKFLAGS'] = SCons.Util.CLVar('$LINKFLAGS -G')
 
-    env.Append(LINKFLAGS=['$__RPATH'])
     env['RPATHPREFIX'] = '-R'
     env['RPATHSUFFIX'] = ''
     env['_RPATH'] = '${_concat(RPATHPREFIX, RPATH, RPATHSUFFIX, __env__)}'
 
+    # Support for versioned libraries
+    link._setup_versioned_lib_variables(env, tool = 'sunlink', use_soname = True) 
+    env['LINKCALLBACKS'] = link._versioned_lib_callbacks()
+
 def exists(env):
     return ccLinker
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

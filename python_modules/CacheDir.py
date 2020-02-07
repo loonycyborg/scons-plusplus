@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -21,40 +21,51 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/CacheDir.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/CacheDir.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 __doc__ = """
 CacheDir support
 """
 
-import os.path
+import hashlib
+import json
+import os
 import stat
-import string
 import sys
 
+import SCons
 import SCons.Action
+import SCons.Warnings
+from SCons.Util import PY3
 
 cache_enabled = True
 cache_debug = False
 cache_force = False
 cache_show = False
+cache_readonly = False
 
 def CacheRetrieveFunc(target, source, env):
     t = target[0]
     fs = t.fs
     cd = env.get_CacheDir()
+    cd.requests += 1
     cachedir, cachefile = cd.cachepath(t)
     if not fs.exists(cachefile):
         cd.CacheDebug('CacheRetrieve(%s):  %s not in cache\n', t, cachefile)
         return 1
+    cd.hits += 1
     cd.CacheDebug('CacheRetrieve(%s):  retrieving from %s\n', t, cachefile)
     if SCons.Action.execute_actions:
         if fs.islink(cachefile):
-            fs.symlink(fs.readlink(cachefile), t.path)
+            fs.symlink(fs.readlink(cachefile), t.get_internal_path())
         else:
-            env.copy_from_cache(cachefile, t.path)
+            env.copy_from_cache(cachefile, t.get_internal_path())
+            try:
+                os.utime(cachefile, None)
+            except OSError:
+                pass
         st = fs.stat(cachefile)
-        fs.chmod(t.path, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
+        fs.chmod(t.get_internal_path(), stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
     return 0
 
 def CacheRetrieveString(target, source, env):
@@ -63,7 +74,7 @@ def CacheRetrieveString(target, source, env):
     cd = env.get_CacheDir()
     cachedir, cachefile = cd.cachepath(t)
     if t.fs.exists(cachefile):
-        return "Retrieved `%s' from cache" % t.path
+        return "Retrieved `%s' from cache" % t.get_internal_path()
     return None
 
 CacheRetrieve = SCons.Action.Action(CacheRetrieveFunc, CacheRetrieveString)
@@ -71,6 +82,9 @@ CacheRetrieve = SCons.Action.Action(CacheRetrieveFunc, CacheRetrieveString)
 CacheRetrieveSilent = SCons.Action.Action(CacheRetrieveFunc, None)
 
 def CachePushFunc(target, source, env):
+    if cache_readonly:
+        return
+
     t = target[0]
     if t.nocache:
         return
@@ -101,15 +115,15 @@ def CachePushFunc(target, source, env):
             # has beaten us creating the directory.
             if not fs.isdir(cachedir):
                 msg = errfmt % (str(target), cachefile)
-                raise SCons.Errors.EnvironmentError, msg
+                raise SCons.Errors.SConsEnvironmentError(msg)
 
     try:
-        if fs.islink(t.path):
-            fs.symlink(fs.readlink(t.path), tempfile)
+        if fs.islink(t.get_internal_path()):
+            fs.symlink(fs.readlink(t.get_internal_path()), tempfile)
         else:
-            fs.copy2(t.path, tempfile)
+            fs.copy2(t.get_internal_path(), tempfile)
         fs.rename(tempfile, cachefile)
-        st = fs.stat(t.path)
+        st = fs.stat(t.get_internal_path())
         fs.chmod(cachefile, stat.S_IMODE(st[stat.ST_MODE]) | stat.S_IWRITE)
     except EnvironmentError:
         # It's possible someone else tried writing the file at the
@@ -122,19 +136,132 @@ def CachePushFunc(target, source, env):
 
 CachePush = SCons.Action.Action(CachePushFunc, None)
 
-class CacheDir:
+# Nasty hack to cut down to one warning for each cachedir path that needs
+# upgrading.
+warned = dict()
+
+class CacheDir(object):
 
     def __init__(self, path):
-        try:
-            import hashlib
-        except ImportError:
-            msg = "No hashlib or MD5 module available, CacheDir() not supported"
-            SCons.Warnings.warn(SCons.Warnings.NoMD5ModuleWarning, msg)
-            self.path = None
-        else:
-            self.path = path
+        """
+        Initialize a CacheDir object.
+
+        The cache configuration is stored in the object. It
+        is read from the config file in the supplied path if
+        one exists,  if not the config file is created and
+        the default config is written, as well as saved in the object.
+        """
+        self.requests = 0
+        self.hits = 0
+        self.path = path
         self.current_cache_debug = None
         self.debugFP = None
+        self.config = dict()
+        if path is None:
+            return
+
+        if PY3:
+            self._readconfig3(path)
+        else:
+            self._readconfig2(path)
+
+
+    def _readconfig3(self, path):
+        """
+        Python3 version of reading the cache config.
+
+        If directory or config file do not exist, create.  Take advantage
+        of Py3 capability in os.makedirs() and in file open(): just try
+        the operation and handle failure appropriately.
+
+        Omit the check for old cache format, assume that's old enough
+        there will be none of those left to worry about.
+
+        :param path: path to the cache directory
+        """
+        config_file = os.path.join(path, 'config')
+        try:
+            os.makedirs(path, exist_ok=True)
+        except FileExistsError:
+            pass
+        except OSError:
+            msg = "Failed to create cache directory " + path
+            raise SCons.Errors.SConsEnvironmentError(msg)
+
+        try:
+            with open(config_file, 'x') as config:
+                self.config['prefix_len'] = 2
+                try:
+                    json.dump(self.config, config)
+                except Exception:
+                    msg = "Failed to write cache configuration for " + path
+                    raise SCons.Errors.SConsEnvironmentError(msg)
+        except FileExistsError:
+            try:
+                with open(config_file) as config:
+                    self.config = json.load(config)
+            except ValueError:
+                msg = "Failed to read cache configuration for " + path
+                raise SCons.Errors.SConsEnvironmentError(msg)
+
+
+    def _readconfig2(self, path):
+        """
+        Python2 version of reading cache config.
+
+        See if there is a config file in the cache directory. If there is,
+        use it. If there isn't, and the directory exists and isn't empty,
+        produce a warning. If the directory does not exist or is empty,
+        write a config file.
+
+        :param path: path to the cache directory
+        """
+        config_file = os.path.join(path, 'config')
+        if not os.path.exists(config_file):
+            # A note: There is a race hazard here if two processes start and
+            # attempt to create the cache directory at the same time. However,
+            # Python 2.x does not give you the option to do exclusive file
+            # creation (not even the option to error on opening an existing
+            # file for writing...). The ordering of events here is an attempt
+            # to alleviate this, on the basis that it's a pretty unlikely
+            # occurrence (would require two builds with a brand new cache
+            # directory)
+            if os.path.isdir(path) and any(f != "config" for f in os.listdir(path)):
+                self.config['prefix_len'] = 1
+                # When building the project I was testing this on, the warning
+                # was output over 20 times. That seems excessive
+                global warned
+                if self.path not in warned:
+                    msg = "Please upgrade your cache by running " +\
+                          "scons-configure-cache.py " +  self.path
+                    SCons.Warnings.warn(SCons.Warnings.CacheVersionWarning, msg)
+                    warned[self.path] = True
+            else:
+                if not os.path.isdir(path):
+                    try:
+                        os.makedirs(path)
+                    except OSError:
+                        # If someone else is trying to create the directory at
+                        # the same time as me, bad things will happen
+                        msg = "Failed to create cache directory " + path
+                        raise SCons.Errors.SConsEnvironmentError(msg)
+
+                self.config['prefix_len'] = 2
+                if not os.path.exists(config_file):
+                    try:
+                        with open(config_file, 'w') as config:
+                            json.dump(self.config, config)
+                    except Exception:
+                        msg = "Failed to write cache configuration for " + path
+                        raise SCons.Errors.SConsEnvironmentError(msg)
+        else:
+            try:
+                with open(config_file) as config:
+                    self.config = json.load(config)
+            except ValueError:
+                msg = "Failed to read cache configuration for " + path
+                raise SCons.Errors.SConsEnvironmentError(msg)
+
 
     def CacheDebug(self, fmt, target, cachefile):
         if cache_debug != self.current_cache_debug:
@@ -147,9 +274,22 @@ class CacheDir:
             self.current_cache_debug = cache_debug
         if self.debugFP:
             self.debugFP.write(fmt % (target, os.path.split(cachefile)[1]))
+            self.debugFP.write("requests: %d, hits: %d, misses: %d, hit rate: %.2f%%\n" %
+                               (self.requests, self.hits, self.misses, self.hit_ratio))
+
+    @property
+    def hit_ratio(self):
+        return (100.0 * self.hits / self.requests if self.requests > 0 else 100)
+
+    @property
+    def misses(self):
+        return self.requests - self.hits
 
     def is_enabled(self):
-        return (cache_enabled and not self.path is None)
+        return cache_enabled and self.path is not None
+
+    def is_readonly(self):
+        return cache_readonly
 
     def cachepath(self, node):
         """
@@ -158,7 +298,9 @@ class CacheDir:
             return None, None
 
         sig = node.get_cachedir_bsig()
-        subdir = string.upper(sig[0])
+
+        subdir = sig[:self.config['prefix_len']].upper()
+
         dir = os.path.join(self.path, subdir)
         return dir, os.path.join(dir, sig)
 
@@ -190,28 +332,28 @@ class CacheDir:
         if not self.is_enabled():
             return False
 
-        retrieved = False
-
+        env = node.get_build_env()
         if cache_show:
-            if CacheRetrieveSilent(node, [], node.get_build_env(), execute=1) == 0:
+            if CacheRetrieveSilent(node, [], env, execute=1) == 0:
                 node.build(presub=0, execute=0)
-                retrieved = 1
+                return True
         else:
-            if CacheRetrieve(node, [], node.get_build_env(), execute=1) == 0:
-                retrieved = 1
-        if retrieved:
-            # Record build signature information, but don't
-            # push it out to cache.  (We just got it from there!)
-            node.set_state(SCons.Node.executed)
-            SCons.Node.Node.built(node)
+            if CacheRetrieve(node, [], env, execute=1) == 0:
+                return True
 
-        return retrieved
+        return False
 
     def push(self, node):
-        if not self.is_enabled():
+        if self.is_readonly() or not self.is_enabled():
             return
         return CachePush(node, [], node.get_build_env())
 
     def push_if_forced(self, node):
         if cache_force:
             return self.push(node)
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

@@ -10,7 +10,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -31,11 +31,13 @@ selection method.
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
+from __future__ import print_function
 
-__revision__ = "src/engine/SCons/Tool/qt.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/qt.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import os.path
 import re
+import glob
 
 import SCons.Action
 import SCons.Builder
@@ -43,6 +45,8 @@ import SCons.Defaults
 import SCons.Scanner
 import SCons.Tool
 import SCons.Util
+import SCons.Tool.cxx
+cplusplus = SCons.Tool.cxx
 
 class ToolQtWarning(SCons.Warnings.Warning):
     pass
@@ -58,8 +62,40 @@ SCons.Warnings.enableWarningClass(ToolQtWarning)
 header_extensions = [".h", ".hxx", ".hpp", ".hh"]
 if SCons.Util.case_sensitive_suffixes('.h', '.H'):
     header_extensions.append('.H')
-cplusplus = __import__('c++', globals(), locals(), [])
+
 cxx_suffixes = cplusplus.CXXSuffixes
+
+
+def find_platform_specific_qt_paths():
+    """
+    find non-standard QT paths
+
+    If the platform does not put QT tools in standard search paths,
+    the path is expected to be set using QTDIR. SCons violates
+    the normal rule of not pulling from the user's environment
+    in this case.  However, some test cases try to validate what
+    happens when QTDIR is unset, so we need to try to make a guess.
+
+    :return: a guess at a path
+    """
+
+    # qt_bin_dirs = []
+    qt_bin_dir = None
+    if os.path.isfile('/etc/redhat-release'):
+        with open('/etc/redhat-release','r') as rr:
+            lines = rr.readlines()
+            distro = lines[0].split()[0]
+        if distro == 'CentOS':
+            # Centos installs QT under /usr/{lib,lib64}/qt{4,5,-3.3}/bin
+            # so we need to handle this differently
+            # qt_bin_dirs = glob.glob('/usr/lib64/qt*/bin')
+            # TODO: all current Fedoras do the same, need to look deeper here.
+            qt_bin_dir = '/usr/lib64/qt-3.3/bin'
+
+    return qt_bin_dir
+
+
+QT_BIN_DIR = find_platform_specific_qt_paths()
 
 def checkMocIncluded(target, source, env):
     moc = target[0]
@@ -68,7 +104,7 @@ def checkMocIncluded(target, source, env):
     # not really sure about the path transformations (moc.cwd? cpp.cwd?) :-/
     path = SCons.Defaults.CScan.path(env, moc.cwd)
     includes = SCons.Defaults.CScan(cpp, env, path)
-    if not moc in includes:
+    if moc not in includes:
         SCons.Warnings.warn(
             GeneratedMocFileNotIncluded,
             "Generated moc file '%s' is not included by '%s'" %
@@ -81,7 +117,7 @@ def find_file(filename, paths, node_factory):
             return node
     return None
 
-class _Automoc:
+class _Automoc(object):
     """
     Callable class, which works as an emitter for Programs, SharedLibraries and
     StaticLibraries.
@@ -89,7 +125,7 @@ class _Automoc:
 
     def __init__(self, objBuilderName):
         self.objBuilderName = objBuilderName
-        
+
     def __call__(self, target, source, env):
         """
         Smart autoscan function. Gets the list of objects for the Program
@@ -104,25 +140,25 @@ class _Automoc:
             debug = int(env.subst('$QT_DEBUG'))
         except ValueError:
             debug = 0
-        
+
         # some shortcuts used in the scanner
         splitext = SCons.Util.splitext
         objBuilder = getattr(env, self.objBuilderName)
-  
+
         # some regular expressions:
         # Q_OBJECT detection
-        q_object_search = re.compile(r'[^A-Za-z0-9]Q_OBJECT[^A-Za-z0-9]') 
+        q_object_search = re.compile(r'[^A-Za-z0-9]Q_OBJECT[^A-Za-z0-9]')
         # cxx and c comment 'eater'
         #comment = re.compile(r'(//.*)|(/\*(([^*])|(\*[^/]))*\*/)')
         # CW: something must be wrong with the regexp. See also bug #998222
         #     CURRENTLY THERE IS NO TEST CASE FOR THAT
-        
+
         # The following is kind of hacky to get builders working properly (FIXME)
         objBuilderEnv = objBuilder.env
         objBuilder.env = env
         mocBuilderEnv = env.Moc.env
         env.Moc.env = env
-        
+
         # make a deep copy for the result; MocH objects will be appended
         out_sources = source[:]
 
@@ -130,16 +166,18 @@ class _Automoc:
             if not obj.has_builder():
                 # binary obj file provided
                 if debug:
-                    print "scons: qt: '%s' seems to be a binary. Discarded." % str(obj)
+                    print("scons: qt: '%s' seems to be a binary. Discarded." % str(obj))
                 continue
             cpp = obj.sources[0]
             if not splitext(str(cpp))[1] in cxx_suffixes:
                 if debug:
-                    print "scons: qt: '%s' is no cxx file. Discarded." % str(cpp) 
+                    print("scons: qt: '%s' is no cxx file. Discarded." % str(cpp))
                 # c or fortran source
                 continue
-            #cpp_contents = comment.sub('', cpp.get_contents())
-            cpp_contents = cpp.get_contents()
+            #cpp_contents = comment.sub('', cpp.get_text_contents())
+            if debug:
+                print("scons: qt: Getting contents of %s" % cpp)
+            cpp_contents = cpp.get_text_contents()
             h=None
             for h_ext in header_extensions:
                 # try to find the header file in the corresponding source
@@ -148,12 +186,12 @@ class _Automoc:
                 h = find_file(hname, (cpp.get_dir(),), env.File)
                 if h:
                     if debug:
-                        print "scons: qt: Scanning '%s' (header of '%s')" % (str(h), str(cpp))
-                    #h_contents = comment.sub('', h.get_contents())
-                    h_contents = h.get_contents()
+                        print("scons: qt: Scanning '%s' (header of '%s')" % (str(h), str(cpp)))
+                    #h_contents = comment.sub('', h.get_text_contents())
+                    h_contents = h.get_text_contents()
                     break
             if not h and debug:
-                print "scons: qt: no header for '%s'." % (str(cpp))
+                print("scons: qt: no header for '%s'." % (str(cpp)))
             if h and q_object_search.search(h_contents):
                 # h file with the Q_OBJECT macro found -> add moc_cpp
                 moc_cpp = env.Moc(h)
@@ -161,14 +199,14 @@ class _Automoc:
                 out_sources.append(moc_o)
                 #moc_cpp.target_scanner = SCons.Defaults.CScan
                 if debug:
-                    print "scons: qt: found Q_OBJECT macro in '%s', moc'ing to '%s'" % (str(h), str(moc_cpp))
+                    print("scons: qt: found Q_OBJECT macro in '%s', moc'ing to '%s'" % (str(h), str(moc_cpp)))
             if cpp and q_object_search.search(cpp_contents):
                 # cpp file with Q_OBJECT macro found -> add moc
                 # (to be included in cpp)
                 moc = env.Moc(cpp)
                 env.Ignore(moc, moc)
                 if debug:
-                    print "scons: qt: found Q_OBJECT macro in '%s', moc'ing to '%s'" % (str(cpp), str(moc))
+                    print("scons: qt: found Q_OBJECT macro in '%s', moc'ing to '%s'" % (str(cpp), str(moc)))
                 #moc.source_scanner = SCons.Defaults.CScan
         # restore the original env attributes (FIXME)
         objBuilder.env = objBuilderEnv
@@ -181,13 +219,12 @@ AutomocStatic = _Automoc('StaticObject')
 
 def _detect(env):
     """Not really safe, but fast method to detect the QT library"""
-    QTDIR = None
-    if not QTDIR:
-        QTDIR = env.get('QTDIR',None)
+
+    QTDIR = env.get('QTDIR',None)
     if not QTDIR:
         QTDIR = os.environ.get('QTDIR',None)
     if not QTDIR:
-        moc = env.WhereIs('moc')
+        moc = env.WhereIs('moc') or env.WhereIs('moc',QT_BIN_DIR)
         if moc:
             QTDIR = os.path.dirname(os.path.dirname(moc))
             SCons.Warnings.warn(
@@ -221,7 +258,7 @@ def uicScannerFunc(node, env, path):
     lookout = []
     lookout.extend(env['CPPPATH'])
     lookout.append(str(node.rfile().dir))
-    includes = re.findall("<include.*?>(.*?)</include>", node.get_contents())
+    includes = re.findall("<include.*?>(.*?)</include>", node.get_text_contents())
     result = []
     for incFile in includes:
         dep = env.FindFile(incFile,lookout)
@@ -230,7 +267,7 @@ def uicScannerFunc(node, env, path):
     return result
 
 uicScanner = SCons.Scanner.Base(uicScannerFunc,
-                                name = "UicScanner", 
+                                name = "UicScanner",
                                 node_class = SCons.Node.FS.File,
                                 node_factory = SCons.Node.FS.File,
                                 recursive = 0)
@@ -306,7 +343,7 @@ def generate(env):
         mocBld.prefix[cxx] = '$QT_MOCCXXPREFIX'
         mocBld.suffix[cxx] = '$QT_MOCCXXSUFFIX'
 
-    # register the builders 
+    # register the builders
     env['BUILDERS']['Uic'] = uicBld
     env['BUILDERS']['Moc'] = mocBld
     static_obj, shared_obj = SCons.Tool.createObjBuilders(env)
@@ -320,6 +357,7 @@ def generate(env):
     # correctly later by our emitter.
     env.AppendUnique(PROGEMITTER =[AutomocStatic],
                      SHLIBEMITTER=[AutomocShared],
+                     LDMODULEEMITTER=[AutomocShared],
                      LIBEMITTER  =[AutomocStatic],
                      # Of course, we need to link against the qt libraries
                      CPPPATH=["$QT_CPPPATH"],
@@ -328,3 +366,9 @@ def generate(env):
 
 def exists(env):
     return _detect(env)
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

@@ -9,7 +9,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -29,23 +29,22 @@ selection method.
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#
 
-__revision__ = "src/engine/SCons/Tool/javac.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/javac.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import os
 import os.path
-import string
+from collections import OrderedDict
 
 import SCons.Action
 import SCons.Builder
 from SCons.Node.FS import _my_normcase
-from SCons.Tool.JavaCommon import parse_java_file
+from SCons.Tool.JavaCommon import parse_java_file, get_java_install_dirs, get_java_include_paths
 import SCons.Util
 
 def classname(path):
     """Turn a string (path name) into a Java class name."""
-    return string.replace(os.path.normpath(path), os.sep, '.')
+    return os.path.normpath(path).replace(os.sep, '.')
 
 def emit_java_classes(target, source, env):
     """Create and return lists of source java files
@@ -67,27 +66,25 @@ def emit_java_classes(target, source, env):
 
     slist = []
     js = _my_normcase(java_suffix)
-    find_java = lambda n, js=js, ljs=len(js): _my_normcase(n[-ljs:]) == js
     for entry in source:
         entry = entry.rentry().disambiguate()
         if isinstance(entry, SCons.Node.FS.File):
             slist.append(entry)
         elif isinstance(entry, SCons.Node.FS.Dir):
-            result = SCons.Util.OrderedDict()
-            def visit(arg, dirname, names, fj=find_java, dirnode=entry.rdir()):
-                java_files = filter(fj, names)
-                # The on-disk entries come back in arbitrary order.  Sort
-                # them so our target and source lists are determinate.
-                java_files.sort()
-                mydir = dirnode.Dir(dirname)
-                java_paths = map(lambda f, d=mydir: d.File(f), java_files)
+            result = OrderedDict()
+            dirnode = entry.rdir()
+            def find_java_files(arg, dirpath, filenames):
+                java_files = sorted([n for n in filenames
+                                       if _my_normcase(n).endswith(js)])
+                mydir = dirnode.Dir(dirpath)
+                java_paths = [mydir.File(f) for f in java_files]
                 for jp in java_paths:
                      arg[jp] = True
+            for dirpath, dirnames, filenames in os.walk(dirnode.get_abspath()):
+               find_java_files(result, dirpath, filenames)
+            entry.walk(find_java_files, result)
 
-            os.path.walk(entry.rdir().get_abspath(), visit, result)
-            entry.walk(visit, result)
-
-            slist.extend(result.keys())
+            slist.extend(list(result.keys()))
         else:
             raise SCons.Errors.UserError("Java source must be File or Dir, not '%s'" % entry.__class__)
 
@@ -139,7 +136,7 @@ JavaBuilder = SCons.Builder.Builder(action = JavaAction,
                     target_factory = SCons.Node.FS.Entry,
                     source_factory = SCons.Node.FS.Entry)
 
-class pathopt:
+class pathopt(object):
     """
     Callable object for generating javac-style path options from
     a construction variable (e.g. -classpath, -sourcepath).
@@ -154,13 +151,15 @@ class pathopt:
         if path and not SCons.Util.is_List(path):
             path = [path]
         if self.default:
-            path = path + [ env[self.default] ]
+            default = env[self.default]
+            if default:
+                if not SCons.Util.is_List(default):
+                    default = [default]
+                path = path + default
         if path:
-            return [self.opt, string.join(path, os.pathsep)]
-            #return self.opt + " " + string.join(path, os.pathsep)
+            return [self.opt, os.pathsep.join(map(str, path))]
         else:
             return []
-            #return ""
 
 def Java(env, target, source, *args, **kw):
     """
@@ -194,7 +193,7 @@ def Java(env, target, source, *args, **kw):
                 b = env.JavaClassFile
             else:
                 b = env.JavaClassDir
-        result.extend(apply(b, (t, s) + args, kw))
+        result.extend(b(t, s, *args, **kw))
 
     return result
 
@@ -205,9 +204,24 @@ def generate(env):
     java_class_dir = SCons.Tool.CreateJavaClassDirBuilder(env)
     java_class.add_emitter(None, emit_java_classes)
     java_class.add_emitter(env.subst('$JAVASUFFIX'), emit_java_classes)
-    java_class_dir.add_emitter(None, emit_java_classes)
+    #java_class_dir.emitter = emit_java_classes
 
     env.AddMethod(Java)
+
+    version = env.get('JAVAVERSION', None)
+
+    if env['PLATFORM'] == 'win32':
+        # Ensure that we have a proper path for javac
+        paths = get_java_install_dirs('win32', version=version)
+        javac = SCons.Tool.find_program_path(env, 'javac', default_paths=paths)
+        if javac:
+            javac_bin_dir = os.path.dirname(javac)
+            env.AppendENVPath('PATH', javac_bin_dir)
+    else:
+        javac = SCons.Tool.find_program_path(env, 'javac')
+
+    env['JAVAINCLUDES'] = get_java_include_paths(env, javac, version)
+
 
     env['JAVAC']                    = 'javac'
     env['JAVACFLAGS']               = SCons.Util.CLVar('')
@@ -220,9 +234,15 @@ def generate(env):
     env['_JAVASOURCEPATH']          = '${_javapathopt("-sourcepath", "JAVASOURCEPATH", "_JAVASOURCEPATHDEFAULT")} '
     env['_JAVASOURCEPATHDEFAULT']   = '${TARGET.attributes.java_sourcedir}'
     env['_JAVACCOM']                = '$JAVAC $JAVACFLAGS $_JAVABOOTCLASSPATH $_JAVACLASSPATH -d ${TARGET.attributes.java_classdir} $_JAVASOURCEPATH $SOURCES'
-    env['JAVACCOM']                 = "${TEMPFILE('$_JAVACCOM')}"
+    env['JAVACCOM']                 = "${TEMPFILE('$_JAVACCOM','$JAVACCOMSTR')}"
     env['JAVACLASSSUFFIX']          = '.class'
     env['JAVASUFFIX']               = '.java'
 
 def exists(env):
     return 1
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -21,19 +21,18 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/PathList.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/PathList.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 __doc__ = """SCons.PathList
 
 A module for handling lists of directory paths (the sort of things
 that get set as CPPPATH, LIBPATH, etc.) with as much caching of data and
-efficiency as we can while still keeping the evaluation delayed so that we
+efficiency as we can, while still keeping the evaluation delayed so that we
 Do the Right Thing (almost) regardless of how the variable is specified.
 
 """
 
 import os
-import string
 
 import SCons.Memoize
 import SCons.Node
@@ -67,7 +66,7 @@ def node_conv(obj):
         result = get()
     return result
 
-class _PathList:
+class _PathList(object):
     """
     An actual PathList object.
     """
@@ -98,18 +97,18 @@ class _PathList:
         over and over for each target.
         """
         if SCons.Util.is_String(pathlist):
-            pathlist = string.split(pathlist, os.pathsep)
+            pathlist = pathlist.split(os.pathsep)
         elif not SCons.Util.is_Sequence(pathlist):
             pathlist = [pathlist]
 
         pl = []
         for p in pathlist:
             try:
-                index = string.find(p, '$')
+                found = '$' in p
             except (AttributeError, TypeError):
                 type = TYPE_OBJECT
             else:
-                if index == -1:
+                if not found:
                     type = TYPE_STRING_NO_SUBST
                 else:
                     type = TYPE_STRING_SUBST
@@ -132,17 +131,19 @@ class _PathList:
                 value = env.subst(value, target=target, source=source,
                                   conv=node_conv)
                 if SCons.Util.is_Sequence(value):
-                    result.extend(value)
-                    continue
-                    
+                    result.extend(SCons.Util.flatten(value))
+                elif value:
+                    result.append(value)
             elif type == TYPE_OBJECT:
                 value = node_conv(value)
-            if value:
+                if value:
+                    result.append(value)
+            elif value:
                 result.append(value)
         return tuple(result)
 
 
-class PathListCache:
+class PathListCache(object):
     """
     A class to handle caching of PathList lookups.
 
@@ -170,11 +171,6 @@ class PathListCache:
     cheaply avoid re-parsing both values of CPPPATH by using the
     common value from this cache.
     """
-    if SCons.Memoize.use_memoizer:
-        __metaclass__ = SCons.Memoize.Memoized_Metaclass
-
-    memoizer_counters = []
-
     def __init__(self):
         self._memo = {}
 
@@ -195,8 +191,7 @@ class PathListCache:
             pathlist = tuple(SCons.Util.flatten(pathlist))
         return pathlist
 
-    memoizer_counters.append(SCons.Memoize.CountDict('PathList', _PathList_key))
-
+    @SCons.Memoize.CountDictCall(_PathList_key)
     def PathList(self, pathlist):
         """
         Returns the cached _PathList object for the specified pathlist,
@@ -224,3 +219,9 @@ PathList = PathListCache().PathList
 
 
 del PathListCache
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

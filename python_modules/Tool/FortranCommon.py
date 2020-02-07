@@ -5,7 +5,7 @@ Stuff for processing Fortran, common to all fortran dialects.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -26,11 +26,11 @@ Stuff for processing Fortran, common to all fortran dialects.
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
+from __future__ import print_function
 
-__revision__ = "src/engine/SCons/Tool/FortranCommon.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/FortranCommon.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
 import re
-import string
 import os.path
 
 import SCons.Action
@@ -62,18 +62,19 @@ def isfortran(env, source):
 def _fortranEmitter(target, source, env):
     node = source[0].rfile()
     if not node.exists() and not node.is_derived():
-       print "Could not locate " + str(node.name)
+       print("Could not locate " + str(node.name))
        return ([], [])
-    mod_regex = """(?i)^\s*MODULE\s+(?!PROCEDURE)(\w+)"""
+    # This has to match the def_regex in the Fortran scanner
+    mod_regex = r"""(?i)^\s*MODULE\s+(?!PROCEDURE|SUBROUTINE|FUNCTION|PURE|ELEMENTAL)(\w+)"""
     cre = re.compile(mod_regex,re.M)
     # Retrieve all USE'd module names
-    modules = cre.findall(node.get_contents())
+    modules = cre.findall(node.get_text_contents())
     # Remove unique items from the list
     modules = SCons.Util.unique(modules)
     # Convert module name to a .mod filename
     suffix = env.subst('$FORTRANMODSUFFIX', target=target, source=source)
     moddir = env.subst('$FORTRANMODDIR', target=target, source=source)
-    modules = map(lambda x, s=suffix: string.lower(x) + s, modules)
+    modules = [x.lower() + suffix for x in modules]
     for m in modules:
        target.append(env.fs.File(m, moddir))
     return (target, source)
@@ -91,8 +92,8 @@ def ComputeFortranSuffixes(suffixes, ppsuffixes):
     pre-processed. Both should be sequences, not strings."""
     assert len(suffixes) > 0
     s = suffixes[0]
-    sup = string.upper(s)
-    upper_suffixes = map(string.upper, suffixes)
+    sup = s.upper()
+    upper_suffixes = [_.upper() for _ in suffixes]
     if SCons.Util.case_sensitive_suffixes(s, sup):
         ppsuffixes.extend(upper_suffixes)
     else:
@@ -135,17 +136,17 @@ def DialectAddToEnv(env, dialect, suffixes, ppsuffixes, support_module = 0):
         static_obj.add_emitter(suffix, FortranEmitter)
         shared_obj.add_emitter(suffix, ShFortranEmitter)
 
-    if not env.has_key('%sFLAGS' % dialect):
+    if '%sFLAGS' % dialect not in env:
         env['%sFLAGS' % dialect] = SCons.Util.CLVar('')
 
-    if not env.has_key('SH%sFLAGS' % dialect):
+    if 'SH%sFLAGS' % dialect not in env:
         env['SH%sFLAGS' % dialect] = SCons.Util.CLVar('$%sFLAGS' % dialect)
 
     # If a tool does not define fortran prefix/suffix for include path, use C ones
-    if not env.has_key('INC%sPREFIX' % dialect):
+    if 'INC%sPREFIX' % dialect not in env:
         env['INC%sPREFIX' % dialect] = '$INCPREFIX'
 
-    if not env.has_key('INC%sSUFFIX' % dialect):
+    if 'INC%sSUFFIX' % dialect not in env:
         env['INC%sSUFFIX' % dialect] = '$INCSUFFIX'
 
     env['_%sINCFLAGS' % dialect] = '$( ${_concat(INC%sPREFIX, %sPATH, INC%sSUFFIX, __env__, RDirs, TARGET, SOURCE)} $)' % (dialect, dialect, dialect)
@@ -168,7 +169,7 @@ def add_fortran_to_env(env):
     except KeyError:
         FortranSuffixes = ['.f', '.for', '.ftn']
 
-    #print "Adding %s to fortran suffixes" % FortranSuffixes
+    #print("Adding %s to fortran suffixes" % FortranSuffixes)
     try:
         FortranPPSuffixes = env['FORTRANPPFILESUFFIXES']
     except KeyError:
@@ -192,7 +193,7 @@ def add_f77_to_env(env):
     except KeyError:
         F77Suffixes = ['.f77']
 
-    #print "Adding %s to f77 suffixes" % F77Suffixes
+    #print("Adding %s to f77 suffixes" % F77Suffixes)
     try:
         F77PPSuffixes = env['F77PPFILESUFFIXES']
     except KeyError:
@@ -207,7 +208,7 @@ def add_f90_to_env(env):
     except KeyError:
         F90Suffixes = ['.f90']
 
-    #print "Adding %s to f90 suffixes" % F90Suffixes
+    #print("Adding %s to f90 suffixes" % F90Suffixes)
     try:
         F90PPSuffixes = env['F90PPFILESUFFIXES']
     except KeyError:
@@ -223,13 +224,44 @@ def add_f95_to_env(env):
     except KeyError:
         F95Suffixes = ['.f95']
 
-    #print "Adding %s to f95 suffixes" % F95Suffixes
+    #print("Adding %s to f95 suffixes" % F95Suffixes)
     try:
         F95PPSuffixes = env['F95PPFILESUFFIXES']
     except KeyError:
         F95PPSuffixes = []
 
     DialectAddToEnv(env, "F95", F95Suffixes, F95PPSuffixes,
+                    support_module = 1)
+
+def add_f03_to_env(env):
+    """Add Builders and construction variables for f03 to an Environment."""
+    try:
+        F03Suffixes = env['F03FILESUFFIXES']
+    except KeyError:
+        F03Suffixes = ['.f03']
+
+    #print("Adding %s to f95 suffixes" % F95Suffixes)
+    try:
+        F03PPSuffixes = env['F03PPFILESUFFIXES']
+    except KeyError:
+        F03PPSuffixes = []
+
+    DialectAddToEnv(env, "F03", F03Suffixes, F03PPSuffixes,
+                    support_module = 1)
+
+def add_f08_to_env(env):
+    """Add Builders and construction variables for f08 to an Environment."""
+    try:
+        F08Suffixes = env['F08FILESUFFIXES']
+    except KeyError:
+        F08Suffixes = ['.f08']
+
+    try:
+        F08PPSuffixes = env['F08PPFILESUFFIXES']
+    except KeyError:
+        F08PPSuffixes = []
+
+    DialectAddToEnv(env, "F08", F08Suffixes, F08PPSuffixes,
                     support_module = 1)
 
 def add_all_to_env(env):
@@ -239,3 +271,11 @@ def add_all_to_env(env):
     add_f77_to_env(env)
     add_f90_to_env(env)
     add_f95_to_env(env)
+    add_f03_to_env(env)
+    add_f08_to_env(env)
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

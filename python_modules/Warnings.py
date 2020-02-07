@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -27,9 +27,8 @@ This file implements the warnings framework for SCons.
 
 """
 
-__revision__ = "src/engine/SCons/Warnings.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Warnings.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
-import string
 import sys
 
 import SCons.Errors
@@ -37,72 +36,111 @@ import SCons.Errors
 class Warning(SCons.Errors.UserError):
     pass
 
+class WarningOnByDefault(Warning):
+    pass
+
 
 # NOTE:  If you add a new warning class, add it to the man page, too!
+class TargetNotBuiltWarning(Warning): # Should go to OnByDefault
+    pass
+
+class CacheVersionWarning(WarningOnByDefault):
+    pass
 
 class CacheWriteErrorWarning(Warning):
     pass
 
-class CorruptSConsignWarning(Warning):
+class CorruptSConsignWarning(WarningOnByDefault):
     pass
 
 class DependencyWarning(Warning):
     pass
 
-class DeprecatedWarning(Warning):
+class DevelopmentVersionWarning(WarningOnByDefault):
     pass
 
-class DeprecatedCopyWarning(DeprecatedWarning):
+class DuplicateEnvironmentWarning(WarningOnByDefault):
     pass
 
-class DeprecatedSourceSignaturesWarning(DeprecatedWarning):
+class FutureReservedVariableWarning(WarningOnByDefault):
     pass
 
-class DeprecatedTargetSignaturesWarning(DeprecatedWarning):
+class LinkWarning(WarningOnByDefault):
     pass
 
-class DuplicateEnvironmentWarning(Warning):
+class MisleadingKeywordsWarning(WarningOnByDefault):
     pass
 
-class LinkWarning(Warning):
+class MissingSConscriptWarning(WarningOnByDefault):
     pass
 
-class MisleadingKeywordsWarning(Warning):
+class NoObjectCountWarning(WarningOnByDefault):
     pass
 
-class MissingSConscriptWarning(Warning):
+class NoParallelSupportWarning(WarningOnByDefault):
     pass
 
-class NoMD5ModuleWarning(Warning):
+class ReservedVariableWarning(WarningOnByDefault):
     pass
 
-class NoMetaclassSupportWarning(Warning):
+class StackSizeWarning(WarningOnByDefault):
     pass
 
-class NoObjectCountWarning(Warning):
+class VisualCMissingWarning(WarningOnByDefault):
     pass
 
-class NoParallelSupportWarning(Warning):
+# Used when MSVC_VERSION and MSVS_VERSION do not point to the
+# same version (MSVS_VERSION is deprecated)
+class VisualVersionMismatch(WarningOnByDefault):
     pass
 
-class PythonVersionWarning(DeprecatedWarning):
-    pass
-
-class ReservedVariableWarning(Warning):
-    pass
-
-class StackSizeWarning(Warning):
+class VisualStudioMissingWarning(Warning):
     pass
 
 class FortranCxxMixWarning(LinkWarning):
     pass
 
-_warningAsException = 0
+
+# Deprecation warnings
+
+class FutureDeprecatedWarning(Warning):
+    pass
+
+class DeprecatedWarning(Warning):
+    pass
+
+class MandatoryDeprecatedWarning(DeprecatedWarning):
+    pass
+
+
+# Special case; base always stays DeprecatedWarning
+class PythonVersionWarning(DeprecatedWarning):
+    pass
+
+class DeprecatedSourceCodeWarning(FutureDeprecatedWarning):
+    pass
+
+class TaskmasterNeedsExecuteWarning(DeprecatedWarning):
+    pass
+
+class DeprecatedOptionsWarning(MandatoryDeprecatedWarning):
+    pass
+
+class DeprecatedDebugOptionsWarning(MandatoryDeprecatedWarning):
+    pass
+
+class DeprecatedMissingSConscriptWarning(DeprecatedWarning):
+    pass
+
 
 # The below is a list of 2-tuples.  The first element is a class object.
 # The second element is true if that class is enabled, false if it is disabled.
 _enabled = []
 
+# If set, raise the warning as an exception
+_warningAsException = 0
+
+# If not None, a function to call with the warning
 _warningOut = None
 
 def suppressWarningClass(clazz):
@@ -111,7 +149,7 @@ def suppressWarningClass(clazz):
     _enabled.insert(0, (clazz, 0))
 
 def enableWarningClass(clazz):
-    """Suppresses all warnings that are of type clazz or
+    """Enables all warnings that are of type clazz or
     derived from clazz."""
     _enabled.insert(0, (clazz, 1))
 
@@ -126,8 +164,8 @@ def warn(clazz, *args):
     global _enabled, _warningAsException, _warningOut
 
     warning = clazz(args)
-    for clazz, flag in _enabled:
-        if isinstance(warning, clazz):
+    for cls, flag in _enabled:
+        if isinstance(warning, cls):
             if flag:
                 if _warningAsException:
                     raise warning
@@ -137,9 +175,10 @@ def warn(clazz, *args):
             break
 
 def process_warn_strings(arguments):
-    """Process string specifications of enabling/disabling warnings,
-    as passed to the --warn option or the SetOption('warn') function.
-    
+    """Process requests to enable/disable warnings.
+
+    The requests are strings passed to the --warn option or the
+    SetOption('warn') function.
 
     An argument to this option should be of the form <warning-class>
     or no-<warning-class>.  The warning class is munged in order
@@ -150,23 +189,21 @@ def process_warn_strings(arguments):
     "Warning" is appended to get the class name.
 
     For example, 'deprecated' will enable the DeprecatedWarning
-    class.  'no-dependency' will disable the .DependencyWarning
-    class.
+    class.  'no-dependency' will disable the DependencyWarning class.
 
     As a special case, --warn=all and --warn=no-all will enable or
     disable (respectively) the base Warning class of all warnings.
-
     """
 
     def _capitalize(s):
         if s[:5] == "scons":
             return "SCons" + s[5:]
         else:
-            return string.capitalize(s)
+            return s.capitalize()
 
     for arg in arguments:
 
-        elems = string.split(string.lower(arg), '-')
+        elems = arg.lower().split('-')
         enable = 1
         if elems[0] == 'no':
             enable = 0
@@ -175,7 +212,7 @@ def process_warn_strings(arguments):
         if len(elems) == 1 and elems[0] == 'all':
             class_name = "Warning"
         else:
-            class_name = string.join(map(_capitalize, elems), '') + "Warning"
+            class_name = ''.join(map(_capitalize, elems)) + "Warning"
         try:
             clazz = globals()[class_name]
         except KeyError:
@@ -183,5 +220,14 @@ def process_warn_strings(arguments):
         else:
             if enable:
                 enableWarningClass(clazz)
+            elif issubclass(clazz, MandatoryDeprecatedWarning):
+                fmt = "Can not disable mandataory warning: '%s'\n"
+                sys.stderr.write(fmt % arg)
             else:
                 suppressWarningClass(clazz)
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

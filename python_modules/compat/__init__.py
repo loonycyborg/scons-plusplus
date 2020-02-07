@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -29,18 +29,11 @@ implementations of various things that we'd like to use in SCons but which
 only show up in later versions of Python than the early, old version(s)
 we still support.
 
-This package will be imported by other code:
-
-    import SCons.compat
-
-But other code will not generally reference things in this package through
+Other code will not generally reference things in this package through
 the SCons.compat namespace.  The modules included here add things to
-the __builtin__ namespace or the global module list so that the rest
+the builtins namespace or the global module list so that the rest
 of our code can use the objects and names imported here regardless of
 Python version.
-
-Simply enough, things that go in the __builtin__ name space come from
-our builtins module.
 
 The rest of the things here will be in individual compatibility modules
 that are either: 1) suitably modified copies of the future modules that
@@ -64,132 +57,147 @@ function defined below loads the module as the "real" name (without the
 rest of our code will find our pre-loaded compatibility module.
 """
 
-__revision__ = "src/engine/SCons/compat/__init__.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/compat/__init__.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
-def import_as(module, name):
-    """
-    Imports the specified module (from our local directory) as the
-    specified name.
-    """
-    import imp
-    import os.path
-    dir = os.path.split(__file__)[0]
-    file, filename, suffix_mode_type = imp.find_module(module, [dir])
-    imp.load_module(name, file, filename, suffix_mode_type)
+import os
+import sys
+import importlib
 
-import builtins
+PYPY = hasattr(sys, 'pypy_translation_info')
+
+
+def rename_module(new, old):
+    """
+    Attempt to import the old module and load it under the new name.
+    Used for purely cosmetic name changes in Python 3.x.
+    """
+    try:
+        sys.modules[new] = importlib.import_module(old)
+        return True
+    except ImportError:
+        return False
+
+
+# TODO: FIXME
+# In 3.x, 'pickle' automatically loads the fast version if available.
+rename_module('pickle', 'cPickle')
+
+# Default pickle protocol. Higher protocols are more efficient/featureful
+# but incompatible with older Python versions. On Python 2.7 this is 2.
+# Negative numbers choose the highest available protocol.
+import pickle
+
+# Was pickle.HIGHEST_PROTOCOL
+# Changed to 2 so py3.5+'s pickle will be compatible with py2.7.
+PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
+
+# TODO: FIXME
+# In 3.x, 'profile' automatically loads the fast version if available.
+rename_module('profile', 'cProfile')
+
+# TODO: FIXME
+# Before Python 3.0, the 'queue' module was named 'Queue'.
+rename_module('queue', 'Queue')
+
+# TODO: FIXME
+# Before Python 3.0, the 'winreg' module was named '_winreg'
+rename_module('winreg', '_winreg')
+
+# Python 3 moved builtin intern() to sys package
+# To make porting easier, make intern always live
+# in sys package (for python 2.7.x)
+try:
+    sys.intern
+except AttributeError:
+    # We must be using python 2.7.x so monkey patch
+    # intern into the sys package
+    sys.intern = intern
+
+# UserDict, UserList, UserString are in # collections for 3.x,
+# but standalone in 2.7.x. Monkey-patch into collections for 2.7.
+import collections
 
 try:
-    import hashlib
-except ImportError:
-    # Pre-2.5 Python has no hashlib module.
-    try:
-        import_as('_scons_hashlib', 'hashlib')
-    except ImportError:
-        # If we failed importing our compatibility module, it probably
-        # means this version of Python has no md5 module.  Don't do
-        # anything and let the higher layer discover this fact, so it
-        # can fall back to using timestamp.
+    collections.UserDict
+except AttributeError:
+    from UserDict import UserDict as _UserDict
+    collections.UserDict = _UserDict
+    del _UserDict
+
+try:
+    collections.UserList
+except AttributeError:
+    from UserList import UserList as _UserList
+    collections.UserList = _UserList
+    del _UserList
+
+try:
+    collections.UserString
+except AttributeError:
+    from UserString import UserString as _UserString
+    collections.UserString = _UserString
+    del _UserString
+
+
+import shutil
+try:
+    shutil.SameFileError
+except AttributeError:
+    class SameFileError(Exception):
         pass
 
-try:
-    set
-except NameError:
-    # Pre-2.4 Python has no native set type
-    try:
-        # Python 2.2 and 2.3 can use the copy of the 2.[45] sets module
-        # that we grabbed.
-        import_as('_scons_sets', 'sets')
-    except (ImportError, SyntaxError):
-        # Python 1.5 (ImportError, no __future_ module) and 2.1
-        # (SyntaxError, no generators in __future__) will blow up
-        # trying to import the 2.[45] sets module, so back off to a
-        # custom sets module that can be discarded easily when we
-        # stop supporting those versions.
-        import_as('_scons_sets15', 'sets')
-    import __builtin__
-    import sets
-    __builtin__.set = sets.Set
+    shutil.SameFileError = SameFileError
 
-import fnmatch
-try:
-    fnmatch.filter
-except AttributeError:
-    # Pre-2.2 Python has no fnmatch.filter() function.
-    def filter(names, pat):
-        """Return the subset of the list NAMES that match PAT"""
-        import os,posixpath
-        result=[]
-        pat = os.path.normcase(pat)
-        if not fnmatch._cache.has_key(pat):
-            import re
-            res = fnmatch.translate(pat)
-            fnmatch._cache[pat] = re.compile(res)
-        match = fnmatch._cache[pat].match
-        if os.path is posixpath:
-            # normcase on posix is NOP. Optimize it away from the loop.
-            for name in names:
-                if match(name):
-                    result.append(name)
-        else:
-            for name in names:
-                if match(os.path.normcase(name)):
-                    result.append(name)
-        return result
-    fnmatch.filter = filter
-    del filter
+def with_metaclass(meta, *bases):
+    """
+    Function from jinja2/_compat.py. License: BSD.
 
-try:
-    import itertools
-except ImportError:
-    # Pre-2.3 Python has no itertools module.
-    import_as('_scons_itertools', 'itertools')
+    Use it like this::
 
-# If we need the compatibility version of textwrap, it  must be imported
-# before optparse, which uses it.
-try:
-    import textwrap
-except ImportError:
-    # Pre-2.3 Python has no textwrap module.
-    import_as('_scons_textwrap', 'textwrap')
+        class BaseForm(object):
+            pass
 
-try:
-    import optparse
-except ImportError:
-    # Pre-2.3 Python has no optparse module.
-    import_as('_scons_optparse', 'optparse')
+        class FormType(type):
+            pass
 
-import shlex
-try:
-    shlex.split
-except AttributeError:
-    # Pre-2.3 Python has no shlex.split() function.
-    #
-    # The full white-space splitting semantics of shlex.split() are
-    # complicated to reproduce by hand, so just use a compatibility
-    # version of the shlex module cribbed from Python 2.5 with some
-    # minor modifications for older Python versions.
-    del shlex
-    import_as('_scons_shlex', 'shlex')
+        class Form(with_metaclass(FormType, BaseForm)):
+            pass
 
-try:
-    import subprocess
-except ImportError:
-    # Pre-2.4 Python has no subprocess module.
-    import_as('_scons_subprocess', 'subprocess')
+    This requires a bit of explanation: the basic idea is to make a
+    dummy metaclass for one level of class instantiation that replaces
+    itself with the actual metaclass.  Because of internal type checks
+    we also need to make sure that we downgrade the custom metaclass
+    for one level to something closer to type (that's why __call__ and
+    __init__ comes back from type etc.).
 
-import sys
-try:
-    sys.version_info
-except AttributeError:
-    # Pre-1.6 Python has no sys.version_info
-    import string
-    version_string = string.split(sys.version)[0]
-    version_ints = map(int, string.split(version_string, '.'))
-    sys.version_info = tuple(version_ints + ['final', 0])
+    This has the advantage over six.with_metaclass of not introducing
+    dummy classes into the final MRO.
+    """
 
-try:
-    import UserString
-except ImportError:
-    # Pre-1.6 Python has no UserString module.
-    import_as('_scons_UserString', 'UserString')
+    class metaclass(meta):
+        __call__ = type.__call__
+        __init__ = type.__init__
+
+        def __new__(cls, name, this_bases, d):
+            if this_bases is None:
+                return type.__new__(cls, name, (), d)
+            return meta(name, bases, d)
+
+    return metaclass('temporary_class', None, {})
+
+
+class NoSlotsPyPy(type):
+    """
+    Workaround for PyPy not working well with __slots__ and __class__ assignment.
+    """
+
+    def __new__(meta, name, bases, dct):
+        if PYPY and '__slots__' in dct:
+            dct.pop('__slots__')
+        return super(NoSlotsPyPy, meta).__new__(meta, name, bases, dct)
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

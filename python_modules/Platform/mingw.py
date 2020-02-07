@@ -1,15 +1,11 @@
-"""SCons.Tool.RCS.py
+"""SCons.Platform.mingw
 
-Tool-specific initialization for RCS.
-
-There normally shouldn't be any need to import this module directly.
-It will usually be imported through the generic SCons.Tool.Tool()
-selection method.
+Platform-specific initialization for the MinGW system.
 
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -31,28 +27,13 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/RCS.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Platform/mingw.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
-import SCons.Action
-import SCons.Builder
-import SCons.Util
+import sys
 
-def generate(env):
-    """Add a Builder factory function and construction variables for
-    RCS to an Environment."""
-
-    def RCSFactory(env=env):
-        """ """
-        act = SCons.Action.Action('$RCS_COCOM', '$RCS_COCOMSTR')
-        return SCons.Builder.Builder(action = act, env = env)
-
-    #setattr(env, 'RCS', RCSFactory)
-    env.RCS = RCSFactory
-
-    env['RCS']          = 'rcs'
-    env['RCS_CO']       = 'co'
-    env['RCS_COFLAGS']  = SCons.Util.CLVar('')
-    env['RCS_COCOM']    = '$RCS_CO $RCS_COFLAGS $TARGET'
-
-def exists(env):
-    return env.Detect('rcs')
+MINGW_DEFAULT_PATHS = []
+if sys.platform == 'win32':
+    MINGW_DEFAULT_PATHS = [
+        r'C:\msys64',
+        r'C:\msys'
+    ]

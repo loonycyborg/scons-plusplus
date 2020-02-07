@@ -8,7 +8,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -30,10 +30,19 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Platform/cygwin.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Platform/cygwin.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
-import posix
+import sys
+
+from . import posix
 from SCons.Platform import TempFileMunge
+
+CYGWIN_DEFAULT_PATHS = []
+if sys.platform == 'win32':
+    CYGWIN_DEFAULT_PATHS = [
+        r'C:\cygwin64\bin',
+        r'C:\cygwin\bin'
+    ]
 
 def generate(env):
     posix.generate(env)
@@ -42,8 +51,14 @@ def generate(env):
     env['PROGSUFFIX']  = '.exe'
     env['SHLIBPREFIX'] = ''
     env['SHLIBSUFFIX'] = '.dll'
-    env['LIBPREFIXES'] = [ '$LIBPREFIX', '$SHLIBPREFIX' ]
-    env['LIBSUFFIXES'] = [ '$LIBSUFFIX', '$SHLIBSUFFIX' ]
+    env['LIBPREFIXES'] = [ '$LIBPREFIX', '$SHLIBPREFIX', '$IMPLIBPREFIX' ]
+    env['LIBSUFFIXES'] = [ '$LIBSUFFIX', '$SHLIBSUFFIX', '$IMPLIBSUFFIX' ]
     env['TEMPFILE']    = TempFileMunge
     env['TEMPFILEPREFIX'] = '@'
     env['MAXLINELENGTH']  = 2048
+
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:

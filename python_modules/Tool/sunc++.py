@@ -9,7 +9,7 @@ selection method.
 """
 
 #
-# Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The SCons Foundation
+# Copyright (c) 2001 - 2019 The SCons Foundation
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -31,70 +31,15 @@ selection method.
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-__revision__ = "src/engine/SCons/Tool/sunc++.py 3266 2008/08/12 07:31:01 knight"
+__revision__ = "src/engine/SCons/Tool/sunc++.py bee7caf9defd6e108fc2998a2520ddb36a967691 2019-12-17 02:07:09 bdeegan"
 
-import SCons.Util
 
-import os.path
+#forward proxy to the preffered cxx version
+from SCons.Tool.suncxx import *
 
-cplusplus = __import__('c++', globals(), locals(), [])
 
-# use the package installer tool lslpp to figure out where cppc and what
-# version of it is installed
-def get_cppc(env):
-    cxx = env.get('CXX', None)
-    if cxx:
-        cppcPath = os.path.dirname(cxx)
-    else:
-        cppcPath = None
-
-    cppcVersion = None
-
-    pkginfo = env.subst('$PKGINFO')
-    pkgchk = env.subst('$PKGCHK')
-
-    def look_pkg_db(pkginfo=pkginfo, pkgchk=pkgchk):
-        version = None
-        path = None
-        for package in ['SPROcpl']:
-            cmd = "%s -l %s 2>/dev/null | grep '^ *VERSION:'" % (pkginfo, package)
-            line = os.popen(cmd).readline()
-            if line:
-                version = line.split()[-1]
-                cmd = "%s -l %s 2>/dev/null | grep '^Pathname:.*/bin/CC$' | grep -v '/SC[0-9]*\.[0-9]*/'" % (pkgchk, package)
-                line = os.popen(cmd).readline()
-                if line:
-                    path = os.path.dirname(line.split()[-1])
-                    break
-
-        return path, version
-
-    path, version = look_pkg_db()
-    if path and version:
-        cppcPath, cppcVersion = path, version
-
-    return (cppcPath, 'CC', 'CC', cppcVersion)
-
-def generate(env):
-    """Add Builders and construction variables for SunPRO C++."""
-    path, cxx, shcxx, version = get_cppc(env)
-    if path:
-        cxx = os.path.join(path, cxx)
-        shcxx = os.path.join(path, shcxx)
-
-    cplusplus.generate(env)
-
-    env['CXX'] = cxx
-    env['SHCXX'] = shcxx
-    env['CXXVERSION'] = version
-    env['SHCXXFLAGS']   = SCons.Util.CLVar('$CXXFLAGS -KPIC')
-    env['SHOBJPREFIX']  = 'so_'
-    env['SHOBJSUFFIX']  = '.o'
-    
-def exists(env):
-    path, cxx, shcxx, version = get_cppc(env)
-    if path and cxx:
-        cppc = os.path.join(path, cxx)
-        if os.path.exists(cppc):
-            return cppc
-    return None
+# Local Variables:
+# tab-width:4
+# indent-tabs-mode:nil
+# End:
+# vim: set expandtab tabstop=4 shiftwidth=4:
