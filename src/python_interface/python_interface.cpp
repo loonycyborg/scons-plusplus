@@ -178,9 +178,9 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	m_script.attr("COMMAND_LINE_TARGETS") = py::list();
 	m_script.attr("DEFAULT_TARGETS") = py::list();
 
-	m_script.attr("Action") = py::module::import("SCons.Action").attr("Action");
-	m_script.attr("Builder") = py::module::import("SCons.Builder").attr("Builder");
-	m_script.attr("Environment") = py::module::import("SCons.Environment").attr("Environment");
+	m_script.attr("Action") = m_action.attr("Action");
+	m_script.attr("Builder") = m_builder.attr("Builder");
+	m_script.attr("Environment") = m_environment.attr("Environment");
 
 	m_script.def("DefaultEnvironment", &DefaultEnvironment);
 	m_script.def("SConscript", (py::object(*)(const std::string&))SConscript);
@@ -229,6 +229,7 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 
 		argv[0][0] = 0;
 		PySys_SetArgv(argc, argv);
+
 		try {
 			SConscript(filename);
 		}
