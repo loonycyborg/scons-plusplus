@@ -3,12 +3,12 @@ SCons++ - Python-scriptable build tool
 
 PREREQUISITES
 -------------
-* Python >= 2.5, < 3.0
+* Python >= 2.5
 * boost >= 1.44
-   boost::system
-   boost::filesystem
-   boost::program_options
-   Boost Graph Library
+  * boost::system
+  * boost::filesystem
+  * boost::program_options
+  * Boost Graph Library
 * SQLite 3
 * scons >= 0.98.5
 
