@@ -1,7 +1,7 @@
 Import("env")
 
 sources = Glob("*.cpp") + Glob("python_interface/*.cpp") + Glob("make_interface/*.cpp")+ Glob("*.c")
-common_objects = env.Object(filter(lambda source: source.name != "main.cpp", sources))
+common_objects = env.Object(list(filter(lambda source: source.name != "main.cpp", sources)))
 env.Default(
 	env.Program("#/scons++", [common_objects, "main.cpp"]))
 Export("common_objects")
