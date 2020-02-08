@@ -58,7 +58,11 @@ inline py::object deepcopy(py::object obj)
 
 inline py::object reversed(py::object iter)
 {
+#if PY_MAJOR_VERSION >= 3
+	py::object reversed_func = py::module::import("builtins").attr("reversed");
+#else
 	py::object reversed_func = py::module::import("__builtin__").attr("reversed");
+#endif
 	return reversed_func(iter);
 }
 

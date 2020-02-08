@@ -95,7 +95,7 @@ def platform_module(name = platform_default()):
     If the name is unspecified, we fetch the appropriate default for
     our execution environment.
     """
-    full_name = 'Platform.' + name
+    full_name = 'SCons.Platform.' + name
     if full_name not in sys.modules:
         if os.name == 'java':
             eval(full_name)

@@ -75,8 +75,7 @@ py::list split(py::object obj)
 	if(py::isinstance<py::list>(obj))
 		return obj;
 	if(py::isinstance<py::str>(obj)) {
-		py::object string_split = py::module::import("string").attr("split");
-		return string_split(obj);
+		return obj.attr("split")();
 	}
 	py::list result;
 	result.append(obj);
@@ -203,20 +202,18 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	py::class_<Task::Scanner>(m_sconspp_ext, "Scanner");
 	m_sconspp_ext.attr("CPPScanner") = Task::Scanner(scan_cpp);
 	m_sconspp_ext.def("execute", &sconspp::exec, "argv"_a, "capture_output"_a = false);
+
+	py::list path;
+	path.append(py::str(PYTHON_MODULES_PATH));
+	path.append((readlink("/proc/self/exe").parent_path() / "python_modules").string());
+	m_scons.attr("__path__") = path;
 }
 
 	void init_python()
 	{
-		static py::scoped_interpreter guard{};
+		py::initialize_interpreter();
 
 		main_namespace = py::dict(py::module::import("__main__").attr("__dict__"));
-
-		py::object sys = py::module::import("sys");
-		py::list path(sys.attr("path"));
-		PyList_Insert(path.ptr(), 0, py::str(PYTHON_MODULES_PATH).ptr());
-		PyList_Insert(path.ptr(), 0, py::str((readlink("/proc/self/exe").parent_path() / "python_modules").string()).ptr());
-		sys.attr("path") = path;
-		py::eval<py::eval_single_statement>("import sconspp_import", main_namespace, main_namespace);
 
 		PyDict_Update(main_namespace.ptr(), py::module::import("SCons.Script").attr("__dict__").ptr());
 
@@ -227,8 +224,17 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	{
 		py::gil_scoped_acquire lock{};
 
+#if PY_MAJOR_VERSION == 2
 		argv[0][0] = 0;
 		PySys_SetArgv(argc, argv);
+#else
+		wchar_t** argw { new wchar_t*[size_t(argc)] };
+		for(int i = 0; i < argc; i++) {
+			argw[i] = Py_DecodeLocale(argv[i], nullptr);
+			assert(argw[i] != nullptr);
+		}
+		PySys_SetArgvEx(argc, argw, 0);
+#endif
 
 		try {
 			SConscript(filename);

@@ -3,9 +3,9 @@ from SCons.Builder import Builder
 env = Environment()
 
 def e(target, source, env):
-    print target
-    print source
-    print env
+    print(target)
+    print(source)
+    print(env)
     return (target, source)
 
 builder = Builder(
@@ -29,7 +29,7 @@ env.AddPreAction("qux.blah", "echo PreAction $TARGET")
 env.AddPostAction("qux.blah", "echo PostAction $TARGET")
 blah = env.Blah("foo.bar", "qux")
 env.Command("SConstruct.blah", "SConstruct", "echo targets: $TARGETS sources: $SOURCES")
-print env.Blah("SConstruct")
+print(env.Blah("SConstruct"))
 baz = env.Multi(Alias("baz"), blah)
 env.Multi(Alias("baz"), "blah_SConstruct.blah")
 AlwaysBuild(baz)

@@ -15,7 +15,7 @@ if env["PLATFORM"] == "win32":
     version = version.replace('.', '')
 env.AppendUnique(LIBPATH = distutils.sysconfig.get_config_var("LIBDIR") or \
                                os.path.join(distutils.sysconfig.get_config_var("prefix"), "libs") )
-env.AppendUnique(LIBS = "python" + version)
+env.AppendUnique(LIBS = "python" + version + "m")
 env.AppendUnique(LIBS = ["boost_filesystem", "boost_system", "boost_thread", "boost_program_options", "sqlite3"])
 env.AppendUnique(CPPPATH = ["thirdparty/pybind11/include"])
 env.AppendUnique(CCFLAGS = Split("-Wall -O2 -march=native -Wno-deprecated -Wno-parentheses -pthread -fvisibility=hidden"), LINKFLAGS = ["-pthread"], CPPDEFINES = ["BOOST_FILESYSTEM_VERSION=3"])

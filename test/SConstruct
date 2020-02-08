@@ -5,26 +5,26 @@ env.Command("qux", "quux", "blah -o $TARGET $SOURCE")
 env.Default("foo")
 
 node = env.Entry("quux")
-print node
-print str(nodes)
-print env.subst("blah")
-print env.subst("${CC}")
-print env.subst("blah $blah blah")
+print(node)
+print(str(nodes))
+print(env.subst("blah"))
+print(env.subst("${CC}"))
+print(env.subst("blah $blah blah"))
 env["varname"] = [1,2,3]
 env["varname"][1] = 5
-print env["varname"]
-print env.subst("${varname[1]}")
+print(env["varname"])
+print(env.subst("${varname[1]}"))
 
 from SCons.Action import Action
 def f(target, source, env):
-	print "FFFFFFFFFFFFF"
+	print("FFFFFFFFFFFFF")
 
 env.Execute(Action(f))
 
 def e(target, source, env):
-    print target
-    print source
-    print env
+    print(target)
+    print(source)
+    print(env)
     return (target, source)
 
 from SCons.Builder import Builder
@@ -34,38 +34,38 @@ env.Blah("baz", "s")
 
 env["blah"] = ["str"]
 env.Append(blah = "str2")
-print env["blah"]
+print(env["blah"])
 env.Append(blah = "str3")
-print env["blah"]
+print(env["blah"])
 env.Prepend(blah = "str10")
-print env["blah"]
+print(env["blah"])
 
 env.Append(blahdict = {1:45, 4:4})
-print env["blahdict"]
+print(env["blahdict"])
 env.Append(blahdict = {2:"n"})
-print env["blahdict"]
+print(env["blahdict"])
 
 env["blahunique"] = ["a", "b", "c"]
 env.AppendUnique(blahunique = ["b", "d"])
-print env["blahunique"]
+print(env["blahunique"])
 
 env.Replace(replace_var = "blah")
-print env["replace_var"]
+print(env["replace_var"])
 
-print env.WhereIs("bash")
+print(env.WhereIs("bash"))
 
 import SCons.Defaults
 env.Command("quux", "SConstruct", SCons.Defaults.Copy("$TARGET", "$SOURCE"))
 
 def Custom(self):
-	print "Custom"
+	print("Custom")
 
 env.AddMethod(Custom)
 env.Custom()
 
 env.SetDefault(def_var = "val", replace_var = "val")
-print env["def_var"]
-print env["replace_var"]
+print(env["def_var"])
+print(env["replace_var"])
 
 env2 = env.Clone()
 env["ccc"] = "ccc"

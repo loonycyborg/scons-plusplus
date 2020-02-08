@@ -157,7 +157,7 @@ template<UpdateType update, UniqueType unique> py::object update_list(py::object
 	py::list result(flatten(old_val));
 	new_val = flatten(new_val);
 	if(update == Prepend)
-		new_val = reversed(new_val);
+		new_val = py::list(reversed(new_val));
 	for(auto item : new_val)
 		update_item<update, unique>(result, py::reinterpret_borrow<py::object>(item));
 	return result;
