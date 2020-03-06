@@ -32,7 +32,7 @@ struct sconspp_fixture
 	py::dict ns;
 	sconspp_fixture()
 	{
-		ns = python_interface::copy(main_namespace);
+		ns = python_interface::copy(main_namespace());
 	}
 };
 

@@ -117,15 +117,15 @@ void set_item_in_env(Environment& env, const std::string& key, py::object val)
 
 void Tool(Environment::pointer env, py::object obj)
 {
-	py::eval<py::eval_single_statement>("import SCons.Tool", main_namespace, main_namespace);
-	py::object tool = py::eval("SCons.Tool.Tool", main_namespace, main_namespace);
+	py::eval<py::eval_single_statement>("import SCons.Tool", main_namespace(), main_namespace());
+	py::object tool = py::eval("SCons.Tool.Tool", main_namespace(), main_namespace());
 	tool(obj)(env);
 }
 
 void Platform(Environment::pointer env, const std::string& name)
 {
-	py::eval<py::eval_single_statement>("import SCons.Platform", main_namespace, main_namespace);
-	py::object platform = py::eval("SCons.Platform.Platform", main_namespace, main_namespace);
+	py::eval<py::eval_single_statement>("import SCons.Platform", main_namespace(), main_namespace());
+	py::object platform = py::eval("SCons.Platform.Platform", main_namespace(), main_namespace());
 	if(name.empty())
 		platform()(env);
 	else

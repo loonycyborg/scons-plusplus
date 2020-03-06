@@ -28,7 +28,7 @@
 
 namespace py = pybind11;
 
-extern py::dict main_namespace;
+py::dict& main_namespace();
 
 namespace sconspp
 {

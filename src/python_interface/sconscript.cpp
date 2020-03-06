@@ -95,7 +95,7 @@ namespace python_interface
 
 py::object SConscript(const std::string& script)
 {
-	py::object ns = copy(main_namespace);
+	py::object ns = copy(main_namespace());
 
 	if(sconstruct_file.empty()) {
 		sconstruct_file = system_complete(boost::filesystem::path(script));

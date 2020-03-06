@@ -43,7 +43,11 @@
 
 using std::string;
 
-py::dict main_namespace;
+py::dict& main_namespace()
+{
+	static py::dict main_namespace;
+	return main_namespace;
+}
 
 namespace sconspp
 {
@@ -213,9 +217,9 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	{
 		py::initialize_interpreter();
 
-		main_namespace = py::dict(py::module::import("__main__").attr("__dict__"));
+		main_namespace() = py::dict(py::module::import("__main__").attr("__dict__"));
 
-		PyDict_Update(main_namespace.ptr(), py::module::import("SCons.Script").attr("__dict__").ptr());
+		PyDict_Update(main_namespace().ptr(), py::module::import("SCons.Script").attr("__dict__").ptr());
 
 		static py::gil_scoped_release unlock{};
 	}
