@@ -269,5 +269,26 @@ Environment::pointer default_environment(py::tuple args, py::dict kw)
 	return default_env;
 }
 
+std::string backtick(Environment& env, py::object command)
+{
+	if(py::isinstance<py::str>(command)) {
+		command = split(command);
+	}
+
+	std::vector<std::string> command_strings;
+	for(auto obj : command) {
+		command_strings.push_back(obj.cast<std::string>());
+	}
+
+	int status;
+	std::vector<std::string> output;
+	std::tie(status, output) = exec(command_strings, true);
+
+	if(status != 0)
+		throw std::runtime_error(command.cast<std::string>() + " exited with error");
+
+	return output[0];
+}
+
 }
 }

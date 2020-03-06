@@ -36,6 +36,7 @@ namespace python_interface
 {
 
 py::list flatten(py::object obj);
+py::list split(py::object obj);
 py::dict dictify(py::object obj);
 
 inline py::object partial(py::object func, py::object arg)

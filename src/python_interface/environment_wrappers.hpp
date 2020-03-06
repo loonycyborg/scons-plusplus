@@ -176,6 +176,7 @@ template<UpdateType update_type, UniqueType unique_type> void Update(Environment
 	}
 }
 
+std::string backtick(Environment&, py::object);
 void Replace(Environment&, py::kwargs kw);
 py::object Detect(const Environment&, py::object progs);
 bool has_key(const Environment&, const string& key);

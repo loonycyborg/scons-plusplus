@@ -145,6 +145,7 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	env
 		.def(py::init(&make_environment))
 		.def("subst", &Environment::subst, "input"_a, "for_signature"_a = false)
+		.def("backtick", backtick, "command"_a)
 		.def("Default", &Default)
 		.def("Command", &Command)
 		.def("Entry", &Entry)
