@@ -153,6 +153,143 @@ py::object Detect(const Environment& env, py::object progs)
 	return py::none();
 }
 
+std::unordered_map<std::string, py::object> ParseFlags(const Environment& env, py::args flags)
+{
+	py::object CLVar = py::module::import("SCons.Util").attr("CLVar");
+	std::unordered_map<std::string, py::object> result {
+		{ "ASFLAGS", CLVar("") },
+		{ "CFLAGS", CLVar("") },
+		{ "CCFLAGS", CLVar("") },
+		{ "CXXFLAGS", CLVar("") },
+		{ "CPPDEFINES", py::list() },
+		{ "CPPFLAGS", CLVar("") },
+		{ "CPPPATH", py::list() },
+		{ "FRAMEWORKPATH", CLVar("") },
+		{ "FRAMEWORKS", CLVar("") },
+		{ "LIBPATH", py::list() },
+		{ "LIBS", py::list() },
+		{ "LINKFLAGS", CLVar("") },
+		{ "RPATH", py::list() },
+	};
+
+	auto command_lines = flatten(flags);
+	for(auto command_obj : command_lines) {
+		std::string command { command_obj.cast<std::string>() };
+		if(command.empty()) continue;
+		if(command[0] == '!') {
+			command = backtick(env, py::str(std::string(++command.begin(), command.end())));
+		}
+
+		const char* append_next_arg_to = nullptr;
+		for(auto param_obj : py::module::import("shlex").attr("split")(py::str(command))) {
+			std::string param { param_obj.cast<std::string>() };
+
+			if(append_next_arg_to) {
+				result[append_next_arg_to].attr("append")(py::str(param));
+				append_next_arg_to = nullptr;
+				continue;
+			}
+
+			static const std::unordered_map<std::string, const char*> letter_params_with_arg {
+				{ "-I", "CPPPATH" },
+				{ "-L", "LIBPATH" },
+				{ "-l", "LIBS" },
+				{ "-D", "CPPDEFINES" },
+				{ "-F", "FRAMEWORKPATH" },
+			};
+			if(param.size() >= 2) {
+				auto param_iter { letter_params_with_arg.find(param.substr(0, 2)) };
+				if(param_iter != letter_params_with_arg.end()) {
+					auto arg { param.substr(2) };
+					if(!arg.empty()) {
+						result[param_iter->second].attr("append")(py::str(arg));
+					} else {
+						append_next_arg_to = param_iter->second;
+					}
+					continue;
+				}
+			}
+
+			static const std::unordered_map<std::string, std::vector<const char*>> word_params {
+				{ "-mno-cygwin", { "CCFLAGS", "LINKFLAGS" } },
+				{ "-pthread", { "CCFLAGS", "LINKFLAGS" } },
+				{ "-openmp", { "CCFLAGS", "LINKFLAGS" } },
+				{ "-fmerge-all-constants", { "CCFLAGS", "LINKFLAGS" } },
+				{ "-fopenmp", { "CCFLAGS", "LINKFLAGS" } },
+				{ "-mwindows", { "LINKFLAGS" } },
+			};
+			auto param_iter { word_params.find(param) };
+			if(param_iter != word_params.end() ) {
+				for(auto var : param_iter->second) {
+					result[var].attr("append")(py::str(param));
+				}
+				continue;
+			}
+
+			static const std::vector<std::string> rpath_params { "-Wl,-rpath=", "-Wl,-R", "-Wl,-R," };
+			bool is_rpath = false;
+			for(auto p : rpath_params) {
+				if(param.substr(0, p.size()) == p) {
+					result["RPATH"].attr("append")(py::str(param.substr(p.size())));
+					is_rpath = true;
+				}
+			}
+			if(is_rpath) continue;
+
+			if(param.substr(0, 5) == "-std=") {
+				if(param.find("++") != std::string::npos) {
+					result["CXXFLAGS"].attr("append")(py::str(param));
+				} else {
+					result["CFLAGS"].attr("append")(py::str(param));
+				}
+				continue;
+			}
+
+			std::unordered_map<std::string, const char*> stage_params {
+				{ "-Wl,", "LINKFLAGS" },
+				{ "-Wa,", "CCFLAGS" },
+				{ "-Wp,", "CPPFLAGS" },
+			};
+			auto stage_param_iter { stage_params.find(param) };
+			if(stage_param_iter != stage_params.end()) {
+				result[stage_params[param.substr(0,4)]].attr("append")(py::str(param));
+				continue;
+			}
+
+			result["CCFLAGS"].attr("append")(py::str(param));
+		}
+	}
+
+	return result;
+}
+
+void MergeFlags(Environment& env, py::object args, bool unique, py::object dict)
+{
+	std::unordered_map<std::string, py::object> source_dict;
+	if(py::module::import("SCons.Util").attr("is_Dict")(args)) {
+		source_dict = args.cast<decltype(source_dict)>();
+	} else {
+		source_dict = ParseFlags(env, args);
+	}
+
+	if(unique) {
+		Update<Append, Unique>(env, py::cast(source_dict));
+	} else {
+		Update<Append, NonUnique>(env, py::cast(source_dict));
+	}
+}
+
+void ParseConfig(Environment& env, py::object command, py::object function, bool unique)
+{
+	py::list command_arg;
+	command_arg.append(py::str(backtick(env, subst(env, command))));
+	if(function.is_none()) {
+		return MergeFlags(env, py::cast(ParseFlags(env, command_arg)), unique, py::none());
+	} else {
+		return MergeFlags(env, function(env, command_arg), unique, py::none());
+	}
+}
+
 bool has_key(const Environment& env, const string& key)
 {
 	return env.count(key);
@@ -269,7 +406,7 @@ Environment::pointer default_environment(py::tuple args, py::dict kw)
 	return default_env;
 }
 
-std::string backtick(Environment& env, py::object command)
+std::string backtick(const Environment& env, py::object command)
 {
 	if(py::isinstance<py::str>(command)) {
 		command = split(command);

@@ -176,9 +176,12 @@ template<UpdateType update_type, UniqueType unique_type> void Update(Environment
 	}
 }
 
-std::string backtick(Environment&, py::object);
+std::string backtick(const Environment&, py::object);
 void Replace(Environment&, py::kwargs kw);
 py::object Detect(const Environment&, py::object progs);
+std::unordered_map<std::string, py::object> ParseFlags(const Environment& env, py::args flags);
+void MergeFlags(Environment& env, py::object args, bool unique, py::object dict);
+void ParseConfig(Environment& env, py::object command, py::object function, bool unique);
 bool has_key(const Environment&, const string& key);
 py::object get_item_default(const Environment&, const string& key, py::object);
 py::object get_env_attr(py::object, const string& key);

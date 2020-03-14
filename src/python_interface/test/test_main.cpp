@@ -176,6 +176,16 @@ BOOST_AUTO_TEST_CASE(test_find_file)
 	SCONSPP_CHECK("FindFile('nonexistant_file_name', dirname(tmpfile.name)) == None");
 }
 
+BOOST_AUTO_TEST_CASE(test_parse_flags)
+{
+	SCONSPP_EXEC("env = Environment()");
+	SCONSPP_EXEC("vars = env.ParseFlags('-I/usr/include -I /home/user -L /usr/lib -lfoo -std=c++14 -std=c11')");
+	SCONSPP_EXEC("env.MergeFlags(vars)");
+	SCONSPP_CHECK("env['CPPPATH'] == ['/usr/include', '/home/user']");
+	SCONSPP_CHECK("env['LIBPATH'] == ['/usr/lib']");
+	SCONSPP_CHECK("env['LIBS'] == ['foo']");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }

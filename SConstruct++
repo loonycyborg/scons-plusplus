@@ -6,16 +6,7 @@ test_env = Environment()
 test_env["have_boost_test"] = False
 Export("test_env")
 
-import distutils.sysconfig
-env.AppendUnique(CPPPATH = distutils.sysconfig.get_python_inc())
-version = distutils.sysconfig.get_config_var("VERSION")
-if not version:
-    version = sys.version[:3]
-if env["PLATFORM"] == "win32":
-    version = version.replace('.', '')
-env.AppendUnique(LIBPATH = distutils.sysconfig.get_config_var("LIBDIR") or \
-                               os.path.join(distutils.sysconfig.get_config_var("prefix"), "libs") )
-env.AppendUnique(LIBS = "python" + version + "m")
+env.ParseConfig("python-config --libs --includes")
 env.AppendUnique(LIBS = ["boost_filesystem", "boost_system", "boost_thread", "boost_program_options", "sqlite3"])
 env.AppendUnique(CPPPATH = ["thirdparty/pybind11/include"])
 env.AppendUnique(CCFLAGS = Split("-Wall -O2 -march=native -Wno-deprecated -Wno-parentheses -pthread -fvisibility=hidden"), LINKFLAGS = ["-pthread"], CPPDEFINES = ["BOOST_FILESYSTEM_VERSION=3"])
