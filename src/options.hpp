@@ -23,5 +23,5 @@
 
 namespace sconspp
 {
-    std::vector<std::string> parse_command_line(int argc, char** argv);
+	std::pair<std::vector<std::string>, std::vector<std::pair<std::string, std::string>>> parse_command_line(int argc, char** argv);
 }

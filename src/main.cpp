@@ -38,8 +38,10 @@ using namespace sconspp;
 int main(int argc, char** argv)
 {
 	try {
-		std::vector<std::string> command_line_targets = parse_command_line(argc, argv);
-		run_script(argc, argv);
+		std::vector<std::string> command_line_targets;
+		std::vector<std::pair<std::string, std::string>> overrides;
+		std::tie(command_line_targets, overrides) = parse_command_line(argc, argv);
+		run_script(overrides, argc, argv);
 
 		Node end_goal = add_dummy_node("The end goal");
 		if(!command_line_targets.empty()) {

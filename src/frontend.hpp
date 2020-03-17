@@ -19,6 +19,7 @@
  ***************************************************************************/
 #pragma once
 #include <iostream>
+#include <vector>
 
 namespace sconspp
 {
@@ -27,5 +28,5 @@ namespace sconspp
 	extern Frontend commandline_frontend;
 	extern std::string buildfile;
 
-	void run_script(int argc, char** argv);
+	void run_script(std::vector<std::pair<std::string, std::string>> overrides, int argc, char** argv);
 }

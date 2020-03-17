@@ -26,6 +26,7 @@
 #include "log.hpp"
 #include "taskmaster.hpp"
 #include "frontend.hpp"
+#include "environment.hpp"
 
 namespace sconspp
 {
@@ -49,7 +50,7 @@ static void validate(boost::any& v,
 	v = ret;
 }
 
-std::vector<std::string> parse_command_line(int argc, char** argv)
+std::pair<std::vector<std::string>, std::vector<std::pair<std::string, std::string>>> parse_command_line(int argc, char** argv)
 {
 	boost::program_options::options_description desc("Usage: scons++ [option]... [target]...\nOptions");
 	desc.add_options()
@@ -62,10 +63,12 @@ std::vector<std::string> parse_command_line(int argc, char** argv)
 			"Maximun number of parallel jobs. 0 means autodetect, no arg means unlimited")
 		("always-build,B", boost::program_options::bool_switch(), "Rebuild all tasks no matter whether they're up-to-date")
 		("keep-going,k", boost::program_options::bool_switch(), "Continue building after a task fails and build all targets that don't depend on failed targets")
+		("target,T", boost::program_options::value<std::vector<std::string> >(), "Specify build target(s)")
+		("override,D", boost::program_options::value<std::vector<std::string> >(), "Override construction variables")
 		("help,h", "Produce this message and exit")
-		("target", boost::program_options::value<std::vector<std::string> >(), "Specify a build target(equivalent to the positional arguments)");
+		("target-or-macro", boost::program_options::value<std::vector<std::string> >(), "Specify a build target or override a macro with MACRO=VALUE(equivalent to positional arguments)");
 	boost::program_options::positional_options_description p;
-	p.add("target", -1);
+	p.add("target-or-macro", -1);
 	boost::program_options::variables_map vm;
 	boost::program_options::store(boost::program_options::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
 	boost::program_options::notify(vm);
@@ -84,9 +87,27 @@ std::vector<std::string> parse_command_line(int argc, char** argv)
 	keep_going = vm["keep-going"].as<bool>();
 
 	std::vector<std::string> targets;
-	if(vm.count("target"))
-		targets = vm["target"].as<std::vector<std::string> >();
-	return targets;
+	if(vm.count("target")) {
+		targets = vm["target"].as<std::vector<std::string>>();
+	}
+	std::vector<std::pair<std::string, std::string>> overrides;
+	if(vm.count("override")) {
+		for(auto override : vm["override"].as<std::vector<std::string>>()) {
+			auto i = override.find("=");
+			overrides.emplace_back(override.substr(0, i), (i == std::string::npos) ? "1" : override.substr(i+1));
+		}
+	}
+	if(vm.count("target-or-macro")) {
+		for(auto str : vm["target-or-macro"].as<std::vector<std::string>>()) {
+			auto i = str.find("=");
+			if(i == std::string::npos) {
+				targets.push_back(str);
+			} else {
+				overrides.emplace_back(str.substr(0, i), str.substr(i+1));
+			}
+		}
+	}
+	return { targets, overrides };
 }
 
 }

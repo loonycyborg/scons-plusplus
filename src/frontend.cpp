@@ -43,7 +43,7 @@ std::istream& operator>>(std::istream& in, Frontend& frontend)
 Frontend commandline_frontend = Frontend::scons;
 std::string buildfile;
 
-void run_script(int argc, char** argv)
+void run_script(std::vector<std::pair<std::string, std::string>> overrides, int argc, char** argv)
 {
 	bool script_found = false;
 	const char* scons_script_names[] = { "SConstruct++", "SConstruct" };
@@ -84,7 +84,7 @@ void run_script(int argc, char** argv)
 			if(!script_found)
 				throw std::runtime_error("No Makefile found.");
 			else
-				make_interface::run_makefile(buildfile, argc, argv);
+				make_interface::run_makefile(buildfile, overrides);
 		break;
 	}
 }

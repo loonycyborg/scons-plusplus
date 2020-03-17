@@ -260,13 +260,15 @@ void setup_make_task_context(Environment& env, const Task& task)
 	env["^"] = std::make_shared<automatic_variable>(expand_sources, task);
 }
 
-void run_makefile(const std::string& makefile_path, int argc, char** argv)
+void run_makefile(const std::string& makefile_path, std::vector<std::pair<std::string, std::string>> overrides)
 {
 	std::ifstream ifs{makefile_path};
 	ifs.unsetf(std::ios::skipws);
 	boost::spirit::istream_iterator iter{ifs}, i_end;
 
 	static makefile_ast makefile;
+	auto& env = *(makefile.env);
+	for(auto override : overrides) env[override.first] = make_variable(override.second);
 	bool match = phrase_parse(iter, i_end, boost::spirit::x3::with<env_tag>(std::ref(*(makefile.env)))[make_makefile],
 		blank - '\t' | make_blank_line | make_comment | (lit('\\') >> eol),
 		makefile);
