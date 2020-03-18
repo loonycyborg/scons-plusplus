@@ -28,7 +28,7 @@ class Environment;
 
 namespace python_interface
 {
-void init_python();
+void init_python(std::vector<std::pair<std::string, std::string>> overrides);
 void run_script(const std::string&, int argc, char** argv);
 std::string eval_string(const std::string&, const Environment&);
 std::string expand_variable(const std::string&, const Environment&);

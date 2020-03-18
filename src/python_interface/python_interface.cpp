@@ -217,13 +217,17 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	m_scons.attr("__path__") = path;
 }
 
-	void init_python()
+	void init_python(std::vector<std::pair<std::string, std::string>> overrides)
 	{
 		py::initialize_interpreter();
 
 		main_namespace() = py::dict(py::module::import("__main__").attr("__dict__"));
 
 		PyDict_Update(main_namespace().ptr(), py::module::import("SCons.Script").attr("__dict__").ptr());
+
+		main_namespace()["ARGLIST"] = py::cast(overrides);
+		main_namespace()["ARGUMENTS"] = py::dict();
+		for(auto override : overrides) main_namespace()["ARGUMENTS"][py::str(override.first)] = override.second;
 
 		static py::gil_scoped_release unlock{};
 	}

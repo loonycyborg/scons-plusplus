@@ -58,7 +58,7 @@ void run_script(std::vector<std::pair<std::string, std::string>> overrides, int 
 	switch(commandline_frontend)
 	{
 		case Frontend::scons:
-			python_interface::init_python();
+			python_interface::init_python(overrides);
 			if(!script_found) {
 				for(const char* name : scons_script_names) {
 					if(boost::filesystem::exists(name)) {
