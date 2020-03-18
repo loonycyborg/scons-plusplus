@@ -81,6 +81,40 @@ struct special_target_symbol_ : boost::spirit::x3::symbols<special_target_type>
 	}
 } special_target_symbol;
 
+enum class macro_mod
+{
+	none=0, no_overwrite, simply_expanded, shell
+};
+
+struct macro_mod_symbol_ : boost::spirit::x3::symbols<macro_mod>
+{
+	macro_mod_symbol_() {
+		add
+			("?", macro_mod::no_overwrite)
+			(":", macro_mod::simply_expanded)
+			("!", macro_mod::shell)
+		;
+	}
+} macro_mod_symbol;
+
+struct macro_ast
+{
+	std::string varname;
+	std::set<macro_mod> mods;
+	std::vector<std::string> value;
+};
+
+}}
+
+BOOST_FUSION_ADAPT_STRUCT(
+	sconspp::make_interface::macro_ast,
+	varname,
+	mods,
+	value
+)
+
+namespace sconspp { namespace make_interface {
+
 struct make_rule_ast
 {
 	NodeStringList targets;
@@ -159,14 +193,18 @@ auto add_command = [](auto& ctx){ _val(ctx).commands.push_back(_attr(ctx)); };
 
 auto add_macro = [](auto& ctx)
 {
-	assert(_attr(ctx).size() >= 1);
+	macro_ast& ast { _attr(ctx) };
 	Environment& env = *(_val(ctx).env);
-	auto& var = env[_attr(ctx)[0]];
-	if(_attr(ctx).size() == 1)
-		var = make_variable(std::string{""});
-	else {
-		std::vector<std::string> value { ++_attr(ctx).begin(), _attr(ctx).end() };
-		var = std::make_shared<recursive_variable>(boost::algorithm::join(value, " "), env);
+
+	assert(ast.mods.count(macro_mod::shell) == 0);
+
+	if(env.count(ast.varname) && ast.mods.count(macro_mod::no_overwrite))
+		return;
+
+	if(ast.mods.count(macro_mod::simply_expanded)) {
+		env[ast.varname] = make_variable(boost::algorithm::join(ast.value, " "));
+	} else {
+		env[ast.varname] = std::make_shared<recursive_variable>(boost::algorithm::join(ast.value, " "), env);
 	}
 };
 auto add_rule = [](auto& ctx)
@@ -187,8 +225,8 @@ const auto make_placeholder          = x3::rule<class make_placeholder, std::str
 										(+graph)[do_substitution]);
 const auto make_substitution_pattern = x3::rule<class make_substitution_pattern, std::string> { "make_substitution_pattern" }
 									 = +(+((graph - '=' - ':' - '$') | (lit('$') >> char_('$'))) | make_placeholder);
-const auto make_macro                = x3::rule<class make_macro, std::vector<std::string>> { "make_macro" }
-									 = lexeme[+(graph - '=')] >> "=" >> *(*lit('\t') >> lexeme[+(char_ - blank - eol - '\\' - '#')] >> *lit('\t'));
+const auto make_macro                = x3::rule<class make_macro, macro_ast> { "make_macro" }
+									 = lexeme[+(graph - '=')] >> *macro_mod_symbol >> "=" >> *(*lit('\t') >> lexeme[+(char_ - blank - eol - '\\' - '#')] >> *lit('\t'));
 const auto make_target               = x3::rule<class make_target, std::string> { "make_target" }
 									 = *lit('\t') >> lexeme[make_substitution_pattern] >> *lit('\t');
 const auto make_special_target       = x3::rule<class make_special_target, special_target_type> { "make_special_target" }
