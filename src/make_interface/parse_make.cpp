@@ -128,21 +128,7 @@ struct makefile_ast
 	makefile_ast() { env = Environment::create(make_subst, setup_make_task_context); }
 };
 
-x3::rule<class make_comment> make_comment = "make_comment";
-x3::rule<class make_blank_line> make_blank_line = "make_blank_line";
-x3::rule<class make_placeholder, std::string> make_placeholder = "make_placeholder";
-x3::rule<class make_substitution_pattern, std::string> make_substitution_pattern = "make_substitution_pattern";
-x3::rule<class make_macro, std::vector<std::string>> make_macro = "make_macro";
-x3::rule<class make_target, std::string> make_target = "make_target";
-x3::rule<class make_special_target, special_target_type> make_special_target = "make_special_target";
-x3::rule<class make_command, make_command_ast> make_command = "make_command";
-x3::rule<class make_rule, make_rule_ast> make_rule = "make_rule";
-x3::rule<class make_makefile, makefile_ast> make_makefile = "makefile";
 struct env_tag;
-
-auto const make_comment_def = '#' >> *(char_ - eol) >> &eol;
-auto const make_blank_line_def = eol >> *blank >> -make_comment >> &eol;
-
 auto do_substitution = [] (auto& ctx)
 {
 	auto& env = boost::spirit::x3::get<env_tag>(ctx).get();
@@ -151,21 +137,7 @@ auto do_substitution = [] (auto& ctx)
 		_val(ctx) += env[var]->to_string();
 	}
 };
-auto const make_placeholder_def = lit('$') >> (
-	(lit('(') >> (+(graph - ')'))[do_substitution] >> lit(')')) |
-	lit('{') >> (+(graph - '}'))[do_substitution] >> lit('}') |
-	(+graph)[do_substitution]);
-auto const make_substitution_pattern_def = +(+((graph - '=' - ':' - '$') | (lit('$') >> char_('$'))) | make_placeholder);
-auto const make_macro_def = lexeme[+(graph - '=')] >> "=" >> *(*lit('\t') >> lexeme[+(char_ - blank - eol - '\\' - '#')] >> *lit('\t'));
-auto const make_target_def = *lit('\t') >> lexeme[make_substitution_pattern] >> *lit('\t');
-auto const make_special_target_def = lexeme[lit('.') >> special_target_symbol];
-auto set_silent = [] (auto& ctx){ _val(ctx).silent = true; };
-auto set_ignore_error = [] (auto& ctx){ _val(ctx).ignore_error = true; };
-auto set_no_suppress = [] (auto& ctx){ _val(ctx).no_suppress = true; };
-auto add_command_string = [] (auto& ctx){ _val(ctx).command = _attr(ctx); };
-auto const make_command_def = lit('\t') >>
-	*(lit('@')[set_silent] | lit('-')[set_ignore_error] | lit('+')[set_no_suppress]) >>
-	lexeme[+(char_-eol)][add_command_string];
+
 template <typename C> void split_into(C& container, const std::string& input)
 {
 	std::list<boost::iterator_range<std::string::const_iterator>> tokens;
@@ -174,11 +146,17 @@ template <typename C> void split_into(C& container, const std::string& input)
 		container.push_back(std::string(token.begin(), token.end()));
 	}
 }
+
+auto set_silent = [] (auto& ctx){ _val(ctx).silent = true; };
+auto set_ignore_error = [] (auto& ctx){ _val(ctx).ignore_error = true; };
+auto set_no_suppress = [] (auto& ctx){ _val(ctx).no_suppress = true; };
+auto add_command_string = [] (auto& ctx){ _val(ctx).command = _attr(ctx); };
+
 auto add_target = [](auto& ctx){ split_into(_val(ctx).targets, _attr(ctx)); };
 auto add_special_target = [](auto& ctx){ _val(ctx).special_target = _attr(ctx); };
 auto add_source = [](auto& ctx){ split_into(_val(ctx).sources, _attr(ctx)); };
 auto add_command = [](auto& ctx){ _val(ctx).commands.push_back(_attr(ctx)); };
-auto const make_rule_def = -make_special_target[add_special_target] >> *make_target[add_target] >> ":" >> *make_target[add_source] >> *(eol >> make_command[add_command]);
+
 auto add_macro = [](auto& ctx)
 {
 	assert(_attr(ctx).size() >= 1);
@@ -197,9 +175,32 @@ auto add_rule = [](auto& ctx)
 	auto& ast = _attr(ctx);
 	ast(env);
 };
-auto const make_makefile_def = *eol >> (make_macro[add_macro] | make_rule[add_rule]) % eol;
 
-BOOST_SPIRIT_DEFINE(make_comment, make_blank_line, make_placeholder, make_substitution_pattern, make_macro, make_target, make_special_target, make_command, make_rule, make_makefile);
+const auto make_comment              = x3::rule<class make_comment> { "make_comment" }
+									 = '#' >> *(char_ - eol) >> &eol;
+const auto make_blank_line           = x3::rule<class make_blank_line> { "make_blank_line" }
+									 = eol >> *blank >> -make_comment >> &eol;
+const auto make_placeholder          = x3::rule<class make_placeholder, std::string> { "make_placeholder" }
+									 = lit('$') >> (
+										(lit('(') >> (+(graph - ')'))[do_substitution] >> lit(')')) |
+										lit('{') >> (+(graph - '}'))[do_substitution] >> lit('}') |
+										(+graph)[do_substitution]);
+const auto make_substitution_pattern = x3::rule<class make_substitution_pattern, std::string> { "make_substitution_pattern" }
+									 = +(+((graph - '=' - ':' - '$') | (lit('$') >> char_('$'))) | make_placeholder);
+const auto make_macro                = x3::rule<class make_macro, std::vector<std::string>> { "make_macro" }
+									 = lexeme[+(graph - '=')] >> "=" >> *(*lit('\t') >> lexeme[+(char_ - blank - eol - '\\' - '#')] >> *lit('\t'));
+const auto make_target               = x3::rule<class make_target, std::string> { "make_target" }
+									 = *lit('\t') >> lexeme[make_substitution_pattern] >> *lit('\t');
+const auto make_special_target       = x3::rule<class make_special_target, special_target_type> { "make_special_target" }
+									 = lexeme[lit('.') >> special_target_symbol];
+const auto make_command              = x3::rule<class make_command, make_command_ast> { "make_command" }
+									 = lit('\t') >>
+										*(lit('@')[set_silent] | lit('-')[set_ignore_error] | lit('+')[set_no_suppress]) >>
+										lexeme[+(char_-eol)][add_command_string];
+const auto make_rule                 = x3::rule<class make_rule, make_rule_ast> { "make_rule" }
+									 = -make_special_target[add_special_target] >> *make_target[add_target] >> ":" >> *make_target[add_source] >> *(eol >> make_command[add_command]);
+const auto make_makefile             = x3::rule<class make_makefile, makefile_ast> { "makefile" }
+									 = *eol >> (make_macro[add_macro] | make_rule[add_rule]) % eol;
 
 std::string make_subst(const Environment& env, const std::string& input, bool) {
 	std::string result;
