@@ -28,5 +28,5 @@ namespace sconspp
 	extern Frontend commandline_frontend;
 	extern std::string buildfile;
 
-	void run_script(std::vector<std::pair<std::string, std::string>> overrides, int argc, char** argv);
+	void run_script(std::vector<std::pair<std::string, std::string>> overrides, std::vector<std::string> command_line_target_strings, int argc, char** argv);
 }

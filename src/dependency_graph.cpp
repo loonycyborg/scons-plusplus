@@ -25,5 +25,6 @@ namespace sconspp
 
 Graph graph;
 std::set<Node> default_targets;
+std::set<Node> command_line_targets;
 
 }

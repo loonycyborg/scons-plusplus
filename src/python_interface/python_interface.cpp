@@ -232,7 +232,7 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 		static py::gil_scoped_release unlock{};
 	}
 
-	void run_script(const std::string& filename, int argc, char** argv)
+	void run_script(const std::string& filename, std::vector<std::string> command_line_target_strings, int argc, char** argv)
 	{
 		py::gil_scoped_acquire lock{};
 
@@ -250,6 +250,15 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 
 		try {
 			SConscript(filename);
+
+			for(const auto& target : command_line_target_strings) {
+				boost::optional<Node> node = get_alias(target);
+				if(!node) node = get_entry(target);
+
+				if(!node) throw std::runtime_error("failed to resolve name '" + target + "' to either alias or filesystem object.");
+
+				command_line_targets.insert(node.get());
+			}
 		}
 		catch(py::error_already_set const & e) {
 			std::cerr << "scons++: *** Unhandled python exception when parsing SConscript files." << std::endl;

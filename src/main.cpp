@@ -38,25 +38,21 @@ using namespace sconspp;
 int main(int argc, char** argv)
 {
 	try {
-		std::vector<std::string> command_line_targets;
+		std::vector<std::string> command_line_target_strings;
 		std::vector<std::pair<std::string, std::string>> overrides;
-		std::tie(command_line_targets, overrides) = parse_command_line(argc, argv);
-		run_script(overrides, argc, argv);
+		std::tie(command_line_target_strings, overrides) = parse_command_line(argc, argv);
+		run_script(overrides, command_line_target_strings, argc, argv);
 
 		Node end_goal = add_dummy_node("The end goal");
 		if(!command_line_targets.empty()) {
-			for(std::string target : command_line_targets) {
-				boost::optional<Node> node = get_alias(target);
-				if(!node)
-					node = get_entry(target);
-				if(node)
-					add_edge(end_goal, node.get(), graph);
-				else
-					throw std::runtime_error("I don't see alias or file target named '" + target + "'. That's really all there is to be said on the matter");
-			}
-		} else
-			for(Node node : default_targets)
+			for(auto node : command_line_targets) {
 				add_edge(end_goal, node, graph);
+			}
+		} else {
+			for(auto node : default_targets) {
+				add_edge(end_goal, node, graph);
+			}
+		}
 		build(end_goal);
 	} catch(const std::exception& e) {
 		logging::error() << e.what() << std::endl;

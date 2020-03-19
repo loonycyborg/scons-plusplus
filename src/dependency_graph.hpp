@@ -44,6 +44,7 @@ typedef std::vector<Node> NodeList;
 
 extern Graph graph;
 extern std::set<Node> default_targets;
+extern std::set<Node> command_line_targets;
 
 }
 

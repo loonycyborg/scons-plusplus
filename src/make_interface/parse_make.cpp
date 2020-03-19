@@ -314,7 +314,7 @@ void setup_make_task_context(Environment& env, const Task& task)
 	env["^"] = std::make_shared<automatic_variable>(expand_sources, task);
 }
 
-void run_makefile(const std::string& makefile_path, std::vector<std::pair<std::string, std::string>> overrides)
+void run_makefile(const std::string& makefile_path, std::vector<std::string> command_line_target_strings, std::vector<std::pair<std::string, std::string>> overrides)
 {
 	std::ifstream ifs{makefile_path};
 	ifs.unsetf(std::ios::skipws);
@@ -340,6 +340,15 @@ void run_makefile(const std::string& makefile_path, std::vector<std::pair<std::s
 			throw restart_exception();
 		}
 		always_build = always_build_saved;
+	}
+
+	for(auto target : command_line_target_strings) {
+		auto node { get_entry(target) };
+
+		if(!node)
+			throw std::runtime_error("no rule to make target '" + target + "'.");
+
+		command_line_targets.insert(node.get());
 	}
 }
 
