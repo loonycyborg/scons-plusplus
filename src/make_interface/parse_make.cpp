@@ -226,7 +226,7 @@ const auto make_placeholder          = x3::rule<class make_placeholder, std::str
 const auto make_substitution_pattern = x3::rule<class make_substitution_pattern, std::string> { "make_substitution_pattern" }
 									 = +(+((graph - '=' - ':' - '$') | (lit('$') >> char_('$'))) | make_placeholder);
 const auto make_macro                = x3::rule<class make_macro, macro_ast> { "make_macro" }
-									 = lexeme[+(graph - '=')] >> *macro_mod_symbol >> "=" >> *(*lit('\t') >> lexeme[+(char_ - blank - eol - '\\' - '#')] >> *lit('\t'));
+									 = lexeme[+(graph - '=')] >> lexeme[*macro_mod_symbol >> "="] >> *(*lit('\t') >> lexeme[+(char_ - blank - eol - '\\' - '#')] >> *lit('\t'));
 const auto make_target               = x3::rule<class make_target, std::string> { "make_target" }
 									 = *lit('\t') >> lexeme[make_substitution_pattern] >> *lit('\t');
 const auto make_special_target       = x3::rule<class make_special_target, special_target_type> { "make_special_target" }
