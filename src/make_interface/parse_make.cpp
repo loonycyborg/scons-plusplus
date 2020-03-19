@@ -138,44 +138,84 @@ BOOST_FUSION_ADAPT_STRUCT(
 
 namespace sconspp { namespace make_interface {
 
+class pattern
+{
+	const std::string prefix, suffix;
+	bool path_pattern;
+
+public:
+	pattern(const std::string& prefix, const std::string& suffix) :
+		prefix(prefix), suffix(suffix),
+		path_pattern(prefix.find('/') != std::string::npos && suffix.find('/') != std::string::npos) {}
+	~pattern() {}
+
+	bool is_path() const { return path_pattern; }
+};
+
+struct make_rule_ast;
+std::list<std::pair<pattern, make_rule_ast>> patterns;
+
 struct make_rule_ast
 {
-	NodeStringList targets;
-	NodeStringList sources;
-	special_target_type special_target = special_target_type::None;
+	boost::optional<special_target_type> special_target;
+	std::vector<std::string> targets;
+	std::vector<std::string> sources;
+
 	std::vector<make_command_ast> commands;
 
 	void do_special_target() const {
-		switch (special_target) {
+		switch (special_target.get()) {
 			case special_target_type::None:
 				break;
 			case special_target_type::POSIX:
 				break;
 			case special_target_type::PRECIOUS:
-				for(auto node : make_file_nodes(sources))
+				for(auto node : sources)
 				{
-					try {
-						properties<FSEntry>(node).precious();
-					} catch (const std::bad_cast&) {}
+					properties<FSEntry>(add_entry_indeterminate(node)).precious();
 				}
 				break;
 		}
 	}
 	NodeList operator()(const Environment& env) const {
-		if(special_target != special_target_type::None) {
+		if(special_target) {
 			do_special_target();
 			return {};
 		}
+
+		auto i { targets[0].find('%') };
+		if(i != std::string::npos) {
+			patterns.emplace_back(pattern{targets[0].substr(0,i), targets[0].substr(i+1)}, *this );
+			return {};
+		}
+
 		ActionList actions;
 		for(const auto& command : commands)
 			actions.push_back(Action::pointer{new ExecCommand(command.command)});
-		auto result = sconspp::add_command(env, targets, sources, actions);
+
+		NodeList target_nodes, source_nodes;
+		std::transform(targets.begin(), targets.end(), std::back_inserter(target_nodes), [](const std::string& str) -> Node { return add_entry_indeterminate(str); });
+		std::transform(sources.begin(), sources.end(), std::back_inserter(source_nodes), [](const std::string& str) -> Node { return add_entry_indeterminate(str); });
+		auto result = Builder::add_task(env, target_nodes, source_nodes, actions);
+
 		if(default_targets.empty() && !result.empty())
 			for(Node target : result)
 				default_targets.insert(target);
 		return result;
 	}
 };
+
+}}
+
+BOOST_FUSION_ADAPT_STRUCT(
+	sconspp::make_interface::make_rule_ast,
+	special_target,
+	targets,
+	sources,
+	commands
+)
+
+namespace sconspp { namespace make_interface {
 
 struct makefile_ast
 {
@@ -195,19 +235,7 @@ auto do_substitution = [] (auto& ctx)
 	}
 };
 
-template <typename C> void split_into(C& container, const std::string& input)
-{
-	std::list<boost::iterator_range<std::string::const_iterator>> tokens;
-	boost::algorithm::split(tokens, input, boost::algorithm::is_space(), boost::algorithm::token_compress_on);
-	for(auto token : tokens) {
-		container.push_back(std::string(token.begin(), token.end()));
-	}
-}
 
-auto add_target = [](auto& ctx){ split_into(_val(ctx).targets, _attr(ctx)); };
-auto add_special_target = [](auto& ctx){ _val(ctx).special_target = _attr(ctx); };
-auto add_source = [](auto& ctx){ split_into(_val(ctx).sources, _attr(ctx)); };
-auto add_command = [](auto& ctx){ _val(ctx).commands.push_back(_attr(ctx)); };
 
 auto add_macro = [](auto& ctx)
 {
@@ -225,10 +253,26 @@ auto add_macro = [](auto& ctx)
 		env[ast.varname] = std::make_shared<recursive_variable>(boost::algorithm::join(ast.value, " "), env);
 	}
 };
+
+template <typename C> void split_into(C& container, const std::string& input)
+{
+	std::list<boost::iterator_range<std::string::const_iterator>> tokens;
+	boost::algorithm::split(tokens, input, boost::algorithm::is_space(), boost::algorithm::token_compress_on);
+	for(auto token : tokens) {
+		container.push_back(std::string(token.begin(), token.end()));
+	}
+}
+
 auto add_rule = [](auto& ctx)
 {
 	const Environment& env = *(_val(ctx).env);
 	auto& ast = _attr(ctx);
+
+	auto targets { std::move(ast.targets) };
+	for(auto target : targets) split_into(ast.targets, target);
+	auto sources { std::move(ast.sources) };
+	for(auto source : sources) split_into(ast.sources, source);
+
 	ast(env);
 };
 
@@ -252,7 +296,7 @@ const auto make_special_target       = x3::rule<class make_special_target, speci
 const auto make_command              = x3::rule<class make_command, make_command_ast> { "make_command" }
 									 = lit('\t') >> lexeme[*command_mod_symbol >> +(char_-eol)];
 const auto make_rule                 = x3::rule<class make_rule, make_rule_ast> { "make_rule" }
-									 = -make_special_target[add_special_target] >> *make_target[add_target] >> ":" >> *make_target[add_source] >> *(eol >> make_command[add_command]);
+									 = -make_special_target >> *make_target >> ":" >> *make_target >> *(eol >> make_command);
 const auto make_makefile             = x3::rule<class make_makefile, makefile_ast> { "makefile" }
 									 = *eol >> (make_macro[add_macro] | make_rule[add_rule]) % eol;
 
