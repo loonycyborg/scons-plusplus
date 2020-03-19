@@ -56,15 +56,37 @@ class recursive_variable : public Variable
 	std::string& get() { return value_; }
 };
 
+enum class command_mod
+{
+	silent, ignore_error, no_suppress
+};
+
+struct command_mod_symbol_: boost::spirit::x3::symbols<command_mod>
+{
+	command_mod_symbol_() {
+		add
+			("@", command_mod::silent)
+			("-", command_mod::ignore_error)
+			("+", command_mod::no_suppress)
+		;
+	}
+} command_mod_symbol;
+
 struct make_command_ast
 {
-	bool silent;
-	bool ignore_error;
-	bool no_suppress;
+	std::set<command_mod> mods;
 	std::string command;
-	make_command_ast(std::string command) : command(command) {}
-	make_command_ast() {}
 };
+
+}}
+
+BOOST_FUSION_ADAPT_STRUCT(
+	sconspp::make_interface::make_command_ast,
+	mods,
+	command
+)
+
+namespace sconspp { namespace make_interface {
 
 enum class special_target_type
 {
@@ -181,11 +203,6 @@ template <typename C> void split_into(C& container, const std::string& input)
 	}
 }
 
-auto set_silent = [] (auto& ctx){ _val(ctx).silent = true; };
-auto set_ignore_error = [] (auto& ctx){ _val(ctx).ignore_error = true; };
-auto set_no_suppress = [] (auto& ctx){ _val(ctx).no_suppress = true; };
-auto add_command_string = [] (auto& ctx){ _val(ctx).command = _attr(ctx); };
-
 auto add_target = [](auto& ctx){ split_into(_val(ctx).targets, _attr(ctx)); };
 auto add_special_target = [](auto& ctx){ _val(ctx).special_target = _attr(ctx); };
 auto add_source = [](auto& ctx){ split_into(_val(ctx).sources, _attr(ctx)); };
@@ -232,9 +249,7 @@ const auto make_target               = x3::rule<class make_target, std::string> 
 const auto make_special_target       = x3::rule<class make_special_target, special_target_type> { "make_special_target" }
 									 = lexeme[lit('.') >> special_target_symbol];
 const auto make_command              = x3::rule<class make_command, make_command_ast> { "make_command" }
-									 = lit('\t') >>
-										*(lit('@')[set_silent] | lit('-')[set_ignore_error] | lit('+')[set_no_suppress]) >>
-										lexeme[+(char_-eol)][add_command_string];
+									 = lit('\t') >> lexeme[*command_mod_symbol >> +(char_-eol)];
 const auto make_rule                 = x3::rule<class make_rule, make_rule_ast> { "make_rule" }
 									 = -make_special_target[add_special_target] >> *make_target[add_target] >> ":" >> *make_target[add_source] >> *(eol >> make_command[add_command]);
 const auto make_makefile             = x3::rule<class make_makefile, makefile_ast> { "makefile" }
