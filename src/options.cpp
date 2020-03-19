@@ -79,7 +79,7 @@ std::pair<std::vector<std::string>, std::vector<std::pair<std::string, std::stri
 	}
 
 	if(vm.count("debug")) {
-		logging::min_severity = 2;
+		logging::min_severity = 3;
 	}
 	optional_last_overrides<unsigned int> num_jobs = vm["jobs"].as<optional_last_overrides<unsigned int> >();
 	sconspp::num_jobs = num_jobs.value;

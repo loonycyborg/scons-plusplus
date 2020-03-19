@@ -277,6 +277,12 @@ namespace sconspp
 				}
 			}
 		}
+
+		if(tasks.size() == 0) {
+			logging::info(logging::Taskmaster) << "celebration of laziness: no tasks assigned to target(s).\n";
+		} else {
+			if(job_counter == 0) logging::info(logging::Taskmaster) << "celebration of laziness: all targets up-to-date.\n";
+		}
 		return job_counter;
 	}
 

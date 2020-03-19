@@ -35,9 +35,10 @@ enum Severity
 {
 	Error,
 	Warning,
+	Info,
 	Debug
 };
-const char* const severity_msgs[] = { "***", "warning:", "debug:" };
+const char* const severity_msgs[] = { "***", "warning:", "info:", "debug:" };
 extern unsigned int min_severity;
 
 enum Domain
@@ -68,6 +69,7 @@ class log
 };
 typedef log<Error> error;
 typedef log<Warning> warning;
+typedef log<Info> info;
 typedef log<Debug> debug;
 
 }

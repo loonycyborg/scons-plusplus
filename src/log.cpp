@@ -22,6 +22,6 @@
 
 namespace logging {
 
-unsigned int min_severity = 1;
+unsigned int min_severity = 2;
 
 }

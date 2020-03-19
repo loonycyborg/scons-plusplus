@@ -18,6 +18,7 @@
 #include "fs_node.hpp"
 #include "taskmaster.hpp"
 #include "util.hpp"
+#include "log.hpp"
 
 #include "parse_make.hpp"
 
@@ -335,11 +336,14 @@ void run_makefile(const std::string& makefile_path, std::vector<std::string> com
 			task->decider = &Task::timestamp_pure_decider;
 		bool always_build_saved = always_build;
 		always_build = false; // Prevent infinite loop
+		auto severity_saved = logging::min_severity;
+		logging::min_severity = 1;
 		if(sconspp::build(makefile_node) > 0) {
 			// Makefile was rebuilt so we need to start over
 			throw restart_exception();
 		}
 		always_build = always_build_saved;
+		logging::min_severity = severity_saved;
 	}
 
 	for(auto target : command_line_target_strings) {
