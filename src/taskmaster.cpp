@@ -93,13 +93,11 @@ class BuildVisitor : public boost::default_dfs_visitor
 	void back_edge(const Edge&, const Graph& graph) const { throw boost::not_a_dag(); }
 	void discover_vertex(Node node, const Graph& graph) const
 	{
-		const std::pair<Graph::out_edge_iterator, Graph::out_edge_iterator>&
-			iterators = out_edges(node, graph);
-		std::vector<Edge> edges(iterators.first, iterators.second);
-		for(Edge edge : edges) {
-			Task::pointer task = graph[source(edge, graph)]->task();
-			if(task)
-				task->scan(source(edge, graph), target(edge, graph));
+		Task::pointer task = graph[node]->task();
+		if(!task) return;
+
+		for(auto edge : make_iterator_range(out_edges(node, graph))) {
+			task->scan(source(edge, graph), target(edge, graph));
 		}
 	}
 	void finish_vertex(Node node, const Graph& graph) const
