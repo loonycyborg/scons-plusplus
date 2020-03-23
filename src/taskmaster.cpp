@@ -250,10 +250,13 @@ namespace sconspp
 				states[node] = TO_BUILD;
 				for(Edge e : boost::make_iterator_range(out_edges(node, graph))) {
 					if(states[target(e, graph)] == SCHEDULED ||
-					   states[target(e, graph)] == BLOCKED)
+					   states[target(e, graph)] == BLOCKED) {
 						states[node] = BLOCKED;
-					if(states[target(e, graph)] == FAILED)
+					}
+					if(states[target(e, graph)] == FAILED) {
 						states[node] = FAILED;
+						break;
+					}
 				}
 				if(states[node] == TO_BUILD) {
 					if(!graph[node]->task() ||
