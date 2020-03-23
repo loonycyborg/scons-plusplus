@@ -38,15 +38,9 @@ NodeList Builder::add_task(
 		const ActionList& actions
 		)
 {
-	if(!actions.empty()) {
-		Task::pointer task(new Task(env, targets, sources, actions));
-		for(const Node& node : targets)
-			graph[node]->set_task(task);
-	} else {
-		for(const Node& target : targets)
-			for(const Node& source : sources)
-				add_edge(target, source, graph);
-	}
+	Task::pointer task(new Task(env, targets, sources, actions));
+	for(const Node& node : targets)
+		graph[node]->set_task(task);
 	return targets;
 }
 

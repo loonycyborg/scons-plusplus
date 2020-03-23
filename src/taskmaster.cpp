@@ -103,7 +103,7 @@ class BuildVisitor : public boost::default_dfs_visitor
 	void finish_vertex(Node node, const Graph& graph) const
 	{
 		Task::pointer task = graph[node]->task();
-		if(task) {
+		if(task && !task->actions().empty()) {
 			bool inserted;
 			TaskList::iterator iter;
 			tie(iter, inserted) = task_list_.push_back(TaskListItem(task, node));
@@ -259,10 +259,9 @@ namespace sconspp
 					}
 				}
 				if(states[node] == TO_BUILD) {
-					if(!graph[node]->task() ||
-						(tasks.get<task_index>().find(
-							graph[node]->task()))->is_up_to_date()
-					) {
+					auto t = graph[node]->task();
+					auto iter = tasks.get<task_index>().find(t), i_end = tasks.get<task_index>().end();
+					if((!t || iter == i_end) || iter->is_up_to_date()) {
 						states[node] = BUILT;
 					} else {
 						job_server.schedule(node);
@@ -280,7 +279,7 @@ namespace sconspp
 		}
 
 		if(tasks.size() == 0) {
-			logging::info(logging::Taskmaster) << "celebration of laziness: no tasks assigned to target(s).\n";
+			logging::info(logging::Taskmaster) << "celebration of laziness: no actions assigned to target(s).\n";
 		} else {
 			if(job_counter == 0) logging::info(logging::Taskmaster) << "celebration of laziness: all targets up-to-date.\n";
 		}
