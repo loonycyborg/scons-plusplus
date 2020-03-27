@@ -149,11 +149,43 @@ public:
 		path_pattern(prefix.find('/') != std::string::npos && suffix.find('/') != std::string::npos) {}
 	~pattern() {}
 
+	std::string name() const { return prefix + "%" + suffix; }
+
 	bool is_path() const { return path_pattern; }
+
+	boost::optional<std::string> match(const std::string& filename) const {
+		std::string name;
+		if(!path_pattern) {
+			name = boost::filesystem::path(filename).filename().c_str();
+		} else {
+			name = filename;
+		}
+
+		if(prefix.size() + suffix.size() >= name.size()) return {};
+		if(name.substr(0, prefix.size()) == prefix && name.substr(name.size() - suffix.size()) == suffix) {
+			return name.substr(prefix.size(), name.size() - suffix.size());
+		}
+		return {};
+	}
+
+	std::string apply_stem(const std::string stem) const {
+		return prefix + stem + suffix;
+	}
+
+	static boost::optional<pattern> parse_pattern(const std::string& str) {
+		auto i { str.find('%') };
+		if(i != std::string::npos) {
+			return pattern{ str.substr(0,i), str.substr(i+1) };
+		}
+
+		return {};
+	}
 };
 
 struct make_rule_ast;
 std::list<std::pair<pattern, make_rule_ast>> patterns;
+
+void make_scanner(const Environment& env, Node target, Node source);
 
 struct make_rule_ast
 {
@@ -183,9 +215,9 @@ struct make_rule_ast
 			return {};
 		}
 
-		auto i { targets[0].find('%') };
-		if(i != std::string::npos) {
-			patterns.emplace_back(pattern{targets[0].substr(0,i), targets[0].substr(i+1)}, *this );
+		auto target_pattern { pattern::parse_pattern(targets[0]) };
+		if(target_pattern) {
+			patterns.emplace_back(std::move(target_pattern.get()), *this );
 			return {};
 		}
 
@@ -197,6 +229,7 @@ struct make_rule_ast
 		std::transform(targets.begin(), targets.end(), std::back_inserter(target_nodes), [](const std::string& str) -> Node { return add_entry_indeterminate(str); });
 		std::transform(sources.begin(), sources.end(), std::back_inserter(source_nodes), [](const std::string& str) -> Node { return add_entry_indeterminate(str); });
 		auto result = Builder::add_task(env, target_nodes, source_nodes, actions);
+		if(auto task = properties(result[0]).task()) task->set_scanner(make_scanner);
 
 		if(default_targets.empty() && !result.empty())
 			for(Node target : result)
@@ -217,6 +250,98 @@ BOOST_FUSION_ADAPT_STRUCT(
 
 namespace sconspp { namespace make_interface {
 
+std::vector<make_rule_ast> match_filename(const std::string& filename, std::set<decltype(patterns)::value_type*> applied_patterns = {}) {
+	std::list<std::pair<std::string, decltype(patterns)::iterator>> matched_patterns;
+
+	for(decltype(patterns)::iterator it = patterns.begin(); it != patterns.end(); it++) {
+		if(applied_patterns.count(&*it)) {
+			logging::debug(logging::Makefile) << "avoiding recursive pattern application\n";
+			continue;
+		}
+
+		auto stem = it->first.match(filename);
+		if(stem) matched_patterns.emplace_back(stem.get(), it);
+
+		logging::debug(logging::Makefile) << "filename '" << filename << (stem ? "' did " : "' did not ") << "match pattern '" << it->first.name() << "'\n";
+	}
+
+	std::size_t longest_stem = 0;
+	std::list<decltype(matched_patterns)::iterator> full_matches;
+	std::unordered_map<decltype(patterns)::value_type*, make_rule_ast> expanded_asts;
+
+	for(decltype(matched_patterns)::iterator match = matched_patterns.begin(); match != matched_patterns.end(); match++) {
+		auto sources { match->second->second.sources };
+		decltype(sources) unsources;
+		for(auto& source : sources) {
+			if(auto pat = pattern::parse_pattern(source)) {
+				source = pat->apply_stem(match->first);
+			}
+		}
+
+		bool sources_available = true;
+		for(const auto& source : sources) {
+			if(!get_entry(source) && !boost::filesystem::exists(source)) {
+				sources_available = false;
+			}
+		}
+
+		expanded_asts[&*match->second] = match->second->second;
+		expanded_asts[&*match->second].sources = sources;
+		expanded_asts[&*match->second].targets = { filename };
+
+		if(sources_available && match->first.size() > longest_stem) longest_stem = match->first.size();
+		if(sources_available) full_matches.push_back(match);
+	}
+
+	if(!full_matches.empty()) {
+		for(auto match : full_matches) {
+			if(match->first.size() == longest_stem) {
+				return { expanded_asts[&*match->second] };
+			}
+		}
+	}
+
+	// at this point it's clear that pattern didn't match. Try to apply intermediate patterns
+	longest_stem = 0;
+	std::list<std::pair<decltype(matched_patterns)::iterator, std::vector<make_rule_ast>>> recursive_matches;
+	for(decltype(matched_patterns)::iterator match = matched_patterns.begin(); match != matched_patterns.end(); match++) {
+		auto rule_ast { expanded_asts[&*match->second] };
+		bool recursive_match = true;
+		std::vector<make_rule_ast> result;
+		result.push_back(rule_ast);
+		for(auto source : rule_ast.sources) {
+			if(!get_entry(source) && !boost::filesystem::exists(source)) {
+				auto pats { applied_patterns };
+				pats.insert(&*match->second);
+				auto subrules = match_filename(source, pats);
+				if(subrules.empty()) {
+					recursive_match = false;
+				} else {
+					std::copy(subrules.begin(), subrules.end(), std::back_inserter(result));
+				}
+			}
+		}
+
+		if(recursive_match) {
+			recursive_matches.push_back({match, result});
+			if(match->first.size() > longest_stem) longest_stem = match->first.size();
+		}
+	}
+
+	for(auto recursive_match : recursive_matches) {
+		if(recursive_match.first->first.size() == longest_stem) {
+			return recursive_match.second;
+		}
+	}
+
+	return {};
+}
+
+void apply_pattern_rules(const std::string& filename, const Environment& env)
+{
+	for(auto rule : match_filename(filename)) rule(env);
+}
+
 struct makefile_ast
 {
 	Environment::pointer env;
@@ -234,8 +359,6 @@ auto do_substitution = [] (auto& ctx)
 		_val(ctx) += env[var]->to_string();
 	}
 };
-
-
 
 auto add_macro = [](auto& ctx)
 {
@@ -359,6 +482,13 @@ void setup_make_task_context(Environment& env, const Task& task)
 	env["^"] = std::make_shared<automatic_variable>(expand_sources, task);
 }
 
+void make_scanner(const Environment& env, Node target, Node source) {
+	if(properties(source).task()) return; // skip nodes that already have rules assigned
+	logging::debug(logging::Makefile) << "considering pattern rules for '" << properties(source).name() << "'\n";
+
+	apply_pattern_rules(properties(source).name(), env);
+}
+
 void run_makefile(const std::string& makefile_path, std::vector<std::string> command_line_target_strings, std::vector<std::pair<std::string, std::string>> overrides)
 {
 	std::ifstream ifs{makefile_path};
@@ -393,8 +523,15 @@ void run_makefile(const std::string& makefile_path, std::vector<std::string> com
 	for(auto target : command_line_target_strings) {
 		auto node { get_entry(target) };
 
-		if(!node)
-			throw std::runtime_error("no rule to make target '" + target + "'.");
+		if(!node) {
+			auto match { match_filename(target) };
+			if(match.empty()) {
+				throw std::runtime_error("no rule to make target '" + target + "'.");
+			}
+
+			for(auto rule : match) rule(env);
+			node = get_entry(target);
+		}
 
 		command_line_targets.insert(node.get());
 	}

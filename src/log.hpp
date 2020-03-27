@@ -45,9 +45,10 @@ enum Domain
 {
 	General,
 	Taskmaster,
-	System
+	System,
+	Makefile
 };
-const char* const domain_msgs[] = { "", "taskmaster:", "system:" } ;
+const char* const domain_msgs[] = { "", "taskmaster:", "system:", "Makefile:" } ;
 
 template<Severity severity>
 class log
