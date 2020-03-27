@@ -495,6 +495,8 @@ void run_makefile(const std::string& makefile_path, std::vector<std::string> com
 	ifs.unsetf(std::ios::skipws);
 	boost::spirit::istream_iterator iter{ifs}, i_end;
 
+	set_fs_root(boost::filesystem::current_path());
+
 	static makefile_ast makefile;
 	auto& env = *(makefile.env);
 	for(auto override : overrides) env[override.first] = make_variable(override.second);
