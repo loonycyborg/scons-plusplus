@@ -91,7 +91,7 @@ namespace sconspp { namespace make_interface {
 
 enum class special_target_type
 {
-	None=0, POSIX, PRECIOUS
+	None=0, POSIX, PRECIOUS, PHONY
 };
 
 struct special_target_symbol_ : boost::spirit::x3::symbols<special_target_type>
@@ -100,6 +100,7 @@ struct special_target_symbol_ : boost::spirit::x3::symbols<special_target_type>
 		add
 			("POSIX", special_target_type::POSIX)
 			("PRECIOUS", special_target_type::PRECIOUS)
+			("PHONY", special_target_type::PHONY)
 		;
 	}
 } special_target_symbol;
@@ -195,7 +196,7 @@ struct make_rule_ast
 
 	std::vector<make_command_ast> commands;
 
-	void do_special_target() const {
+	void do_special_target(const Environment& env) const {
 		switch (special_target.get()) {
 			case special_target_type::None:
 				break;
@@ -207,11 +208,19 @@ struct make_rule_ast
 					properties<FSEntry>(add_entry_indeterminate(node)).precious();
 				}
 				break;
+			case special_target_type::PHONY:
+				for(auto source : sources) {
+					auto node { add_entry_indeterminate(source) };
+					properties(node).always_build();
+					// add an empty task to suppress application of pattern rules
+					if(!properties(node).task())
+						Builder::add_task(env, { node }, {}, {});
+				}
 		}
 	}
 	NodeList operator()(const Environment& env) const {
 		if(special_target) {
-			do_special_target();
+			do_special_target(env);
 			return {};
 		}
 
