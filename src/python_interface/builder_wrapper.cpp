@@ -45,7 +45,7 @@ inline NodeList extract_file_nodes(const Environment& env, py::object obj)
 	NodeList result;
 	for(auto node : obj)
 		if(py::isinstance<py::str>(node)) {
-			result.push_back(add_entry_indeterminate(extract_string_subst(env, py::reinterpret_borrow<py::object>(node))));
+			result.push_back(add_entry(extract_string_subst(env, py::reinterpret_borrow<py::object>(node))));
 		} else {
 			result.push_back(extract_node(py::reinterpret_borrow<py::object>(node)));
 		}
@@ -251,7 +251,7 @@ class PythonBuilder : public Builder
 		if(!target_factory_.is_none())
 			result.push_back(extract_node(target_factory_(full_name)));
 		else
-			result.push_back(add_entry_indeterminate(full_name));
+			result.push_back(add_entry(full_name));
 	}
 
 	void make_source_node(const std::string& name, const Environment& env, NodeList& result) const
@@ -273,7 +273,7 @@ class PythonBuilder : public Builder
 		if(!source_factory_.is_none())
 			result.push_back(extract_node(source_factory_(full_name)));
 		else
-			result.push_back(add_entry_indeterminate(full_name));
+			result.push_back(add_entry(full_name));
 	}
 
 	std::string adjust_target_name(const Environment& env, const std::string& name) const

@@ -205,12 +205,12 @@ struct make_rule_ast
 			case special_target_type::PRECIOUS:
 				for(auto node : sources)
 				{
-					properties<FSEntry>(add_entry_indeterminate(node)).precious();
+					properties<FSEntry>(add_entry(node)).precious();
 				}
 				break;
 			case special_target_type::PHONY:
 				for(auto source : sources) {
-					auto node { add_entry_indeterminate(source) };
+					auto node { add_entry(source) };
 					properties(node).always_build();
 					// add an empty task to suppress application of pattern rules
 					if(!properties(node).task())
@@ -235,8 +235,8 @@ struct make_rule_ast
 			actions.push_back(Action::pointer{new ExecCommand(command.command)});
 
 		NodeList target_nodes, source_nodes;
-		std::transform(targets.begin(), targets.end(), std::back_inserter(target_nodes), [](const std::string& str) -> Node { return add_entry_indeterminate(str); });
-		std::transform(sources.begin(), sources.end(), std::back_inserter(source_nodes), [](const std::string& str) -> Node { return add_entry_indeterminate(str); });
+		std::transform(targets.begin(), targets.end(), std::back_inserter(target_nodes), [](const std::string& str) -> Node { return add_entry(str); });
+		std::transform(sources.begin(), sources.end(), std::back_inserter(source_nodes), [](const std::string& str) -> Node { return add_entry(str); });
 		auto result = Builder::add_task(env, target_nodes, source_nodes, actions);
 		if(auto task = properties(result[0]).task()) task->set_scanner(make_scanner);
 
@@ -514,7 +514,7 @@ void run_makefile(const std::string& makefile_path, std::vector<std::string> com
 		makefile);
 	assert(match);
 
-	auto makefile_node = add_entry_indeterminate(makefile_path);
+	auto makefile_node = add_entry(makefile_path);
 	if(out_degree(makefile_node, sconspp::graph) > 0) { // there is a way to build the Makefile so we better update it
 		auto task = properties(makefile_node).task();
 		if(task)

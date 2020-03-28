@@ -35,7 +35,7 @@ NodeList extract_file_nodes(const Environment& env, py::object obj)
 	NodeList result;
 	for(auto node : obj)
 		if(py::isinstance<py::str>(node)) {
-			result.push_back(add_entry_indeterminate(extract_string_subst(env, py::reinterpret_borrow<py::object>(node))));
+			result.push_back(add_entry(extract_string_subst(env, py::reinterpret_borrow<py::object>(node))));
 		} else {
 			result.push_back(extract_node(py::reinterpret_borrow<py::object>(node)));
 		}
@@ -69,7 +69,7 @@ NodeStringList extract_nodes(const Environment& env, py::object obj)
 struct ExtractFileVisitor : public boost::static_visitor<Node>
 {
 	Node operator()(const std::string& name) {
-		return add_entry_indeterminate(name);
+		return add_entry(name);
 	}
 	Node operator()(Node node) {
 		return node;

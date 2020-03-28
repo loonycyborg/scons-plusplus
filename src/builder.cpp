@@ -80,7 +80,7 @@ inline NodeList make_nodes(const NodeStringList& list)
 
 NodeList make_file_nodes(NodeStringList list)
 {
-	return make_nodes<add_entry_indeterminate>(list);
+	return make_nodes<add_entry>(list);
 }
 
 NodeList add_command(const Environment& env,
@@ -89,8 +89,8 @@ NodeList add_command(const Environment& env,
 				 const ActionList& actions)
 {
 	NodeList
-		target_nodes = make_nodes<add_entry_indeterminate>(targets),
-		source_nodes = make_nodes<add_entry_indeterminate>(sources);
+		target_nodes = make_nodes<add_entry>(targets),
+		source_nodes = make_nodes<add_entry>(sources);
 	Builder::add_task(env, target_nodes, source_nodes, actions);
 	return target_nodes;
 }
@@ -102,7 +102,7 @@ NodeList add_alias(const Environment& env,
 {
 	NodeList
 		target_nodes = make_nodes<add_alias>(targets),
-		source_nodes = make_nodes<add_entry_indeterminate>(sources);
+		source_nodes = make_nodes<add_entry>(sources);
 	Builder::add_task(env, target_nodes, source_nodes, actions);
 	return target_nodes;
 }
@@ -114,8 +114,8 @@ NodeList SimpleBuilder::operator()(
 		) const
 {
 	NodeList
-		target_nodes = make_nodes<add_entry_indeterminate>(targets),
-		source_nodes = make_nodes<add_entry_indeterminate>(sources);
+		target_nodes = make_nodes<add_entry>(targets),
+		source_nodes = make_nodes<add_entry>(sources);
 	create_task(env, target_nodes, source_nodes, actions_);
 	return target_nodes;
 }
