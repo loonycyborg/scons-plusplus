@@ -52,7 +52,7 @@ class Environment : public std::enable_shared_from_this<Environment>
 {
 	std::string (*subst_)(const Environment&, const std::string&, bool);
 	void (*setup_task_context_)(Environment&, const Task&);
-	typedef std::map<std::string, Variable::pointer> Variables;
+	typedef std::unordered_map<std::string, Variable::pointer> Variables;
 	Variables variables_;
 
 	public:

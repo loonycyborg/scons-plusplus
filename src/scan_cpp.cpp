@@ -69,7 +69,7 @@ struct cpp : grammar<Iterator, IncludeDeps() >
 // HACK: need a general framework for env lookup caching.
 std::vector<std::string>& lookup_searchpath(const sconspp::Environment& env)
 {
-	static std::map<const sconspp::Environment*, std::vector<std::string> > lookup_cache;
+	static std::unordered_map<const sconspp::Environment*, std::vector<std::string> > lookup_cache;
 	if(!lookup_cache.count(&env)) {
 		lookup_cache[&env];
 		for(std::string dir : env["CPPPATH"]->to_string_list()) {
