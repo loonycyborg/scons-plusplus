@@ -67,7 +67,8 @@ class Task
 	bool timestamp_pure_decider(NodeList targets);
 	bool (Task::*decider)(NodeList) = &Task::database_decider;
 
-	bool is_up_to_date(NodeList targets) { return (this->*decider)(targets); }
+	void add_requested_target(Node target) { requested_targets.push_back(target); }
+	bool is_up_to_date() { return (this->*decider)(requested_targets); }
 
 	void scan(Node target, Node source) const { if(scanner_) scanner_(*env_, target, source); }
 	void set_scanner(Scanner scanner) { scanner_ = scanner; }
@@ -86,6 +87,8 @@ class Task
 	Environment::const_pointer env_;
 
 	Scanner scanner_;
+
+	NodeList requested_targets;
 };
 
 }

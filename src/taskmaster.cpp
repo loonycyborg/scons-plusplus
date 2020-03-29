@@ -57,37 +57,12 @@ namespace {
 
 using namespace sconspp;
 
-struct TaskListItem
-{
-	Task::pointer task;
-	NodeList targets;
-
-	bool is_up_to_date() const
-	{
-		return task->is_up_to_date(targets) && !always_build;
-	}
-
-	TaskListItem(Task::pointer task, Node target) : task(task) { targets.push_back(target); }
-};
-
-struct sequence_index;
-struct task_index;
-
-typedef multi_index_container<
-	TaskListItem,
-	indexed_by<
-		sequenced<tag<sequence_index> >,
-        ordered_unique<tag<task_index>, BOOST_MULTI_INDEX_MEMBER(TaskListItem, Task::pointer, task)>
-		>
-	> TaskList;
-
 class BuildVisitor : public boost::default_dfs_visitor
 {
-	TaskList& task_list_;
 	std::vector<Node>& build_order_;
 
 	public:
-	BuildVisitor(TaskList& task_list, std::vector<Node>& build_order) : task_list_(task_list), build_order_(build_order) {}
+	BuildVisitor(std::vector<Node>& build_order) : build_order_(build_order) {}
 
 	template <typename Edge>
 	void back_edge(const Edge&, const Graph& graph) const { throw boost::not_a_dag(); }
@@ -104,11 +79,7 @@ class BuildVisitor : public boost::default_dfs_visitor
 	{
 		Task::pointer task = graph[node]->task();
 		if(task && !task->actions().empty()) {
-			bool inserted;
-			TaskList::iterator iter;
-			tie(iter, inserted) = task_list_.push_back(TaskListItem(task, node));
-			if(!inserted)
-				task_list_.modify(iter, push_back(bind(&TaskListItem::targets, arg1), node));
+			task->add_requested_target(node);
 		}
 		build_order_.push_back(node);
 	}
@@ -141,20 +112,12 @@ namespace sconspp
 	bool always_build;
 	bool keep_going;
 
-	void build_order(Node end_goal, TaskList& tasks, std::vector<Node>& output)
+	void build_order(Node end_goal, std::vector<Node>& output)
 	{
 		std::map<Node, boost::default_color_type> colors;
 		associative_property_map<std::map<Node, boost::default_color_type> > color_map(colors);
-		depth_first_visit(graph, end_goal, BuildVisitor(tasks, output), color_map);
+		depth_first_visit(graph, end_goal, BuildVisitor(output), color_map);
 	}
-
-	void build_order(Node end_goal, std::vector<Node>& output)
-	{
-		TaskList tasks;
-		build_order(end_goal, tasks, output);
-	}
-
-
 
 	class JobServer
 	{
@@ -205,7 +168,7 @@ namespace sconspp
 
 	enum TaskState { SCHEDULED, BLOCKED, TO_BUILD, BUILT, FAILED };
 
-	int parallel_build(TaskList& tasks, std::vector<Node>& nodes, PersistentData& db)
+	int parallel_build(std::vector<Node>& nodes, PersistentData& db)
 	{
 		int job_counter = 0;
 		if(num_jobs) {
@@ -260,8 +223,7 @@ namespace sconspp
 				}
 				if(states[node] == TO_BUILD) {
 					auto t = graph[node]->task();
-					auto iter = tasks.get<task_index>().find(t), i_end = tasks.get<task_index>().end();
-					if((!t || iter == i_end) || iter->is_up_to_date()) {
+					if(!t || t->is_up_to_date()) {
 						states[node] = BUILT;
 					} else {
 						job_server.schedule(node);
@@ -278,22 +240,21 @@ namespace sconspp
 			}
 		}
 
-		if(tasks.size() == 0) {
+		/*if(tasks.size() == 0) {
 			logging::info(logging::Taskmaster) << "celebration of laziness: no actions assigned to target(s).\n";
 		} else {
 			if(job_counter == 0) logging::info(logging::Taskmaster) << "celebration of laziness: all targets up-to-date.\n";
-		}
+		}*/
 		return job_counter;
 	}
 
 	int build(Node end_goal)
 	{
-		TaskList tasks;
 		std::vector<Node> nodes;
-		build_order(end_goal, tasks, nodes);
+		build_order(end_goal, nodes);
 		PersistentData& db = get_global_db();
 
-		return parallel_build(tasks, nodes, db);
+		return parallel_build(nodes, db);
 	}
 
 }
