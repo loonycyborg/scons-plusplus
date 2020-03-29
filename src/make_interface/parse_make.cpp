@@ -14,7 +14,6 @@
 
 #include "environment.hpp"
 #include "node_properties.hpp"
-#include "builder.hpp"
 #include "fs_node.hpp"
 #include "taskmaster.hpp"
 #include "util.hpp"
@@ -214,7 +213,7 @@ struct make_rule_ast
 					properties(node).always_build();
 					// add an empty task to suppress application of pattern rules
 					if(!properties(node).task())
-						Builder::add_task(env, { node }, {}, {});
+						Task::add_task(env, { node }, {}, {});
 				}
 		}
 	}
@@ -237,13 +236,12 @@ struct make_rule_ast
 		NodeList target_nodes, source_nodes;
 		std::transform(targets.begin(), targets.end(), std::back_inserter(target_nodes), [](const std::string& str) -> Node { return add_entry(str); });
 		std::transform(sources.begin(), sources.end(), std::back_inserter(source_nodes), [](const std::string& str) -> Node { return add_entry(str); });
-		auto result = Builder::add_task(env, target_nodes, source_nodes, actions);
-		if(auto task = properties(result[0]).task()) task->set_scanner(make_scanner);
+		Task::add_task(env, target_nodes, source_nodes, actions, make_scanner);
 
-		if(default_targets.empty() && !result.empty())
-			for(Node target : result)
+		if(default_targets.empty() && !target_nodes.empty())
+			for(Node target : target_nodes)
 				default_targets.insert(target);
-		return result;
+		return target_nodes;
 	}
 };
 

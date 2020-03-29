@@ -33,7 +33,6 @@
 #include "environment_wrappers.hpp"
 #include "python_interface/directives.hpp"
 #include "fs_node.hpp"
-#include "builder.hpp"
 #include "util.hpp"
 
 using boost::polymorphic_cast;
@@ -45,8 +44,9 @@ namespace python_interface
 
 NodeList Command(const Environment& env, py::object target, py::object source, py::object action)
 {
-	SimpleBuilder simple_builder(make_actions(action));
-	return call_builder(simple_builder, env, target, source);
+	NodeList targets { extract_file_nodes(env, flatten(target)) };
+	Task::add_task(env, targets, extract_file_nodes(flatten(source)), make_actions(action));
+	return targets;
 }
 
 void Default(const Environment::pointer& env, py::object obj)
@@ -78,8 +78,17 @@ NodeWrapper Value(Environment::pointer, std::string name)
 
 NodeList Alias(py::object aliases, py::object sources, py::object actions)
 {
-	ActionList action_list = make_actions(flatten(actions));
-	return add_alias(*default_environment(), extract_nodes(flatten(aliases)), extract_nodes(flatten(sources)), action_list);
+	ActionList action_list { make_actions(flatten(actions)) };
+	NodeList alias_nodes { extract_alias_nodes(flatten(aliases)) };
+	NodeList source_nodes { extract_file_nodes(flatten(sources)) };
+
+	if(!source_nodes.empty()) {
+		for(auto alias : alias_nodes) {
+			Task::add_task(*default_environment(), NodeList { alias }, extract_file_nodes(flatten(sources)), action_list);
+		}
+	}
+
+	return alias_nodes;
 }
 
 void Execute(Environment::pointer env, py::object obj)

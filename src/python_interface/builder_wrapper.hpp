@@ -22,7 +22,6 @@
 #define BUILDER_WRAPPER_HPP
 
 #include "node_wrapper.hpp"
-#include "builder.hpp"
 #include "dependency_graph.hpp"
 #include "environment.hpp"
 
@@ -33,13 +32,8 @@ namespace sconspp
 namespace python_interface
 {
 
-NodeList call_builder(const Builder&, const Environment&, py::object, py::object);
-
 void def_builder(py::module& m_builder);
 
-py::object get_builder_suffix(Builder* builder);
-py::object get_builder_prefix(Builder* builder);
-py::object get_builder_src_suffix(Builder* builder);
 }
 }
 

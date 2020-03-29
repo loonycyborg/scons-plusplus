@@ -29,6 +29,7 @@
 
 #include "builder_wrapper.hpp"
 #include "fs_node.hpp"
+#include "task.hpp"
 #include "python_interface/environment_wrappers.hpp"
 #include "python_interface/subst.hpp"
 
@@ -93,7 +94,7 @@ class PythonScanner
 	}
 };
 
-class PythonBuilder : public Builder
+class PythonBuilder
 {
 	py::object actions_;
 
@@ -140,18 +141,24 @@ class PythonBuilder : public Builder
 
 	NodeList operator()(
 	    const Environment& env,
-		const NodeStringList& targets,
-		const NodeStringList& sources
+		py::object targets,
+		py::object sources
 		) const
 	{
-		if(single_source_ && (sources.size() > 1)) {
-			if(targets.empty()) {
+		NodeList target_nodes;
+		NodeList source_nodes;
+
+		make_node_visitor<&PythonBuilder::make_target_node> target_visitor(env, this, target_nodes);
+		make_node_visitor<&PythonBuilder::make_source_node> source_visitor(env, this, source_nodes);
+
+		for(const auto& target : extract_nodes(env, flatten(targets))) apply_visitor(target_visitor, target);
+		for(const auto& source : extract_nodes(env, flatten(sources))) apply_visitor(source_visitor, source);
+
+		if(single_source_ && (source_nodes.size() > 1)) {
+			if(target_nodes.empty()) {
 				NodeList result;
-				for(const NodeStringList::value_type& source : sources) {
-					NodeStringList single_source;
-					NodeList target;
-					single_source.push_back(source);
-					target = (*this)(env, targets, single_source);
+				for(auto source : source_nodes) {
+					auto target = (*this)(env, py::cast(NodeList{}), py::cast(NodeList{ source }));
 					std::copy(target.begin(), target.end(), back_inserter(result));
 				}
 				return result;
@@ -163,32 +170,10 @@ class PythonBuilder : public Builder
 		ActionList actions;
 		py::object actions_obj = py::list();
 
-		NodeList target_nodes;
-		NodeList source_nodes;
-
-		if(targets.empty() && !sources.empty()) {
-			const std::string* name = boost::get<const std::string>(&sources[0]);
-			if(name) {
-				NodeStringList implicit_target;
-				implicit_target.push_back(split_ext(*name));
-				return (*this)(env, implicit_target, sources);
-			}
-			const Node* node = boost::get<const Node>(&sources[0]);
-			if(node) {
-				NodeStringList implicit_target;
-				try {
-					std::string name = properties<FSEntry>(*node).relpath();
-					implicit_target.push_back(split_ext(name));
-					return (*this)(env, implicit_target, sources);
-				} catch(const std::bad_cast&) {}
-			}
+		if(target_nodes.empty() && !source_nodes.empty()) {
+			std::string implicit_target = split_ext(properties<FSEntry>(source_nodes[0]).relpath());
+			return (*this)(env, py::cast(std::vector<std::string>{ implicit_target }), py::cast(source_nodes));
 		}
-
-		make_node_visitor<&PythonBuilder::make_target_node> target_visitor(env, this, target_nodes);
-		make_node_visitor<&PythonBuilder::make_source_node> source_visitor(env, this, source_nodes);
-
-		for_each(targets.begin(), targets.end(), apply_visitor(target_visitor));
-		for_each(sources.begin(), sources.end(), apply_visitor(source_visitor));
 
 		py::object emitter = emitter_;
 		if(!emitter_.is_none()) {
@@ -212,7 +197,7 @@ class PythonBuilder : public Builder
 		} else {
 
 			if(py::isinstance<py::dict>(actions_)) {
-				if(!sources.empty()) {
+				if(!source_nodes.empty()) {
 					actions_obj = py::dict(actions_)[properties<FSEntry>(source_nodes[0]).suffix().c_str()];
 				}
 			} else {
@@ -220,7 +205,7 @@ class PythonBuilder : public Builder
 			}
 			actions = make_actions(actions_obj);
 
-			create_task(env, target_nodes, source_nodes, actions, scanner_);
+			Task::add_task(env, target_nodes, source_nodes, actions, scanner_);
 		}
 
 		return target_nodes;
@@ -337,12 +322,7 @@ NodeList call_builder_interface(const PythonBuilder& builder, const Environment&
 		source = target;
 		target = py::none();
 	}
-	return call_builder(builder, env, target, source);
-}
-
-NodeList call_builder(const Builder& builder, const Environment& env, py::object target, py::object source)
-{
-	return builder(env, extract_nodes(env, flatten(target)), extract_nodes(env, flatten(source)));
+	return builder(env, target, source);
 }
 
 void PythonBuilder::add_action(py::object suffix, py::object action)
@@ -354,16 +334,6 @@ void PythonBuilder::add_action(py::object suffix, py::object action)
 void PythonBuilder::add_emitter(py::object suffix, py::object emitter)
 {
 	emitter_[suffix] = emitter;
-}
-
-py::object get_builder_prefix(Builder* builder)
-{
-	return boost::polymorphic_cast<PythonBuilder*>(builder)->prefix();
-}
-
-py::object get_builder_src_suffix(Builder* builder)
-{
-	return boost::polymorphic_cast<PythonBuilder*>(builder)->src_suffix();
 }
 
 using namespace pybind11::literals;
@@ -381,8 +351,8 @@ void def_builder(py::module& m_builder)
 		.def("add_action", &PythonBuilder::add_action, "suffix"_a, "action"_a)
 		.def("add_emitter", &PythonBuilder::add_emitter)
 		.def("get_suffix", &PythonBuilder::suffix)
-		.def("get_prefix", &get_builder_prefix)
-		.def("get_src_suffix", &get_builder_src_suffix)
+		.def("get_prefix", &PythonBuilder::prefix)
+		.def("get_src_suffix", &PythonBuilder::src_suffix)
 		.def_property_readonly("suffix", &PythonBuilder::suffix)
 		;
 }

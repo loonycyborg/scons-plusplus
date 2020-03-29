@@ -21,8 +21,8 @@
 #include "python_interface_internal.hpp"
 #include "node_wrapper.hpp"
 #include "fs_node.hpp"
+#include "alias_node.hpp"
 
-#include <boost/variant/variant.hpp>
 #include <boost/variant/apply_visitor.hpp>
 
 namespace sconspp
@@ -38,6 +38,18 @@ NodeList extract_file_nodes(const Environment& env, py::object obj)
 			result.push_back(add_entry(extract_string_subst(env, py::reinterpret_borrow<py::object>(node))));
 		} else {
 			result.push_back(extract_node(py::reinterpret_borrow<py::object>(node)));
+		}
+	return result;
+}
+
+NodeList extract_alias_nodes(py::object obj)
+{
+	NodeList result;
+	for(auto alias : obj)
+		if(py::isinstance<py::str>(alias)) {
+			result.push_back(add_alias(alias.cast<std::string>()));
+		} else {
+			result.push_back(extract_node(py::reinterpret_borrow<py::object>(alias)));
 		}
 	return result;
 }

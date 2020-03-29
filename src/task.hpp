@@ -32,11 +32,8 @@
 namespace sconspp
 {
 
-class Builder;
-
 class Task
 {
-	friend class Builder;
 	Task(
 	    const Environment& env,
 	    const NodeList& targets,
@@ -51,6 +48,14 @@ class Task
 	typedef boost::function<void(const Environment&, Node, Node)> Scanner;
 	typedef boost::shared_ptr<Task> pointer;
 	typedef boost::shared_ptr<const Task> const_pointer;
+
+	static void add_task(
+		const Environment& env,
+		const NodeList& targets,
+		const NodeList& sources,
+		const ActionList& actions,
+		Scanner scanner = {}
+	);
 
 	const NodeList& targets() const { return targets_; }
 	const NodeList& sources() const { return sources_; }

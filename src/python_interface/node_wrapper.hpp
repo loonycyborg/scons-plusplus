@@ -22,11 +22,11 @@
 #define NODE_WRAPPER_HPP
 
 #include <boost/cast.hpp>
+#include <boost/variant/variant.hpp>
 
 #include "dependency_graph.hpp"
 #include "node_properties.hpp"
 #include "task.hpp"
-#include "builder.hpp"
 #include "sconscript.hpp"
 #include "fs_node.hpp"
 
@@ -89,11 +89,14 @@ inline std::string extract_string_subst(const Environment& env, py::object obj)
 
 NodeList extract_file_nodes(py::object obj);
 NodeList extract_file_nodes(const Environment& env, py::object obj);
+NodeList extract_alias_nodes(py::object obj);
 
 inline Node extract_node(py::object obj)
 {
 	return obj.cast<NodeWrapper>().node;
 }
+
+typedef std::vector<boost::variant<Node, std::string> > NodeStringList;
 
 NodeStringList extract_nodes(py::object obj);
 NodeStringList extract_nodes(const Environment& env, py::object obj);

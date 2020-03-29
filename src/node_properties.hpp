@@ -33,8 +33,6 @@ namespace sconspp
 class node_properties
 {
 	boost::shared_ptr<Task> task_;
-	friend class Builder;
-	void set_task(Task::pointer task) { task_ = task; }
 
 	protected:
 	bool always_build_;
@@ -51,6 +49,7 @@ class node_properties
 
 	void always_build() { always_build_ = true; }
 	Task::pointer task() const { return task_; }
+	void set_task(Task::pointer task) { task_ = task; }
 
 	virtual void was_rebuilt(int) {}
 	virtual void record_persistent_data(PersistentNodeData&) {}

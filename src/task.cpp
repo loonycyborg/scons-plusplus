@@ -27,6 +27,14 @@
 namespace sconspp
 {
 
+void Task::add_task(const Environment& env, const NodeList& targets, const NodeList& sources, const ActionList& actions, Task::Scanner scanner)
+{
+	Task::pointer task(new Task(env, targets, sources, actions));
+	task->set_scanner(scanner);
+	for(const Node& node : targets)
+		graph[node]->set_task(task);
+}
+
 void Task::add_sources(const NodeList& sources)
 {
 	std::copy(sources.begin(), sources.end(), std::back_inserter(sources_));

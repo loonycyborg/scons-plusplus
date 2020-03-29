@@ -29,7 +29,6 @@
 #include "util.hpp"
 #include "python_interface/python_interface.hpp"
 #include "fs_node.hpp"
-#include "builder.hpp"
 #include "scan_cpp.hpp"
 
 #include "python_interface/python_interface_internal.hpp"
