@@ -250,8 +250,8 @@ namespace sconspp
 					}
 				}
 				if(node->state == TO_BUILD) {
-					auto t = graph[node->node]->task();
-					if(!t || t->is_up_to_date()) {
+					auto t = node->task;
+					if(!t || (t->is_up_to_date() && !always_build)) {
 						node->state = BUILT;
 					} else {
 						job_server.schedule(node->node);
