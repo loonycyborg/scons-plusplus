@@ -32,8 +32,6 @@ namespace sconspp
 	extern bool keep_going;
 
 	int build(Node end_goal);
-
-	void build_order(Node end_goal, std::vector<Node>& output);
 }
 
 #endif

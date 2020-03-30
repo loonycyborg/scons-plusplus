@@ -23,9 +23,7 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/ordered_index.hpp>
-#include <boost/spirit/include/phoenix_core.hpp>
-#include <boost/spirit/include/phoenix_stl.hpp>
-#include <boost/spirit/include/phoenix_bind.hpp>
+#include <boost/multi_index/hashed_index.hpp>
 #include <thread>
 #include <future>
 #include <condition_variable>
@@ -45,24 +43,43 @@ using boost::multi_index_container;
 using boost::multi_index::indexed_by;
 using boost::multi_index::tag;
 using boost::multi_index::sequenced;
-using boost::multi_index::ordered_unique;
+using boost::multi_index::ordered_non_unique;
+using boost::multi_index::hashed_unique;
+using boost::multi_index::member;
 
 using boost::tie;
-
-using boost::phoenix::arg_names::arg1;
-using boost::phoenix::push_back;
-using boost::phoenix::bind;
 
 namespace {
 
 using namespace sconspp;
 
+enum TaskState { SCHEDULED, BLOCKED, TO_BUILD, BUILT, FAILED };
+
+struct BuildOrderEntry
+{
+	Node node;
+	Task::pointer task;
+	mutable TaskState state { TO_BUILD };
+};
+
+struct task_tag {};
+struct node_tag {};
+
+typedef multi_index_container<
+	BuildOrderEntry,
+	indexed_by<
+		sequenced<>,
+		ordered_non_unique<tag<task_tag>, member<BuildOrderEntry, Task::pointer, &BuildOrderEntry::task>>,
+		hashed_unique<tag<node_tag>, member<BuildOrderEntry, Node, &BuildOrderEntry::node>>
+	>
+> BuildOrder;
+
 class BuildVisitor : public boost::default_dfs_visitor
 {
-	std::vector<Node>& build_order_;
+	BuildOrder& build_order_;
 
 	public:
-	BuildVisitor(std::vector<Node>& build_order) : build_order_(build_order) {}
+	BuildVisitor(BuildOrder& build_order) : build_order_(build_order) {}
 
 	template <typename Edge>
 	void back_edge(const Edge&, const Graph& graph) const { throw boost::not_a_dag(); }
@@ -80,8 +97,8 @@ class BuildVisitor : public boost::default_dfs_visitor
 		Task::pointer task = graph[node]->task();
 		if(task && !task->actions().empty()) {
 			task->add_requested_target(node);
-		}
-		build_order_.push_back(node);
+		} else task = {};
+		build_order_.push_back({ node, task });
 	}
 };
 
@@ -112,7 +129,7 @@ namespace sconspp
 	bool always_build;
 	bool keep_going;
 
-	void build_order(Node end_goal, std::vector<Node>& output)
+	void build_order(Node end_goal, BuildOrder& output)
 	{
 		std::map<Node, boost::default_color_type> colors;
 		associative_property_map<std::map<Node, boost::default_color_type> > color_map(colors);
@@ -166,9 +183,7 @@ namespace sconspp
 		}
 	};
 
-	enum TaskState { SCHEDULED, BLOCKED, TO_BUILD, BUILT, FAILED };
-
-	int parallel_build(std::vector<Node>& nodes, PersistentData& db)
+	int parallel_build(BuildOrder& nodes, PersistentData& db)
 	{
 		int job_counter = 0;
 		if(num_jobs) {
@@ -184,20 +199,25 @@ namespace sconspp
 			logging::debug(logging::Taskmaster) << "Will execute unlimited number of parallel jobs.\n";
 		}
 
-		std::map<Node, TaskState> states;
 		JobServer job_server;
 
-		Node end_node = *(--nodes.end());
-		while(!states.count(end_node) || (states[end_node] != BUILT && states[end_node] != FAILED)) {
+		auto get_state {
+			[&nodes](Node node) -> TaskState& {
+				return nodes.get<node_tag>().find(node)->state;
+			}
+		};
+
+		auto last_node = --nodes.end();
+		while(last_node->state != BUILT && last_node->state != FAILED) {
 			for(const auto& result : job_server.wait_for_results()) {
 				auto& node_data { db.record_current_data(result.first) };
 				properties(result.first).unchanged(node_data);
 				node_data.task_status() = result.second;
 				if(result.second == 0) {
 					job_counter++;
-					states[result.first] = BUILT;
+					get_state(result.first) = BUILT;
 				} else {
-					states[result.first] = FAILED;
+					get_state(result.first) = FAILED;
 					if(!keep_going) {
 						logging::warning(logging::Taskmaster) << "Task failed. Waiting for the rest of active tasks to finish...\n";
 						job_server.wait_for_all();
@@ -206,30 +226,30 @@ namespace sconspp
 				}
 			}
 
-			for(Node node : nodes) {
-				if(states.count(node) && states[node] != BLOCKED) {
-					continue;
-				}
-				states[node] = TO_BUILD;
-				for(Edge e : boost::make_iterator_range(out_edges(node, graph))) {
-					if(states[target(e, graph)] == SCHEDULED ||
-					   states[target(e, graph)] == BLOCKED) {
-						states[node] = BLOCKED;
+			for(auto node { nodes.begin() }; node != nodes.end(); node++) {
+				if(node->state == BLOCKED || node->state == TO_BUILD) {
+					node->state = TO_BUILD;
+				} else continue;
+
+				for(Edge e : boost::make_iterator_range(out_edges(node->node, graph))) {
+					if(get_state(target(e, graph)) == SCHEDULED ||
+					   get_state(target(e, graph)) == BLOCKED) {
+						node->state = BLOCKED;
 					}
-					if(states[target(e, graph)] == FAILED) {
-						states[node] = FAILED;
+					if(get_state(target(e, graph)) == FAILED) {
+						node->state = FAILED;
 						break;
 					}
 				}
-				if(states[node] == TO_BUILD) {
-					auto t = graph[node]->task();
+				if(node->state == TO_BUILD) {
+					auto t = graph[node->node]->task();
 					if(!t || t->is_up_to_date()) {
-						states[node] = BUILT;
+						node->state = BUILT;
 					} else {
-						job_server.schedule(node);
+						job_server.schedule(node->node);
 						logging::debug(logging::Taskmaster)
-						    << "Scheduled building target " << properties(node).name() << ".\n";
-						states[node] = SCHEDULED;
+							<< "Scheduled building target " << properties(node->node).name() << ".\n";
+						node->state = SCHEDULED;
 						if(!job_server.have_free_slots()) {
 							logging::debug(logging::Taskmaster)
 								<< "All slots taken. Waiting...\n";
@@ -240,17 +260,17 @@ namespace sconspp
 			}
 		}
 
-		/*if(tasks.size() == 0) {
+		if(nodes.get<task_tag>().begin()->task == (--nodes.get<task_tag>().end())->task && nodes.get<task_tag>().begin()->task == Task::pointer{}) {
 			logging::info(logging::Taskmaster) << "celebration of laziness: no actions assigned to target(s).\n";
 		} else {
 			if(job_counter == 0) logging::info(logging::Taskmaster) << "celebration of laziness: all targets up-to-date.\n";
-		}*/
+		}
 		return job_counter;
 	}
 
 	int build(Node end_goal)
 	{
-		std::vector<Node> nodes;
+		BuildOrder nodes;
 		build_order(end_goal, nodes);
 		PersistentData& db = get_global_db();
 
