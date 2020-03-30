@@ -6,7 +6,7 @@
 
 #include <boost/graph/graphviz.hpp>
 
-#include <boost/test/output_test_stream.hpp>
+#include <boost/test/tools/output_test_stream.hpp>
 
 namespace sconspp
 {
