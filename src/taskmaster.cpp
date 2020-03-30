@@ -136,6 +136,14 @@ namespace sconspp
 		depth_first_visit(graph, end_goal, BuildVisitor(output), color_map);
 	}
 
+	void build_order(Node end_goal, std::vector<Node>& output)
+	{
+		BuildOrder nodes;
+		build_order(end_goal, nodes);
+
+		std::transform(nodes.begin(), nodes.end(), std::back_inserter(output), [](const BuildOrderEntry& node) -> Node { return node.node; } );
+	}
+
 	class JobServer
 	{
 		typedef std::vector<std::pair<Node,int>> ResultVec;
@@ -276,5 +284,4 @@ namespace sconspp
 
 		return parallel_build(nodes, db);
 	}
-
 }
