@@ -36,6 +36,8 @@ void Export(py::args args);
 void Import(py::args args);
 void Return(py::args args, py::kwargs kw);
 
+void Default(py::object obj);
+
 }
 }
 

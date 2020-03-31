@@ -145,7 +145,6 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 		.def(py::init(&make_environment))
 		.def("subst", &Environment::subst, "input"_a, "for_signature"_a = false)
 		.def("backtick", backtick, "command"_a)
-		.def("Default", &Default)
 		.def("Command", &Command)
 		.def("Entry", &Entry)
 		.def("File", &File)
@@ -193,6 +192,7 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	m_script.def("Export", &Export);
 	m_script.def("Import", &Import);
 	m_script.def("Return", &Return);
+	def_directive(m_script, env, "Default", &Default, "targets"_a);
 	def_directive(m_script, env, "WhereIs", &WhereIs, "program"_a);
 	def_directive<boost::mpl::set_c<int, 2>>(m_script, env, "Alias", &Alias, "alias"_a, "targets"_a = py::none(), "action"_a = py::none());
 	def_directive<boost::mpl::set_c<int, 1>>(m_script, env, "AddPreAction", &AddPreAction, "target"_a, "action"_a);
@@ -248,6 +248,7 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 #endif
 
 		try {
+			main_namespace()["COMMAND_LINE_TARGETS"] = py::cast(command_line_target_strings);
 			SConscript(filename);
 
 			for(const auto& target : command_line_target_strings) {

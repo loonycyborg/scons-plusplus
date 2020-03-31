@@ -103,7 +103,6 @@ inline py::object variable_to_python(Variable::const_pointer var)
 }
 
 NodeList Command(const Environment& env, py::object target, py::object source, py::object action);
-void Default(const Environment::pointer& env, py::object obj);
 
 NodeWrapper Entry(Environment::pointer, std::string name);
 NodeWrapper File(Environment::pointer, std::string name);

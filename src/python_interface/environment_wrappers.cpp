@@ -49,13 +49,6 @@ NodeList Command(const Environment& env, py::object target, py::object source, p
 	return targets;
 }
 
-void Default(const Environment::pointer& env, py::object obj)
-{
-	obj = flatten(obj);
-	NodeList nodes = extract_file_nodes(*env, obj);
-	for(Node node : nodes)
-		default_targets.insert(node);
-}
 NodeWrapper Entry(Environment::pointer, std::string name)
 {
 	return NodeWrapper(add_entry(name, boost::logic::indeterminate));

@@ -25,6 +25,8 @@
 
 #include <pybind11/eval.h>
 
+#include "node_wrapper.hpp"
+
 #include "fs_node.hpp"
 #include "util.hpp"
 
@@ -147,6 +149,21 @@ void Return(py::args args, py::kwargs kw)
 	if(!kw.contains("stop") || kw["stop"].cast<bool>() == true) {
 		PyErr_SetObject(SConscriptReturnException().ptr(),  SConscriptReturnException()().ptr());
 		throw py::error_already_set();
+	}
+}
+
+void Default(py::object obj)
+{
+	if(obj.is_none()) {
+		default_targets.clear();
+		main_namespace()["DEFAULT_TARGETS"] = py::list();
+	}
+
+	obj = flatten(obj);
+	NodeList nodes = extract_file_nodes(obj);
+	for(Node node : nodes) {
+		default_targets.insert(node);
+		main_namespace()["DEFAULT_TARGETS"].cast<py::list>().append(NodeWrapper(node));
 	}
 }
 
