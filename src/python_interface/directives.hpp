@@ -36,6 +36,9 @@ namespace sconspp
 {
 namespace python_interface
 {
+	void EnsureSConsVersion(int major, int minor, int revision);
+	void EnsurePythonVersion(int major, int minor);
+
 	py::object WhereIs(const std::string& name);
 
 	py::object subst_directive_args(const char*);

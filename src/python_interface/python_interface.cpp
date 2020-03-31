@@ -192,6 +192,8 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	m_script.def("Export", &Export);
 	m_script.def("Import", &Import);
 	m_script.def("Return", &Return);
+	def_directive(m_script, env, "EnsureSConsVersion", &EnsureSConsVersion, "major"_a, "minor"_a, "revision"_a = 0);
+	def_directive(m_script, env, "EnsurePythonVersion", &EnsurePythonVersion, "major"_a, "minor"_a);
 	def_directive(m_script, env, "Default", &Default, "targets"_a);
 	def_directive(m_script, env, "WhereIs", &WhereIs, "program"_a);
 	def_directive<boost::mpl::set_c<int, 2>>(m_script, env, "Alias", &Alias, "alias"_a, "targets"_a = py::none(), "action"_a = py::none());
@@ -214,6 +216,8 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	path.append(py::str(PYTHON_MODULES_PATH));
 	path.append((readlink("/proc/self/exe").parent_path() / "python_modules").string());
 	m_scons.attr("__path__") = path;
+
+	m_scons.attr("__version__") = "3.1.2";
 }
 
 	void init_python(std::vector<std::pair<std::string, std::string>> overrides)

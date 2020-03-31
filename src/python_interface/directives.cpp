@@ -32,6 +32,27 @@ namespace sconspp
 namespace python_interface
 {
 
+void EnsureSConsVersion(int major, int minor, int revision)
+{
+	py::list version { py::module::import("SCons").attr("__version__").cast<py::str>().attr("split")(".") };
+	py::list numeric_version;
+	for(auto ver : version)
+		numeric_version.append(py::int_(ver.cast<py::str>()));
+
+	if(py::tuple(numeric_version) < py::cast(std::tuple<int, int, int>{ major, minor, revision }))
+		throw std::runtime_error("This script requires SCons version " + std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(revision) +
+			" while this version of scons++ emulates " + py::module::import("SCons").attr("__version__").cast<std::string>());
+}
+
+void EnsurePythonVersion(int major, int minor)
+{
+	auto version_info { py::module::import("sys").attr("version_info") };
+
+	if(py::tuple(version_info) < py::cast(std::tuple<int, int>{ major, minor }))
+		throw std::runtime_error("This script requires Python version " + std::to_string(major) + "." + std::to_string(minor) +
+			" while we have " + py::str(version_info.attr("major")).cast<std::string>() + "." + py::str(version_info.attr("minor")).cast<std::string>());
+}
+
 py::object WhereIs(const std::string& name)
 {
 	std::string path = where_is(name).native();
