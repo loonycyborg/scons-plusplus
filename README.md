@@ -14,9 +14,15 @@ PREREQUISITES
 
 BUILD
 -----
-Run scons(scons++ can't build itself yet).
+Run scons
 If required, location of boost installation can be overridden:
     scons boostdir=/usr/local/include/boost-1_39 boostlibdir=/usr/local/lib boost_suffix=-gcc43-mt-1_39
+
+RUNNING
+-------
+running resulting `scons++` program will try to find SConstruct++ or SContruct file
+in current directory and build it as a SCons script. `scons++ -F make` will work in Make
+mode instead, parsing Makefiles. Running `./scons++ --help` will show all options.
 
 `scons check` will run scons++ ad-hoc regression test 
 suite and compile "Hello,world" program located in 
