@@ -96,6 +96,9 @@ py::dict dictify(py::object obj)
 	return result;
 }
 
+void AddOption(std::string name, py::kwargs args);
+py::object GetOption(std::string name);
+
 using namespace pybind11::literals;
 
 PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
@@ -194,6 +197,8 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	m_script.def("Return", &Return);
 	def_directive(m_script, env, "EnsureSConsVersion", &EnsureSConsVersion, "major"_a, "minor"_a, "revision"_a = 0);
 	def_directive(m_script, env, "EnsurePythonVersion", &EnsurePythonVersion, "major"_a, "minor"_a);
+	m_script.def("AddOption", &AddOption);
+	def_directive(m_script, env, "GetOption", &GetOption, "name"_a);
 	def_directive(m_script, env, "Default", &Default, "targets"_a);
 	def_directive(m_script, env, "WhereIs", &WhereIs, "program"_a);
 	def_directive<boost::mpl::set_c<int, 2>>(m_script, env, "Alias", &Alias, "alias"_a, "targets"_a = py::none(), "action"_a = py::none());
@@ -206,6 +211,8 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	def_directive(m_script, env, "Glob", &glob, "pattern"_a, "ondisk"_a = true);
 	def_directive(m_script, env, "FindFile", &FindFile, "file"_a, "dirs"_a);
 	def_directive(m_script, env, "Precious", &Precious);
+
+	py::module m_script_main = m_script.def_submodule("Main");
 
 	py::module m_sconspp_ext = m_scons.def_submodule("SConsppExt");
 	py::class_<Task::Scanner>(m_sconspp_ext, "Scanner");
@@ -253,6 +260,9 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 
 		try {
 			main_namespace()["COMMAND_LINE_TARGETS"] = py::cast(command_line_target_strings);
+
+			py::module::import("SCons.Script.Main").attr("OptionParser") = py::module::import("argparse").attr("ArgumentParser")();
+
 			SConscript(filename);
 
 			for(const auto& target : command_line_target_strings) {
@@ -301,6 +311,31 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	{
 		py::gil_scoped_acquire acquire;
 		return expand_python(env, subst(env, input, for_signature));
+	}
+
+	void AddOption(std::string name, py::kwargs args)
+	{
+		auto type_mapping { std::map<std::string, const char*> { { "string", "str"}, { "int", "int" } } };
+		if(args.contains("type")) {
+			auto type { args["type"].cast<std::string>() };
+			if(type_mapping.count(type) == 0)
+				throw std::runtime_error("AddOption: unsupported option type");
+			args["type"] = py::module::import("builtins").attr(type_mapping[type]);
+		}
+		if(args.contains("nargs")) {
+			if(args["nargs"].cast<int>() == 1) {
+				args["nargs"] = "?";
+			} else {
+				throw std::runtime_error("AddOption: unsupported value for nargs");
+			}
+		}
+		py::module::import("SCons.Script.Main").attr("OptionParser").attr("add_argument")(name, **args);
+	}
+
+	py::object GetOption(std::string name)
+	{
+		py::object parser { py::module::import("SCons.Script.Main").attr("OptionParser") };
+		return py::tuple(parser.attr("parse_known_args")())[0].attr(py::str(name));
 	}
 }
 }

@@ -24,6 +24,7 @@
 namespace sconspp
 {
 	enum struct Frontend { scons, make };
+	bool frontend_allows_unknown_options(Frontend);
 	std::istream& operator>>(std::istream& in, Frontend& frontend);
 	extern Frontend commandline_frontend;
 	extern std::string buildfile;

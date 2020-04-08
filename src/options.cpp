@@ -70,8 +70,20 @@ std::pair<std::vector<std::string>, std::vector<std::pair<std::string, std::stri
 	boost::program_options::positional_options_description p;
 	p.add("target-or-macro", -1);
 	boost::program_options::variables_map vm;
-	boost::program_options::store(boost::program_options::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
+	auto parsed { boost::program_options::command_line_parser(argc, argv).options(desc).positional(p).allow_unregistered().run() };
+	boost::program_options::store(parsed, vm);
 	boost::program_options::notify(vm);
+
+	std::vector<std::string> unknown_options;
+	for(auto option : parsed.options) {
+		if(option.unregistered) {
+			if(frontend_allows_unknown_options(commandline_frontend)) {
+				unknown_options.push_back(option.original_tokens[0]);
+			} else {
+				throw std::runtime_error("unknown option: " + option.string_key);
+			}
+		}
+	}
 
 	if(vm.count("help")) {
 		std::cout << desc << std::endl;

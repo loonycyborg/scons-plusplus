@@ -40,6 +40,14 @@ std::istream& operator>>(std::istream& in, Frontend& frontend)
 	return in;
 }
 
+bool frontend_allows_unknown_options(Frontend frontend)
+{
+	if(frontend == Frontend::scons)
+		return true;
+
+	return false;
+}
+
 Frontend commandline_frontend = Frontend::scons;
 std::string buildfile;
 
