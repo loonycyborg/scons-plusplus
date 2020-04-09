@@ -56,7 +56,7 @@ struct NodeWrapper
 	std::string dir() const {
 		return properties<FSEntry>(node).dir();
 	}
-	std::string get_contents() const {
+	py::bytes get_contents() const {
 		try {
 			return properties<FSEntry>(node).get_contents();
 		} catch(const std::bad_cast&) { return properties(node).name(); }

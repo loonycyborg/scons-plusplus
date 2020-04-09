@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE(test_node_get_contents)
 	SCONSPP_EXEC("tmpfile = NamedTemporaryFile(prefix = 'test_node_get_contents', suffix = '.ext')");
 	SCONSPP_EXEC("tmpfile.write('bar'.encode('UTF-8'))");
 	SCONSPP_EXEC("tmpfile.flush()");
-	SCONSPP_CHECK("env.File(tmpfile.name).get_contents() == 'bar'");
+	SCONSPP_CHECK("env.File(tmpfile.name).get_contents().decode('utf-8') == 'bar'");
 }
 
 BOOST_AUTO_TEST_CASE(test_find_file)
