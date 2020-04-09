@@ -233,11 +233,25 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 
 		main_namespace() = py::dict(py::module::import("__main__").attr("__dict__"));
 
-		PyDict_Update(main_namespace().ptr(), py::module::import("SCons.Script").attr("__dict__").ptr());
+		auto m_script { py::module::import("SCons.Script") };
 
-		main_namespace()["ARGLIST"] = py::cast(overrides);
-		main_namespace()["ARGUMENTS"] = py::dict();
-		for(auto override : overrides) main_namespace()["ARGUMENTS"][py::str(override.first)] = override.second;
+		m_script.attr("ARGLIST") = py::cast(overrides);
+		m_script.attr("ARGUMENTS") = py::dict();
+		for(auto override : overrides) m_script.attr("ARGUMENTS")[py::str(override.first)] = override.second;
+
+		auto m_variables { py::module::import("SCons.Variables") };
+		m_script.def("Variables",
+			[m_variables](py::object files, py::object args) -> py::object
+				{ return m_variables.attr("Variables")(files, args); },
+			"files"_a = py::none(), "args"_a = m_script.attr("ARGUMENTS")
+		);
+		m_script.attr("BoolVariable") = m_variables.attr("BoolVariable");
+		m_script.attr("EnumVariable") = m_variables.attr("EnumVariable");
+		m_script.attr("ListVariable") = m_variables.attr("ListVariable");
+		m_script.attr("PackageVariable") = m_variables.attr("PackageVariable");
+		m_script.attr("PathVariable") = m_variables.attr("PathVariable");
+
+		PyDict_Update(main_namespace().ptr(), m_script.attr("__dict__").ptr());
 
 		static py::gil_scoped_release unlock{};
 	}
