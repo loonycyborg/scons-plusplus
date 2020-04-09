@@ -113,7 +113,7 @@ void Execute(Environment::pointer, py::object obj);
 py::object get_item_from_env(const Environment& env, const std::string& key);
 void del_item_in_env(Environment& env, const std::string& key);
 void set_item_in_env(Environment& env, const std::string& key, py::object val);
-void Tool(Environment::pointer, py::object obj);
+void Tool(Environment::pointer, py::object obj, py::object toolpath);
 void Platform(Environment::pointer, const std::string& name);
 
 enum UpdateType { Append, Prepend };
@@ -187,7 +187,7 @@ py::object get_env_attr(py::object, const string& key);
 void AddMethod(py::object, py::object, const std::string& name);
 void SetDefault(Environment&, py::kwargs);
 std::string Dump(const Environment& env);
-Environment::pointer make_environment(py::args, py::kwargs);
+Environment::pointer make_environment(py::object platform, py::object tools, py::object toolpath, py::object variables, py::object parse_flags, py::kwargs);
 Environment::pointer default_environment(py::tuple, py::dict);
 Environment::pointer default_environment();
 py::object DefaultEnvironment(py::tuple args, py::dict kw);

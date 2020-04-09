@@ -117,22 +117,23 @@ void set_item_in_env(Environment& env, const std::string& key, py::object val)
 	env[key] = extract_variable(val);
 }
 
-void Tool(Environment::pointer env, py::object obj)
+void Tool(Environment::pointer env, py::object tools, py::object toolpath)
 {
-	py::eval<py::eval_single_statement>("import SCons.Tool", main_namespace(), main_namespace());
-	py::object tool = py::eval("SCons.Tool.Tool", main_namespace(), main_namespace());
-	tool(obj)(env);
+	if(!toolpath.is_none()) (*env)["toolpath"] = extract_variable(toolpath);
+
+	auto tool { py::module::import("SCons.Tool").attr("Tool") };
+	tools = flatten(tools);
+	for(auto obj : tools) tool(obj)(env);
 }
 
 void Platform(Environment::pointer env, const std::string& name)
 {
-	py::eval<py::eval_single_statement>("import SCons.Platform", main_namespace(), main_namespace());
-	py::object platform = py::eval("SCons.Platform.Platform", main_namespace(), main_namespace());
+	py::object platform = py::module::import("SCons.Platform").attr("Platform");
 	if(name.empty())
-		platform()(env);
+		platform = platform()(env);
 	else
-		platform(name)(env);
-	(*env)["PLATFORM"] = extract_variable(py::eval("'FOO'"));
+		platform = platform(name)(env);
+	(*env)["PLATFORM"] = extract_variable(py::str(platform));
 }
 
 void Replace(Environment& env, py::kwargs kw)
@@ -363,15 +364,21 @@ void setup_scons_task_context(Environment& env, const Task& task)
 	}
 }
 
-Environment::pointer make_environment(py::args args, py::kwargs kw)
+Environment::pointer make_environment(py::object platform, py::object tools, py::object toolpath, py::object variables, py::object parse_flags, py::kwargs kw)
 {
 	Environment::pointer env_ptr{ new Environment(subst_to_string, setup_scons_task_context) };
 	Environment& env = *env_ptr;
 	env["BUILDERS"] = extract_variable(py::dict());
 
+	if(kw.contains("options")) {
+		variables = kw["options"];
+		PyDict_DelItemString(kw.ptr(), "options");
+	}
+	if(!variables.is_none()) variables.attr("Update")(env_ptr);
+
 	if(!kw.contains("_no_platform")) {
-		Platform(env_ptr, kw.contains("platform") ? kw["platform"].cast<string>() : "");
-		Tool(env_ptr, py::str("default"));
+		Platform(env_ptr, platform.is_none() ? "" : platform.cast<string>());
+		Tool(env_ptr, tools.is_none() ? py::str("default") : tools, toolpath);
 
 		env["_concat"] = extract_variable(py::cast(std::function<decltype(concat)>(concat)));
 		env["_defines"] = extract_variable(py::module::import("SCons.Defaults").attr("_defines"));

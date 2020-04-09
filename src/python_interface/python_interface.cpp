@@ -145,7 +145,7 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	py::module m_environment = m_scons.def_submodule("Environment");
 	py::class_<Environment, Environment::pointer> env{m_environment, "Environment", py::dynamic_attr()};
 	env
-		.def(py::init(&make_environment))
+		.def(py::init(&make_environment), "platform"_a = py::none(), "tools"_a = py::none(), "toolpath"_a = py::none(), "variables"_a = py::none(), "parse_flags"_a = py::none())
 		.def("subst", &Environment::subst, "input"_a, "for_signature"_a = false)
 		.def("backtick", backtick, "command"_a)
 		.def("Command", &Command)
