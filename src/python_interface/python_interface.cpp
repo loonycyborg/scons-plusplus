@@ -149,9 +149,6 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 		.def("subst", &Environment::subst, "input"_a, "for_signature"_a = false)
 		.def("backtick", backtick, "command"_a)
 		.def("Command", &Command)
-		.def("Entry", &Entry)
-		.def("File", &File)
-		.def("Dir", &Dir)
 		.def("Value", &Value) //
 		.def("Execute", &Execute)
 		.def("__getitem__", &get_item_from_env)
@@ -192,6 +189,9 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 
 	m_script.def("DefaultEnvironment", &DefaultEnvironment);
 	m_script.def("SConscript", (py::object(*)(const std::string&))SConscript);
+	def_directive(m_script, env, "Entry", &wrap_add<add_entry>);
+	def_directive(m_script, env, "File", &wrap_add<add_file>);
+	def_directive(m_script, env, "Dir", &wrap_add<add_directory>);
 	m_script.def("Export", &Export);
 	m_script.def("Import", &Import);
 	m_script.def("Return", &Return);
