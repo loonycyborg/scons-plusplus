@@ -72,9 +72,6 @@ boost::filesystem::path where_is(const std::string& name);
 
 boost::filesystem::path readlink(const boost::filesystem::path& path);
 
-boost::filesystem::path to_relative(const boost::filesystem::path& p, const boost::filesystem::path& base);
-boost::filesystem::path canonicalize(const boost::filesystem::path& p);
-
 class scoped_chdir
 {
 	boost::filesystem::path old_current_dir;

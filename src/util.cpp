@@ -85,46 +85,6 @@ boost::filesystem::path readlink(const boost::filesystem::path& path)
 	return name;
 }
 
-boost::filesystem::path to_relative(const boost::filesystem::path& p, const boost::filesystem::path& base)
-{
-	assert(p.is_complete());
-	assert(base.is_complete());
-	boost::filesystem::path::iterator path_iter = p.begin(), base_iter = base.begin();
-	for(;; ++path_iter, ++base_iter) {
-		if(path_iter == p.end()) {
-			return p;
-		}
-		if(base_iter == base.end()) {
-			boost::filesystem::path result;
-			for(;path_iter != p.end(); ++path_iter) {
-				result /= *path_iter;
-			}
-			return result;
-		}
-		if(*path_iter != *base_iter) {
-			return p;
-		}
-	}
-}
-
-boost::filesystem::path canonicalize(const boost::filesystem::path& p)
-{
-	std::vector<boost::filesystem::path::iterator> canonicalized_path;
-	for(boost::filesystem::path::iterator i = p.begin(); i != p.end(); ++i) {
-		if(*i == ".")
-			continue;
-		if(*i == "..") {
-			canonicalized_path.pop_back();
-			continue;
-		}
-		canonicalized_path.push_back(i);
-	}
-	boost::filesystem::path result;
-	for(const boost::filesystem::path::iterator& elem : canonicalized_path)
-		result /= *elem;
-	return result;
-}
-
 inline int throw_if_error(int return_value)
 {
 	if(return_value == -1)

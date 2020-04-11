@@ -58,11 +58,11 @@ struct fs_trie
 	Node add_entry(const path& p, boost::logic::tribool is_file)
 	{
 		path::const_iterator iter = p.begin();
-		return add_entry(iter, p, is_file,  trie[{}]);
+		return add_entry(iter, p, is_file,  trie["."]);
 	}
 	Node add_entry(path::const_iterator& iter, const path& entry_path, boost::logic::tribool is_file, fs_trie_node& parent)
 	{
-		if(iter == entry_path.end()) {
+		if(iter == entry_path.end() || *iter == ".") {
 			if(!parent.node) {
 				parent.node = add_vertex(graph);
 				graph[parent.node.get()].reset(new sconspp::FSEntry(entry_path.string(), is_file));
@@ -88,7 +88,7 @@ struct fs_trie
 	{
 		path::const_iterator iter = pattern.begin();
 		NodeList result;
-		glob(iter, pattern.end(), result, trie.find({})->second);
+		glob(iter, pattern.end(), result, trie.find(".")->second);
 		return result;
 	}
 	void glob(path::const_iterator& iter, const path::const_iterator& iter_end, NodeList& result, const fs_trie_node& parent) const
@@ -118,7 +118,7 @@ struct fs_trie
 		else
 			glob_on_disk(iter, pattern.end(), directory);
 		iter = pattern.begin();
-		glob(iter, pattern.end(), result, trie[{}]);
+		glob(iter, pattern.end(), result, trie["."]);
 		return result;
 	}
 	void glob_on_disk(path::const_iterator& iter, const path::const_iterator& iter_end, const path& directory)
@@ -151,7 +151,7 @@ void set_fs_root(const path& path)
 {
 	static bool path_is_set = false;
 	if(!path_is_set) {
-		fs_root = path;
+		fs_root = path.lexically_normal();
 		path_is_set = true;
 	}
 	else
@@ -162,9 +162,12 @@ void set_fs_root(const path& path)
 
 path canonical_path(const path& name)
 {
-	path result = canonicalize(name);
-	if(!fs_root.empty())
-		result = to_relative(result, fs_root);
+	path result = name.lexically_normal();
+	if(!fs_root.empty()) {
+		auto relative = result.lexically_relative(fs_root);
+		if(*relative.begin() != "..") // we want only paths below buildroot made relative
+			result = relative;
+	}
 	return result;
 }
 
@@ -266,7 +269,7 @@ bool FSEntry::unchanged(PersistentNodeData& prev_data) const
 
 std::string FSEntry::relpath() const
 {
-	path relpath = to_relative(abspath_, boost::filesystem::current_path());
+	path relpath = abspath_.lexically_relative(boost::filesystem::current_path());
 	return relpath.string();
 }
 
