@@ -23,6 +23,7 @@
 #include "db.hpp"
 
 #include <fnmatch.h>
+#include <numeric>
 #include <boost/optional.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/unordered_map.hpp>
@@ -38,70 +39,76 @@ using sconspp::Node;
 using sconspp::NodeList;
 using sconspp::graph;
 
+struct fs_trie_node
+{
+	fs_trie_node() : children{{}} { }
+
+	optional<Node> node;
+	optional<fs_trie_node&> parent;
+	std::unordered_map<string, fs_trie_node*> children;
+};
+
 struct fs_trie
 {
-	optional<Node> node;
-	map<string, fs_trie> children;
-	typedef map<string, fs_trie>::iterator child_iterator;
-	typedef map<string, fs_trie>::const_iterator const_child_iterator;
+	typedef std::unordered_map<string, fs_trie_node> Trie;
+	Trie trie;
+
+	fs_trie() : trie{{}} {}
 
 	Node add_entry(const path& p, boost::logic::tribool is_file)
 	{
 		path::const_iterator iter = p.begin();
-		return add_entry(iter, p, is_file);
+		return add_entry(iter, p, is_file,  trie[{}]);
 	}
-	Node add_entry(path::const_iterator& iter, const path& entry_path, boost::logic::tribool is_file)
+	Node add_entry(path::const_iterator& iter, const path& entry_path, boost::logic::tribool is_file, fs_trie_node& parent)
 	{
 		if(iter == entry_path.end()) {
-			if(!node) {
-				node = add_vertex(graph);
-				graph[node.get()].reset(new sconspp::FSEntry(entry_path.string(), is_file));
+			if(!parent.node) {
+				parent.node = add_vertex(graph);
+				graph[parent.node.get()].reset(new sconspp::FSEntry(entry_path.string(), is_file));
 			}
-			return node.get();
+			return parent.node.get();
 		} else {
-			string elem = iter->string();
-			return children[elem].add_entry(++iter, entry_path, is_file);
+			string elem { iter->string() };
+			++iter;
+			if(parent.children.count(elem) == 0) {
+				path new_path = std::accumulate(entry_path.begin(), iter, path{}, [](path x, path y) -> path { return x/y; });
+				parent.children[elem] = &trie[new_path.string()];
+				parent.children[elem]->parent = parent;
+			}
+			return add_entry(iter, entry_path, is_file, *parent.children[elem]);
 		}
 	}
-	optional<Node> get(const path& p) const
-	{
-		path::const_iterator iter = p.begin();
-		return get(iter, p.end());
-	}
-	optional<Node> get(path::const_iterator& iter, const path::const_iterator& iter_end) const
-	{
-		if(iter == iter_end)
-			return node;
 
-		const_child_iterator i = children.find(iter->string());
-		if(i == children.end())
-			return optional<Node>();
-		return i->second.get(++iter, iter_end);
+	optional<Node> get(const path& p) const {
+		return trie.count(p.string()) ? trie.find(p.string())->second.node : optional<Node>{};
 	}
+
 	NodeList glob(const path& pattern) const
 	{
 		path::const_iterator iter = pattern.begin();
 		NodeList result;
-		glob(iter, pattern.end(), result);
+		glob(iter, pattern.end(), result, trie.find({})->second);
 		return result;
 	}
-	void glob(path::const_iterator& iter, const path::const_iterator& iter_end, NodeList& result) const
+	void glob(path::const_iterator& iter, const path::const_iterator& iter_end, NodeList& result, const fs_trie_node& parent) const
 	{
 		if(iter == iter_end) {
-			if(node) {
-				result.push_back(node.get());
+			if(parent.node) {
+				result.push_back(parent.node.get());
 			}
 			return;
 		}
 
 		std::string pattern = iter->string();
 		path::iterator next_pattern = ++iter;
-		for(const_child_iterator i = children.begin(); i != children.end(); ++i) {
-			if(fnmatch(pattern.c_str(), i->first.c_str(), FNM_NOESCAPE) == 0) {
-				i->second.glob(next_pattern, iter_end, result);
+		for(auto elem : parent.children) {
+			if(fnmatch(pattern.c_str(), elem.first.c_str(), FNM_NOESCAPE) == 0) {
+				glob(next_pattern, iter_end, result, *elem.second);
 			}
 		}
 	}
+
 	NodeList glob_on_disk(const path& pattern, const path& directory)
 	{
 		path::const_iterator iter = pattern.begin();
@@ -111,7 +118,7 @@ struct fs_trie
 		else
 			glob_on_disk(iter, pattern.end(), directory);
 		iter = pattern.begin();
-		glob(iter, pattern.end(), result);
+		glob(iter, pattern.end(), result, trie[{}]);
 		return result;
 	}
 	void glob_on_disk(path::const_iterator& iter, const path::const_iterator& iter_end, const path& directory)
@@ -130,23 +137,6 @@ struct fs_trie
 			}
 		}
 	}
-	/*
-	void dump(int nesting_level = 0) const
-	{
-		if(node)
-			std::cout << node.get();
-		else
-			std::cout << "N";
-		std::cout << std::endl;
-		nesting_level++;
-		for(const_child_iterator i = children.begin(); i != children.end(); ++i) {
-			for(int j = 0; j < nesting_level; j++)
-				std::cout << '-';
-			std::cout << i->first << ' ';
-			i->second.dump(nesting_level);
-		}
-	}
-	*/
 };
 
 boost::filesystem::path fs_root;

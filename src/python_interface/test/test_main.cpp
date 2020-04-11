@@ -145,8 +145,7 @@ BOOST_AUTO_TEST_CASE(test_glob)
 	SCONSPP_CHECK("glob_files[0].path == 'test_glob_dir/file1.ext'");
 	SCONSPP_EXEC("f2 = env.File('test_glob_dir/file2.ext')");
 	SCONSPP_EXEC("glob_files = Glob('test_glob_dir/*.ext', ondisk = False)");
-	SCONSPP_CHECK("glob_files[0].path == 'test_glob_dir/file1.ext'");
-	SCONSPP_CHECK("glob_files[1].path == 'test_glob_dir/file2.ext'");
+	SCONSPP_CHECK("set(map(str,glob_files)) == set(('test_glob_dir/file1.ext', 'test_glob_dir/file2.ext'))");
 	SCONSPP_EXEC("from tempfile import NamedTemporaryFile");
 	SCONSPP_EXEC("from os.path import dirname");
 	SCONSPP_EXEC("tmpfile = NamedTemporaryFile(prefix = 'test_glob_ondisk', suffix = '.ext')");
