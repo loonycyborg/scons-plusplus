@@ -237,10 +237,15 @@ NodeList glob(const std::string& pattern, bool on_disk)
 
 FSEntry::FSEntry(path name, boost::logic::tribool is_file) : path_(name), is_file_(is_file)
 {
-	if(name.is_complete())
+	if(name.is_absolute()) {
 		abspath_ = path_;
-	else
-		abspath_ = fs_root / path_;
+		return;
+	}
+	if(name.filename_is_dot()) {
+		abspath_ = fs_root;
+		return;
+	}
+	abspath_ = fs_root / path_;
 }
 
 bool FSEntry::unchanged(PersistentNodeData& prev_data) const
@@ -265,6 +270,18 @@ bool FSEntry::unchanged(PersistentNodeData& prev_data) const
 	}
 	if(!unchanged_.get()) prev_data.bump_generation();
 	return unchanged_.get();
+}
+
+std::string FSEntry::dir() const {
+	path result { path_.parent_path() };
+	if(!path_.is_absolute()) {
+		if(path_.begin() == --path_.end()) {
+			if(path_.filename_is_dot()) result = abspath_.parent_path();
+			else result = ".";
+		}
+	}
+	if(result.empty()) throw std::runtime_error("Attempt to get parent dir of a root path");
+	return result.string();
 }
 
 std::string FSEntry::relpath() const

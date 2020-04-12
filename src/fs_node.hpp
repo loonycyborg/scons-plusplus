@@ -52,7 +52,7 @@ class FSEntry : public node_properties
 	void make_file() { is_file_ = true; }
 	void make_directory() { is_file_ = false; }
 
-	std::string dir() const { return path_.parent_path().string(); }
+	std::string dir() const;
 	std::string file() const { return path_.filename().string(); }
 	std::string suffix() const { return path_.extension().string(); }
 	std::string base() const { return name().substr(0, name().length() - suffix().length()); }
