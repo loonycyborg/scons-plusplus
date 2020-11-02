@@ -173,7 +173,7 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 		.def("SetDefault", &SetDefault)
 		.def("Dump", &Dump)
 		.def("Clone", &Environment::clone)
-		.def("SConscript", (py::object(*)(const Environment&, const std::string&))SConscript)
+		.def("SConscript", static_cast<py::object(*)(const Environment&, const std::string&)>(SConscript))
 		;
 
 	py::module m_script = m_scons.def_submodule("Script");
@@ -188,7 +188,7 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	m_script.attr("Environment") = m_environment.attr("Environment");
 
 	m_script.def("DefaultEnvironment", &DefaultEnvironment);
-	m_script.def("SConscript", (py::object(*)(const std::string&))SConscript);
+	m_script.def("SConscript", static_cast<py::object(*)(const std::string&)>(SConscript));
 	def_directive(m_script, env, "Entry", &wrap_add<add_entry>);
 	def_directive(m_script, env, "File", &wrap_add<add_file>);
 	def_directive(m_script, env, "Dir", &wrap_add<add_directory>);
