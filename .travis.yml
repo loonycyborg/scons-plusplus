@@ -4,6 +4,11 @@ compiler:
 - gcc
 os:
 - linux
+env:
+  - DEBIAN_FRONTEND=noninteractive
+before_install:
+  - apt update
+  - apt install scons build-essential libboost-all-dev
 script:
 - scons check
 notifications:
