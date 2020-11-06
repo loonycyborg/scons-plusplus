@@ -6,7 +6,7 @@ test_env = Environment()
 test_env["have_boost_test"] = False
 Export("test_env")
 
-env.ParseConfig("python-config --libs --includes")
+env.ParseConfig("python3-config --libs --includes")
 env.AppendUnique(LIBS = ["boost_filesystem", "boost_system", "boost_thread", "boost_program_options", "sqlite3"])
 env.AppendUnique(CPPPATH = ["thirdparty/pybind11/include"])
 env.AppendUnique(CCFLAGS = Split("-Wall -O2 -march=native -Wno-deprecated -Wno-parentheses -pthread -fvisibility=hidden"), LINKFLAGS = ["-pthread"], CPPDEFINES = ["BOOST_FILESYSTEM_VERSION=3"])
