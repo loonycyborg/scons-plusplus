@@ -1,0 +1,15 @@
+language: cpp
+dist: bionic
+compiler:
+- gcc
+os:
+- linux
+script:
+- scons check
+notifications:
+  email: false
+  irc:
+    channels:
+    - chat.freenode.net#loonycyborg
+    template:
+    - "%{repository}/%{branch} (%{commit} - %{author}): %{build_url}: %{message}"
