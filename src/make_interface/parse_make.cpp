@@ -236,11 +236,21 @@ struct make_rule_ast
 		NodeList target_nodes, source_nodes;
 		std::transform(targets.begin(), targets.end(), std::back_inserter(target_nodes), [](const std::string& str) -> Node { return add_entry(str); });
 		std::transform(sources.begin(), sources.end(), std::back_inserter(source_nodes), [](const std::string& str) -> Node { return add_entry(str); });
-		Task::add_task(env, target_nodes, source_nodes, actions, make_scanner);
 
-		if(default_targets.empty() && !target_nodes.empty())
-			for(Node target : target_nodes)
-				default_targets.insert(target);
+		if(actions.empty()) { // if no commands given then only establish deps
+			for(auto target : target_nodes) {
+				for(auto source : source_nodes) {
+					add_edge(target, source, sconspp::graph);
+				}
+			}
+		} else {
+			Task::add_task(env, target_nodes, source_nodes, actions, make_scanner);
+
+			if(default_targets.empty() && !target_nodes.empty())
+				for(Node target : target_nodes)
+					default_targets.insert(target);
+		}
+
 		return target_nodes;
 	}
 };
