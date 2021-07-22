@@ -89,7 +89,7 @@ boost::variant<std::string, py::object> expand_variable(const Environment& env, 
 
 boost::variant<std::string, py::object> eval_python(const Environment& env, const std::string& code, bool for_signature)
 {
-	return sconspp::python_interface::subst(env, py::eval(py::str(code), py::cast(env), py::cast(env)), for_signature);
+	return sconspp::python_interface::subst(env, py::eval(py::str(code), py::dict(), py::cast(env)), for_signature);
 }
 
 class concat : public boost::static_visitor<boost::variant<std::string, py::object> >
