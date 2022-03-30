@@ -152,6 +152,7 @@ BOOST_AUTO_TEST_CASE(test_glob)
 	SCONSPP_EXEC("tmpfile.write('foo'.encode('UTF-8'))");
 	SCONSPP_EXEC("glob_file = Glob(dirname(tmpfile.name) + '/test_glob_ondisk*.ext')");
 	SCONSPP_CHECK("glob_file[0].path == tmpfile.name");
+	SCONSPP_EXEC("tmpfile.close()");
 }
 
 BOOST_AUTO_TEST_CASE(test_node_get_contents)
@@ -162,6 +163,7 @@ BOOST_AUTO_TEST_CASE(test_node_get_contents)
 	SCONSPP_EXEC("tmpfile.write('bar'.encode('UTF-8'))");
 	SCONSPP_EXEC("tmpfile.flush()");
 	SCONSPP_CHECK("env.File(tmpfile.name).get_contents().decode('utf-8') == 'bar'");
+	SCONSPP_EXEC("tmpfile.close()");
 }
 
 BOOST_AUTO_TEST_CASE(test_find_file)
@@ -173,6 +175,7 @@ BOOST_AUTO_TEST_CASE(test_find_file)
 	SCONSPP_EXEC("tmpfile.flush()");
 	SCONSPP_CHECK("FindFile(basename(tmpfile.name), dirname(tmpfile.name)).abspath == tmpfile.name");
 	SCONSPP_CHECK("FindFile('nonexistant_file_name', dirname(tmpfile.name)) == None");
+	SCONSPP_EXEC("tmpfile.close()");
 }
 
 BOOST_AUTO_TEST_CASE(test_parse_flags)
