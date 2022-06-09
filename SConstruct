@@ -18,6 +18,7 @@ opts.Save('options.cache', env)
 
 import os
 env["ENV"]["PATH"] = os.environ.get("PATH")
+env["ENV"]["LD_LIBRARY_PATH"] = os.environ.get("LD_LIBRARY_PATH")
 
 import sys
 sys.path.insert(0, "scons_tools")
