@@ -33,7 +33,7 @@ conf.CheckLibWithHeader("sqlite3", "sqlite3.h", "C") or Exit(1)
 conf.Define("PYTHON_MODULES_PATH", "\"" + Dir("python_modules").abspath + "\"")
 conf.Finish()
 
-env.ParseConfig("python3-config --embed --includes --libs")
+env.ParseConfig("python3-config --embed --includes --ldflags")
 
 env.Append(CPPDEFINES = ["BOOST_FILESYSTEM_VERSION=3"])
 
