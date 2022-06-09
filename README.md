@@ -1,4 +1,4 @@
-![Travis (.org) branch](https://img.shields.io/travis/loonycyborg/scons-plusplus/master)
+![CI]https://github.com/loonycyborg/scons-plusplus/actions/workflows/ci.yml/badge.svg
 ![GitHub](https://img.shields.io/github/license/loonycyborg/scons-plusplus)
 
 SCons++ - Python-scriptable build tool
