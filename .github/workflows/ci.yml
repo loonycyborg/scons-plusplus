@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-      - run: sudo apt-get install -y scons pybind11-dev libboost-graph-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev libsqlite3-dev
+      - run: sudo apt-get install -y scons pybind11-dev libboost-graph-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev libboost-thread-dev libboost-test-dev libsqlite3-dev
       - run: scons
       - run: scons check
       - run: ./scons++
