@@ -14,8 +14,10 @@ jobs:
         with:
           submodules: "recursive"
       - uses: actions/setup-python@v4
+        id: py_install
         with:
           python-version: '3.x'
+      - run: sudo ldconfig /opt/hostedtoolcache/Python/'${{ steps.py_install.output.python-version }}'/x64/lib
       - run: sudo apt-get install -y scons pybind11-dev libboost-graph-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev libboost-thread-dev libboost-test-dev libsqlite3-dev
       - run: scons
       - run: scons check
