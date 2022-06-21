@@ -58,7 +58,7 @@ struct fs_trie
 	Node add_entry(const path& p, boost::logic::tribool is_file)
 	{
 		path::const_iterator iter = p.begin();
-		return add_entry(iter, p, is_file,  trie["."]);
+		return add_entry(iter, p, is_file,  p.has_root_path() ? trie[p.root_path().string()] : trie["."]);
 	}
 	Node add_entry(path::const_iterator& iter, const path& entry_path, boost::logic::tribool is_file, fs_trie_node& parent)
 	{
@@ -84,11 +84,11 @@ struct fs_trie
 		return trie.count(p.string()) ? trie.find(p.string())->second.node : optional<Node>{};
 	}
 
-	NodeList glob(const path& pattern) const
+	NodeList glob(const path& pattern)
 	{
 		path::const_iterator iter = pattern.begin();
 		NodeList result;
-		glob(iter, pattern.end(), result, trie.find(".")->second);
+		glob(iter, pattern.end(), result, pattern.has_root_path() ? trie[pattern.root_path().string()] : trie["."]);
 		return result;
 	}
 	void glob(path::const_iterator& iter, const path::const_iterator& iter_end, NodeList& result, const fs_trie_node& parent) const
@@ -113,12 +113,13 @@ struct fs_trie
 	{
 		path::const_iterator iter = pattern.begin();
 		NodeList result;
-		if(pattern.is_complete())
-			glob_on_disk(++iter, pattern.end(), *(directory.begin()));
-		else
+		if(pattern.has_root_path()) {
+			glob_on_disk(++iter, pattern.end(), pattern.root_path());
+		} else {
 			glob_on_disk(iter, pattern.end(), directory);
+		}
 		iter = pattern.begin();
-		glob(iter, pattern.end(), result, trie["."]);
+		glob(iter, pattern.end(), result, pattern.has_root_path() ? trie[pattern.root_path().string()] : trie["."]);
 		return result;
 	}
 	void glob_on_disk(path::const_iterator& iter, const path::const_iterator& iter_end, const path& directory)
