@@ -298,7 +298,7 @@ class PythonBuilder
 		for(auto suffix : flatten(src_suffix_)) {
 			suffixes.insert(extract_string_subst(env, py::reinterpret_borrow<py::object>(suffix)));
 		}
-		std::string suffix = boost::filesystem::extension(name);
+		std::string suffix = boost::filesystem::path(name).extension().string();
 		return suffixes.find(suffix) != suffixes.end();
 	}
 	std::string split_ext(const boost::filesystem::path& name) const

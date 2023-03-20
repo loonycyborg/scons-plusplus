@@ -62,7 +62,7 @@ Environ::Environ()
 
 boost::filesystem::path where_is(const std::string& name)
 {
-	if(boost::filesystem::path(name).is_complete())
+	if(boost::filesystem::path(name).is_absolute())
 		return name;
 	std::vector<string> env_path;
 	string path_str = Environ::instance().get("PATH");

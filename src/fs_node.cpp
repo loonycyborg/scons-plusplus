@@ -158,7 +158,7 @@ void set_fs_root(const path& path)
 	else
 		throw std::runtime_error("set_fs_root: path can be set only once");
 
-	assert(fs_root.is_complete());
+	assert(fs_root.is_absolute());
 }
 
 path canonical_path(const path& name)
@@ -220,7 +220,7 @@ boost::optional<Node> find_file(const std::string& name, const std::vector<std::
 		path p = canonical_path(directory.empty() ? "." : directory) / name;
 		boost::optional<Node> result = fs.get(p);
 		if(result) return result;
-		if(!p.is_complete())
+		if(!p.is_absolute())
 			p = fs_root / p;
 		if(exists(p))
 			return fs.add_entry(canonical_path(p), boost::logic::indeterminate);
