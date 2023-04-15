@@ -7,8 +7,8 @@ test_env["have_boost_test"] = False
 Export("test_env")
 
 env.ParseConfig("python3-config --embed --ldflags --includes")
+env.ParseConfig("pkg-config --libs --cflags pybind11")
 env.AppendUnique(LIBS = ["boost_filesystem", "boost_system", "boost_thread", "boost_program_options", "sqlite3"])
-env.AppendUnique(CPPPATH = ["thirdparty/pybind11/include"])
 env.AppendUnique(CCFLAGS = Split("-Wall -O2 -march=native -Wno-deprecated -Wno-parentheses -pthread -fvisibility=hidden"), LINKFLAGS = ["-pthread"], CPPDEFINES = ["BOOST_FILESYSTEM_VERSION=3"])
 env.Append(CXXFLAGS = ["-std=c++17"])
 #env.Append(CCFLAGS = ["-pg"], LINKFLAGS = ["-pg"])

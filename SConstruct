@@ -35,11 +35,11 @@ conf.Define("PYTHON_MODULES_PATH", "\"" + Dir("python_modules").abspath + "\"")
 conf.Finish()
 
 env.ParseConfig("python3-config --embed --includes --ldflags")
+env.ParseConfig("pkg-config --libs --cflags pybind11")
 
 env.Append(CPPDEFINES = ["BOOST_FILESYSTEM_VERSION=3"])
 
 env.Append(CCFLAGS = Split("-O0 -ggdb -Werror -fvisibility=hidden"), CXXFLAGS = Split("-Wall -ansi -Wno-deprecated -Wno-parentheses"))
-env.Append(CPPPATH = ["#thirdparty/pybind11/include"])
 if "gcc" in env["TOOLS"]:
     env.Append(CXXFLAGS = ["-std=c++17"])
 env.Append(CPPPATH = ["#/src"])

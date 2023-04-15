@@ -7,6 +7,7 @@ SCons++ - Python-scriptable build tool
 PREREQUISITES
 -------------
 * Python >= 3.0
+* pybind11
 * boost >= 1.44
   * boost::system
   * boost::filesystem
