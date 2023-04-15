@@ -9,7 +9,7 @@ Export("test_env")
 env.ParseConfig("python3-config --embed --ldflags --includes")
 try:
     env.ParseConfig("pkg-config --libs --cflags pybind11")
-except OSError:
+except RuntimeError:
     pass
 env.AppendUnique(LIBS = ["boost_filesystem", "boost_system", "boost_thread", "boost_program_options", "sqlite3"])
 env.AppendUnique(CCFLAGS = Split("-Wall -O2 -march=native -Wno-deprecated -Wno-parentheses -pthread -fvisibility=hidden"), LINKFLAGS = ["-pthread"], CPPDEFINES = ["BOOST_FILESYSTEM_VERSION=3"])
