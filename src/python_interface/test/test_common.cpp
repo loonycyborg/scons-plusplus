@@ -19,7 +19,7 @@ struct python_setup
 {
 	python_setup()
 	{
-		python_interface::init_python({});
+		python_interface::init_python({}, 0, nullptr);
 		set_fs_root(boost::filesystem::current_path());
 	}
 };

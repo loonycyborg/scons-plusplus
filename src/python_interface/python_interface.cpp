@@ -227,9 +227,9 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 	m_scons.attr("__version__") = "3.1.2";
 }
 
-	void init_python(std::vector<std::pair<std::string, std::string>> overrides)
+	void init_python(std::vector<std::pair<std::string, std::string>> overrides, int argc, char** argv)
 	{
-		py::initialize_interpreter();
+		py::initialize_interpreter(true, argc, argv);
 
 		main_namespace() = py::dict(py::module::import("__main__").attr("__dict__"));
 
@@ -256,21 +256,9 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 		static py::gil_scoped_release unlock{};
 	}
 
-	void run_script(const std::string& filename, std::vector<std::string> command_line_target_strings, int argc, char** argv)
+	void run_script(const std::string& filename, std::vector<std::string> command_line_target_strings)
 	{
 		py::gil_scoped_acquire lock{};
-
-#if PY_MAJOR_VERSION == 2
-		argv[0][0] = 0;
-		PySys_SetArgv(argc, argv);
-#else
-		wchar_t** argw { new wchar_t*[size_t(argc)] };
-		for(int i = 0; i < argc; i++) {
-			argw[i] = Py_DecodeLocale(argv[i], nullptr);
-			assert(argw[i] != nullptr);
-		}
-		PySys_SetArgvEx(argc, argw, 0);
-#endif
 
 		try {
 			main_namespace()["COMMAND_LINE_TARGETS"] = py::cast(command_line_target_strings);

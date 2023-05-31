@@ -28,8 +28,8 @@ class Environment;
 
 namespace python_interface
 {
-void init_python(std::vector<std::pair<std::string, std::string>> overrides);
-void run_script(const std::string&, std::vector<std::string> command_line_target_strings, int argc, char** argv);
+void init_python(std::vector<std::pair<std::string, std::string>> overrides, int argc, char** argv);
+void run_script(const std::string&, std::vector<std::string> command_line_target_strings);
 std::string eval_string(const std::string&, const Environment&);
 std::string expand_variable(const std::string&, const Environment&);
 std::string subst_to_string(const Environment& env, const std::string& input, bool for_signature = false);

@@ -66,7 +66,7 @@ void run_script(std::vector<std::pair<std::string, std::string>> overrides, std:
 	switch(commandline_frontend)
 	{
 		case Frontend::scons:
-			python_interface::init_python(overrides);
+			python_interface::init_python(overrides, argc, argv);
 			if(!script_found) {
 				for(const char* name : scons_script_names) {
 					if(boost::filesystem::exists(name)) {
@@ -79,7 +79,7 @@ void run_script(std::vector<std::pair<std::string, std::string>> overrides, std:
 			if(!script_found)
 				throw std::runtime_error("No SConstruct file found.");
 			else
-				python_interface::run_script(buildfile, command_line_target_strings, argc, argv);
+				python_interface::run_script(buildfile, command_line_target_strings);
 		break;
 		case Frontend::make:
 			for(const char* name : make_script_names) {
