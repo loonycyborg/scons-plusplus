@@ -30,6 +30,7 @@
 #include "python_interface/python_interface.hpp"
 #include "fs_node.hpp"
 #include "scan_cpp.hpp"
+#include "taskmaster.hpp"
 
 #include "python_interface/python_interface_internal.hpp"
 #include "python_interface/sconscript.hpp"
@@ -253,13 +254,12 @@ PYBIND11_EMBEDDED_MODULE(SCons, m_scons)
 
 		PyDict_Update(main_namespace().ptr(), m_script.attr("__dict__").ptr());
 
-		static py::gil_scoped_release unlock{};
+		sconspp::pre_build_hook = []() -> void* { return new py::gil_scoped_release; };
+		sconspp::post_build_hook = [](void* release) { delete reinterpret_cast<py::gil_scoped_release*>(release); };
 	}
 
 	void run_script(const std::string& filename, std::vector<std::string> command_line_target_strings)
 	{
-		py::gil_scoped_acquire lock{};
-
 		try {
 			main_namespace()["COMMAND_LINE_TARGETS"] = py::cast(command_line_target_strings);
 

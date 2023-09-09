@@ -31,6 +31,9 @@ namespace sconspp
 	extern bool always_build;
 	extern bool keep_going;
 
+	extern std::function<void*()> pre_build_hook;
+	extern std::function<void(void*)> post_build_hook;
+
 	int build(Node end_goal);
 
 	void build_order(Node end_goal, std::vector<Node>& nodes);

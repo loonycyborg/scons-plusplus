@@ -129,6 +129,9 @@ namespace sconspp
 	bool always_build;
 	bool keep_going;
 
+	std::function<void*()> pre_build_hook;
+	std::function<void(void*)> post_build_hook;
+
 	void build_order(Node end_goal, BuildOrder& output)
 	{
 		std::map<Node, boost::default_color_type> colors;
@@ -278,10 +281,13 @@ namespace sconspp
 
 	int build(Node end_goal)
 	{
+		void* hook_data = pre_build_hook ? pre_build_hook() : nullptr;
 		BuildOrder nodes;
 		build_order(end_goal, nodes);
 		PersistentData& db = get_global_db();
 
-		return parallel_build(nodes, db);
+		int result = parallel_build(nodes, db);
+		if(post_build_hook) post_build_hook(hook_data);
+		return result;
 	}
 }
