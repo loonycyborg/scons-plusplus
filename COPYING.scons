@@ -1,0 +1,4 @@
+It is permitted to reuse any code from this project in original
+SCons project(www.scons.org). Any code from this project that
+is reused in SCons should be considered to be distributed
+under MIT license, same license SCons is distributed under.
