@@ -74,7 +74,7 @@ template<typename T, std::size_t n> struct sqlite3_column_impl<boost::array<T, n
 	static boost::array<T, n> sqlite3_column(sqlite3_stmt* stmt, int i)
 	{
 		boost::array<T, n> result;
-		memcpy(result.c_array(), sqlite3_column_blob(stmt, i), n);
+		memcpy(result.data(), sqlite3_column_blob(stmt, i), n);
 		assert(sqlite3_column_bytes(stmt, i) == n);
 		return result;
 	}

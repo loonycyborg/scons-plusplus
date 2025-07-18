@@ -102,7 +102,7 @@ class MD5
 	boost::array<unsigned char, 16> finish()
 	{
 		boost::array<unsigned char, 16> result;
-		md5_finish(&state, result.c_array());
+		md5_finish(&state, result.data());
 		return result;
 	}
 	static boost::array<unsigned char, 16> hash(const std::string& str)
